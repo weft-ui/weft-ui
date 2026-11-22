@@ -122,16 +122,20 @@ jobs:
           WEFT_NATIVE: "0"
       - run: pnpm --filter example test:ios
 
-  # The screenshot jobs run where the baselines are recorded: macOS 27 with
-  # Xcode 27.2 and its iOS 27.2 iPhone 17, and a Pixel 10 on Android 37.2.
+  # The screenshot jobs run where the baselines are recorded: the `web`
+  # container, Xcode 27.2 and its iOS 27.2 iPhone 17, and a Pixel 10 screen
+  # on Android 37.
   web-shots:
     needs: wasm
-    runs-on: xcode-27
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-workspace
-      - run: pnpm --filter showcase exec playwright install chromium
-      - run: pnpm --filter showcase shot:web
+      - uses: actions/download-artifact@v8
+        with:
+          name: compiler-wasm
+          path: packages/compiler/wasm
+      # Root, because the checkout belongs to the runner's user.
+      - run: docker compose -f native/linux/docker/compose.yaml run --rm --user root web sh -c 'pnpm install --frozen-lockfile && pnpm --filter showcase shot:web'
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -202,16 +206,30 @@ jobs:
       - run: native/android/build-core.sh
         env:
           WEFT_ANDROID_ABIS: x86_64
-      # The runner's avdmanager predates the pixel_10 profile, so give the
-      # default AVD the Pixel 10 screen instead.
+      # Build before the emulator starts: compiling next to it starves the
+      # emulator until its system services restart.
+      - run: pnpm --filter showcase build:android
+        env:
+          WEFT_NATIVE: "0"
+      - run: showcase/apps/android/gradlew -p showcase/apps/android :app:assembleDebug :app:assembleDebugAndroidTest
+      # The Google API images crash SurfaceFlinger on the runner's software
+      # renderer; the ATD image, which has no system bars, does not. The
+      # runner's avdmanager predates the pixel_10 profile, so give the default
+      # AVD the Pixel 10 screen instead.
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: "37.2"
+          api-level: "37.0"
           arch: x86_64
-          target: google_apis_playstore_ps16k
+          target: google_atd
+          cores: 4
+          ram-size: 4096M
+          disk-size: 8G
+          emulator-boot-timeout: 1200
           disable-animations: true
           pre-emulator-launch-script: printf 'hw.lcd.width=1080\nhw.lcd.height=2424\nhw.lcd.density=420\n' >> "${ANDROID_AVD_HOME:-$HOME/.android/avd}/test.avd/config.ini"
-          script: pnpm --filter showcase shot:android
+          script: |
+            for i in $(seq 150); do adb shell 'ls /sdcard/Android && pm path android' >/dev/null 2>&1 && break; sleep 2; done
+            pnpm --filter showcase shot:android
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

@@ -23,7 +23,7 @@ You only need the rows of the platforms you change. A change to the compiler or 
 
 ```sh
 pnpm install
-pnpm --filter showcase exec playwright install chromium # theme browser test and Web screenshots
+pnpm --filter showcase exec playwright install chromium # theme browser test
 pnpm build                       # compiler WASM and package builds
 native/apple/build-core.sh       # macOS: WeftCore.xcframework, for swift test and the Apple apps
 native/android/build-core.sh     # libweft.so for every ABI; WEFT_ANDROID_ABIS="x86_64" for a subset
@@ -45,7 +45,7 @@ Run the checks of the code you touched before opening a pull request. CI runs ev
 | C-windows | On Windows: `native/windows/build-core.ps1`, the kernel tests with `-DWEFT_CORE_SHARED=ON` (as C-core), then `dotnet test native/windows/Weft.WinUI.Tests` |
 | C-linux | In the container (below): `native/linux/build-core.sh`, then `cmake -S native/linux -B /tmp/weft-linux-tests -G Ninja -DWEFT_LINUX_TESTS=ON && cmake --build /tmp/weft-linux-tests && ctest --test-dir /tmp/weft-linux-tests --output-on-failure` |
 | C-ui | `pnpm --filter example test:<platform>` after `pnpm --filter example build:<platform>` |
-| C-shot | `pnpm --filter showcase shot:web && pnpm --filter showcase shot:ios && pnpm --filter showcase shot:android`; at most 0.1% of pixels may differ in each screenshot |
+| C-shot | `pnpm --filter showcase shot:web` (in the `web` container, below), `pnpm --filter showcase shot:ios` and `pnpm --filter showcase shot:android`; at most 0.1% of pixels may differ in each screenshot |
 | C-shot-local | `pnpm --filter showcase shot:wechat`, `shot:macos`, `shot:windows` (via `/tmp/weft-win.sh` on macOS), and `shot:linux` (in the container); compare WeChat and open the three desktop screenshots for manual review |
 
 `WEFT_UPDATE_SNAPSHOTS=1` rewrites the Rust snapshots and the conformance goldens. Only do so when the change is meant to alter generated code, and review the diff.
@@ -62,11 +62,11 @@ CI runs the Android and iOS flows nightly (`nightly.yml`). The other platforms r
 
 The [showcase](showcase/README.md) records screenshots in `showcase/screenshots/actual/<platform>/` and writes failed comparisons to `showcase/screenshots/diff/<platform>/`. Run one platform at a time in a checkout. When a visual change is intentional, run `WEFT_UPDATE_SNAPSHOTS=1 pnpm --filter showcase shot:<platform>` and review each updated image under `showcase/screenshots/baseline/` before committing it. macOS, Windows and Linux screenshots are for manual review only.
 
-Rendering depends on the OS, so record the Web, iOS and Android baselines in the environment the nightly jobs use: macOS 27, Xcode 27.2 with its iOS 27.2 simulator, and a Pixel 10 emulator (1080×2424, 420 dpi) on Android 37.2.
+Rendering depends on the OS, so record the Web, iOS and Android baselines in the environment the nightly jobs use: the `web` container, Xcode 27.2 with its iOS 27.2 simulator, and a Pixel 10 emulator (1080×2424, 420 dpi) with the Android 37.0 ATD image.
 
-- **Web:** run `pnpm --filter showcase exec playwright install chromium` once on macOS.
-- **iOS:** install the `iPhone 17` simulator (`WEFT_IOS_DEVICE` can override its name or UDID). The driver boots it and fixes the status bar for the shots.
-- **Android:** start a single emulator before running `shot:android`; `adb` must be on `PATH`.
+- **Web:** build the compiler WASM on the host (`pnpm build:wasm`), then run `docker compose -f native/linux/docker/compose.yaml run --rm web sh -c 'pnpm install && pnpm --filter showcase shot:web'`. The container has the browser and fonts the baselines use, so they come out the same on any host. Pass `-e WEFT_UPDATE_SNAPSHOTS=1` or `-e WEFT_SHOT_PAGES=…` after `run`.
+- **iOS:** install the `iPhone 17` simulator (`WEFT_IOS_DEVICE` can override its name or UDID). The driver boots it, switches it to Simplified Chinese (China) if needed, and fixes the status bar for the shots.
+- **Android:** create the emulator once with `sdkmanager "system-images;android-37.0;google_atd;arm64-v8a"` and `avdmanager create avd -n Weft_Shots -k "system-images;android-37.0;google_atd;arm64-v8a" -d pixel_10` (`x86_64` on an Intel host), and start only that emulator before running `shot:android`; `adb` must be on `PATH`. The ATD image has no system bars, so the shots have no safe-area insets.
 - **WeChat:** install and sign in to WeChat DevTools, then enable Settings → Security → Service Port (设置 → 安全设置 → 服务端口). Set `WEFT_WECHAT_CLI` to the DevTools CLI if it is not at `/Applications/wechatwebdevtools.app/Contents/MacOS/cli`. If the CLI rejects `touristappid`, add `{"appid": "<your AppID>"}` to the ignored `showcase/apps/wechat/project.private.config.json` using an AppID the signed-in account can access.
 - **macOS:** run `shot:macos` in a graphical desktop session. Open the resulting window captures to check the page rendered.
 - **Windows:** run `shot:windows` in an interactive Windows desktop. On the development Mac it calls `/tmp/weft-win.sh` with `/tmp/win-sync.ps1` to sync first, runs the tests in the guest's interactive session, and copies back the images. See the [Windows VM setup](PLAN.md#附录windows-虚拟机脚本).

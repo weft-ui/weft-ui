@@ -21,6 +21,24 @@ build("ios", { ...process.env, WEFT_NATIVE: "0" });
 const { udid } = device;
 if (device.state === "Shutdown") command("xcrun", ["simctl", "boot", udid]);
 command("xcrun", ["simctl", "bootstatus", udid, "-b"]);
+// The language and region change line breaking, glyph widths and the status bar clock;
+// pin the ones the baselines use. The system UI only picks up a change after a reboot.
+const defaults = (...args: string[]) =>
+  execFileSync("xcrun", ["simctl", "spawn", udid, "defaults", ...args], { encoding: "utf8" });
+const readDefault = (key: string) => {
+  try {
+    return defaults("read", "-g", key).replace(/[\s"]/g, "");
+  } catch {
+    return "";
+  }
+};
+if (readDefault("AppleLocale") !== "zh_CN" || readDefault("AppleLanguages") !== "(zh-Hans-CN)") {
+  defaults("write", "-g", "AppleLocale", "zh_CN");
+  defaults("write", "-g", "AppleLanguages", "-array", "zh-Hans-CN");
+  command("xcrun", ["simctl", "shutdown", udid]);
+  command("xcrun", ["simctl", "boot", udid]);
+  command("xcrun", ["simctl", "bootstatus", udid, "-b"]);
+}
 const directory = mkdtempSync(join(tmpdir(), "weft-ios-shots-"));
 try {
   command("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged",

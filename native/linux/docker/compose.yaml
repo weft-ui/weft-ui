@@ -12,8 +12,14 @@
 # tests started in the container show up there. The workspace's
 # node_modules directories are separate volumes, so `pnpm install` in the
 # container installs Linux packages without touching the host's.
+#
+# The `web` service records the showcase's Web screenshots in headless
+# Chromium (web.Dockerfile). It shares the workspace and its volumes:
+#
+#   docker compose -f native/linux/docker/compose.yaml run --rm web \
+#     sh -c 'pnpm install && pnpm --filter showcase shot:web'
 services:
-  linux:
+  linux: &workspace
     build: .
     image: weft-linux
     init: true
@@ -44,6 +50,14 @@ services:
       - showcase_modules:/workspace/showcase/node_modules
       - tests_modules:/workspace/tests/node_modules
       - pnpm_store:/home/ubuntu/.local/share/pnpm
+
+  web:
+    <<: *workspace
+    build:
+      context: .
+      dockerfile: web.Dockerfile
+    image: weft-web
+    ports: []
 
 volumes:
   node_modules:
