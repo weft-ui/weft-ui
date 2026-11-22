@@ -17,7 +17,11 @@ final class UITests: XCTestCase {
         let add = app.buttons["Add"]
         XCTAssertFalse(add.isEnabled)
         field.tap()
-        field.typeText("Buy milk and bread")
+        field.typeText("Buy milk and")
+        XCTAssertEqual(field.value as? String, "Buy milk and")
+        // Send the rejected keystroke separately so XCTest does not queue more
+        // input while the native field is restoring the accepted draft.
+        field.typeText("x")
         XCTAssertEqual(field.value as? String, "Buy milk and")
         XCTAssertTrue(add.isEnabled)
 
