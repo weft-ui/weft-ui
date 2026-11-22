@@ -306,6 +306,10 @@ private struct WeftButtonLabel<Content: View>: View {
     let content: Content
     private var sizing = WeftSizing()
 
+    init(content: Content) {
+        self.content = content
+    }
+
     var body: some View {
         let exact = sizing.exactAxes
         let frame = sizing.frame

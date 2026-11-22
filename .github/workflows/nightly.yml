@@ -122,13 +122,15 @@ jobs:
           WEFT_NATIVE: "0"
       - run: pnpm --filter example test:ios
 
+  # The screenshot jobs run where the baselines are recorded: macOS 27 with
+  # Xcode 27.2 and its iOS 27.2 iPhone 17, and a Pixel 10 on Android 37.2.
   web-shots:
     needs: wasm
-    runs-on: ubuntu-24.04
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
-      - run: pnpm --filter showcase exec playwright install --with-deps chromium
+      - run: pnpm --filter showcase exec playwright install chromium
       - run: pnpm --filter showcase shot:web
       - uses: actions/upload-artifact@v7
         if: failure()
@@ -141,21 +143,29 @@ jobs:
 
   ios-shots:
     needs: wasm
-    runs-on: macos-26
+    runs-on: xcode-27
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       - run: brew install ninja
+      # A separate key from ios-ui, whose kernel is built with Xcode 26.
       - uses: actions/cache@v6
         with:
           path: |
             native/core/build
             native/apple/build
-          key: apple-ios-${{ env.HERMES_TAG }}-${{ hashFiles('native/core/hermes.cmake', 'native/apple/build-core.sh') }}
-          restore-keys: apple-ios-${{ env.HERMES_TAG }}-
+          key: apple-ios-xcode-27-${{ env.HERMES_TAG }}-${{ hashFiles('native/core/hermes.cmake', 'native/apple/build-core.sh') }}
+          restore-keys: apple-ios-xcode-27-${{ env.HERMES_TAG }}-
       - run: native/apple/build-core.sh
         env:
           WEFT_APPLE_SDKS: iphonesimulator
+      # The image has an iPhone 17 for each iOS runtime; pick the iOS 27.2 one.
+      - run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-27-2"][] | select(.name == "iPhone 17") | .udid' | head -n 1)
+          test -n "$udid"
+          echo "WEFT_IOS_DEVICE=$udid" >> "$GITHUB_ENV"
       - run: pnpm --filter showcase shot:ios
       - uses: actions/upload-artifact@v7
         if: failure()
@@ -192,12 +202,15 @@ jobs:
       - run: native/android/build-core.sh
         env:
           WEFT_ANDROID_ABIS: x86_64
+      # The runner's avdmanager predates the pixel_10 profile, so give the
+      # default AVD the Pixel 10 screen instead.
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 36
+          api-level: "37.2"
           arch: x86_64
-          target: google_apis
+          target: google_apis_playstore_ps16k
           disable-animations: true
+          pre-emulator-launch-script: printf 'hw.lcd.width=1080\nhw.lcd.height=2424\nhw.lcd.density=420\n' >> "${ANDROID_AVD_HOME:-$HOME/.android/avd}/test.avd/config.ini"
           script: pnpm --filter showcase shot:android
       - uses: actions/upload-artifact@v7
         if: failure()

@@ -62,7 +62,9 @@ CI runs the Android and iOS flows nightly (`nightly.yml`). The other platforms r
 
 The [showcase](showcase/README.md) records screenshots in `showcase/screenshots/actual/<platform>/` and writes failed comparisons to `showcase/screenshots/diff/<platform>/`. Run one platform at a time in a checkout. When a visual change is intentional, run `WEFT_UPDATE_SNAPSHOTS=1 pnpm --filter showcase shot:<platform>` and review each updated image under `showcase/screenshots/baseline/` before committing it. macOS, Windows and Linux screenshots are for manual review only.
 
-- **Web:** run `pnpm --filter showcase exec playwright install chromium` once locally and on CI (`--with-deps` also installs Chromium's system dependencies on Linux).
+Rendering depends on the OS, so record the Web, iOS and Android baselines in the environment the nightly jobs use: macOS 27, Xcode 27.2 with its iOS 27.2 simulator, and a Pixel 10 emulator (1080×2424, 420 dpi) on Android 37.2.
+
+- **Web:** run `pnpm --filter showcase exec playwright install chromium` once on macOS.
 - **iOS:** install the `iPhone 17` simulator (`WEFT_IOS_DEVICE` can override its name or UDID). The driver boots it and fixes the status bar for the shots.
 - **Android:** start a single emulator before running `shot:android`; `adb` must be on `PATH`.
 - **WeChat:** install and sign in to WeChat DevTools, then enable Settings → Security → Service Port (设置 → 安全设置 → 服务端口). Set `WEFT_WECHAT_CLI` to the DevTools CLI if it is not at `/Applications/wechatwebdevtools.app/Contents/MacOS/cli`. If the CLI rejects `touristappid`, add `{"appid": "<your AppID>"}` to the ignored `showcase/apps/wechat/project.private.config.json` using an AppID the signed-in account can access.
