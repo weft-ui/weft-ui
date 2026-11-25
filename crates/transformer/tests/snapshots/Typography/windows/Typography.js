@@ -1,22 +1,22 @@
 import * as $ from "@weft-ui/runtime/remote";
 
 export class TypographyModel extends $.Model {
-  static from(v) { return v instanceof TypographyModel ? v : new TypographyModel(v); }
-  constructor(v) { super([v.value, v.weight, v.decoration, v.lines, v.hidden, v.clip, v.italic]); }
+  static from($v) { return $v instanceof TypographyModel ? $v : new TypographyModel($v); }
+  constructor($v) { super([$v.value, $v.weight, $v.decoration, $v.lines, $v.hidden, $v.clip, $v.italic]); }
   get value() { return this.$v[0]; }
-  set value(v) { this.$set(0, v); }
+  set value($v) { this.$set(0, $v); }
   get weight() { return this.$v[1]; }
-  set weight(v) { this.$set(1, v); }
+  set weight($v) { this.$set(1, $v); }
   get decoration() { return this.$v[2]; }
-  set decoration(v) { this.$set(2, v); }
+  set decoration($v) { this.$set(2, $v); }
   get lines() { return this.$v[3]; }
-  set lines(v) { this.$set(3, v); }
+  set lines($v) { this.$set(3, $v); }
   get hidden() { return this.$v[4]; }
-  set hidden(v) { this.$set(4, v); }
+  set hidden($v) { this.$set(4, $v); }
   get clip() { return this.$v[5]; }
-  set clip(v) { this.$set(5, v); }
+  set clip($v) { this.$set(5, $v); }
   get italic() { return this.$v[6]; }
-  set italic(v) { this.$set(6, v); }
+  set italic($v) { this.$set(6, $v); }
   toJSON() { return { value: this.$v[0], weight: this.$v[1], decoration: this.$v[2], lines: this.$v[3], hidden: this.$v[4], clip: this.$v[5], italic: this.$v[6] }; }
 }
 
@@ -47,5 +47,5 @@ export function Typography$c(app, args, children, depth) {
 }
 
 export class Typography extends $.App {
-  constructor(p0) { super(Typography$c, [TypographyModel.from(p0)], "d2a4d4e0ff976a2e"); }
+  constructor($p0) { super(Typography$c, [TypographyModel.from($p0)], "d2a4d4e0ff976a2e"); }
 }

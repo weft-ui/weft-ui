@@ -9,10 +9,18 @@ import type { NativeAdapter, RunTool } from "./native.ts";
  * (`weft/Generated.cs`) are compiled as part of the project. The shell is
  * referenced relative to the generated directory `generated`.
  */
+function escapeMsBuildAttr(value: string): string {
+  const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" };
+  return value
+    .replace(/[%$@;?*']/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+    .replace(/[&<>"']/g, (c) => entities[c]!);
+}
+
 function targets(generated: string, shell: string): string {
   // On another drive the relative path is absolute.
   const path = relative(generated, shell);
-  const location = (isAbsolute(path) ? path : `$(MSBuildThisFileDirectory)${path}`).replaceAll("/", "\\");
+  const escaped = escapeMsBuildAttr(path);
+  const location = (isAbsolute(path) ? escaped : `$(MSBuildThisFileDirectory)${escaped}`).replaceAll("/", "\\");
   const assets = existsSync(join(generated, "assets"))
     ? '\n    <Content Include="$(MSBuildThisFileDirectory)assets\\**\\*" Link="weft\\assets\\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />'
     : "";

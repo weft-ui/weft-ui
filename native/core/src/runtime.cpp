@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -150,6 +151,20 @@ bool is_function(jsi::Runtime &js, const jsi::Value &value) {
   return value.isObject() && value.getObject(js).isFunction(js);
 }
 
+std::pair<size_t, size_t> parse_range(jsi::Runtime &js, double offset, double length, size_t size,
+                                      const char *message) {
+  const double limit = std::ldexp(1.0, std::numeric_limits<size_t>::digits);
+  if (!std::isfinite(offset) || !std::isfinite(length) || offset < 0 || length < 0 ||
+      offset >= limit || length >= limit ||
+      std::trunc(offset) != offset || std::trunc(length) != length) {
+    throw jsi::JSError(js, message);
+  }
+  auto off = size_t(offset);
+  auto len = size_t(length);
+  if (off > size || len > size - off) throw jsi::JSError(js, message);
+  return {off, len};
+}
+
 /// Bytes of a string (UTF-8), ArrayBuffer or ArrayBuffer view; `storage` keeps string bytes alive.
 std::pair<const uint8_t *, size_t> bytes_of(jsi::Runtime &js, const jsi::Value &value,
                                             std::string &storage) {
@@ -167,10 +182,14 @@ std::pair<const uint8_t *, size_t> bytes_of(jsi::Runtime &js, const jsi::Value &
     auto inner = object.getProperty(js, "buffer");
     if (inner.isObject() && inner.getObject(js).isArrayBuffer(js)) {
       auto buffer = inner.getObject(js).getArrayBuffer(js);
-      auto offset = size_t(object.getProperty(js, "byteOffset").asNumber());
-      auto length = size_t(object.getProperty(js, "byteLength").asNumber());
-      if (offset + length > buffer.size(js)) throw jsi::JSError(js, "weft: view out of bounds");
-      return {buffer.data(js) + offset, length};
+      auto byte_offset = object.getProperty(js, "byteOffset");
+      auto byte_length = object.getProperty(js, "byteLength");
+      if (!byte_offset.isNumber() || !byte_length.isNumber()) {
+        throw jsi::JSError(js, "weft: view out of bounds");
+      }
+      auto [offset, length] = parse_range(js, byte_offset.getNumber(), byte_length.getNumber(),
+                                          buffer.size(js), "weft: view out of bounds");
+      return {length > 0 ? buffer.data(js) + offset : nullptr, length};
     }
   }
   throw jsi::JSError(js, "weft: expected a string, an ArrayBuffer or an ArrayBuffer view");
@@ -228,7 +247,12 @@ void install_timers(weft_runtime &rt) {
     return arm(rt, args, count, true);
   }));
   auto clear = [&rt](jsi::Runtime &, const jsi::Value &, const jsi::Value *args, size_t count) {
-    if (count > 0 && args[0].isNumber()) rt.timers.erase(uint32_t(args[0].getNumber()));
+    if (count > 0 && args[0].isNumber()) {
+      double raw = args[0].getNumber();
+      if (std::isfinite(raw) && raw >= 0 && raw <= double(UINT32_MAX) && std::trunc(raw) == raw) {
+        rt.timers.erase(uint32_t(raw));
+      }
+    }
     return jsi::Value::undefined();
   };
   global.setProperty(js, "clearTimeout", host_function(js, "clearTimeout", 1, clear));
@@ -304,12 +328,11 @@ void install_weft(weft_runtime &rt, const char *environment) {
       throw jsi::JSError(js, "weft: commit expects an ArrayBuffer, an offset and a length");
     }
     auto buffer = args[0].getObject(js).getArrayBuffer(js);
-    double offset = args[1].getNumber();
-    double length = args[2].getNumber();
-    if (offset < 0 || length < 0 || offset + length > double(buffer.size(js))) {
-      throw jsi::JSError(js, "weft: commit range out of bounds");
+    auto [offset, length] = parse_range(js, args[1].getNumber(), args[2].getNumber(),
+                                        buffer.size(js), "weft: commit range out of bounds");
+    if (rt.host.commit) {
+      rt.host.commit(rt.host.ctx, length > 0 ? buffer.data(js) + offset : nullptr, length);
     }
-    if (rt.host.commit) rt.host.commit(rt.host.ctx, buffer.data(js) + size_t(offset), size_t(length));
     return jsi::Value::undefined();
   }));
 
@@ -328,12 +351,21 @@ void install_weft(weft_runtime &rt, const char *environment) {
     auto [data, len] = count > 2 ? bytes_of(js, args[2], storage) : std::pair<const uint8_t *, size_t>{};
 
     std::optional<jsi::Function> resolve, reject;
-    auto executor = host_function(js, "executor", 2, [&](jsi::Runtime &js, const jsi::Value &, const jsi::Value *args, size_t) {
-      resolve = args[0].getObject(js).getFunction(js);
-      reject = args[1].getObject(js).getFunction(js);
+    auto executor = host_function(js, "executor", 2, [&](jsi::Runtime &js, const jsi::Value &, const jsi::Value *args, size_t count) {
+      if (count >= 2 && is_function(js, args[0]) && is_function(js, args[1])) {
+        resolve = args[0].getObject(js).getFunction(js);
+        reject = args[1].getObject(js).getFunction(js);
+      }
       return jsi::Value::undefined();
     });
-    auto promise = js.global().getPropertyAsFunction(js, "Promise").callAsConstructor(js, executor);
+    auto promise_val = js.global().getProperty(js, "Promise");
+    if (!is_function(js, promise_val)) {
+      throw jsi::JSError(js, "weft: Promise constructor is not callable");
+    }
+    auto promise = promise_val.getObject(js).getFunction(js).callAsConstructor(js, executor);
+    if (!resolve || !reject) {
+      throw jsi::JSError(js, "weft: Promise constructor did not invoke executor");
+    }
 
     bool supported = rt.host.supports && rt.host.call && rt.host.supports(rt.host.ctx, module.c_str());
     if (!supported) {

@@ -61,5 +61,5 @@ export function Inputs$c(app, args, children, depth) {
 }
 
 export class Inputs extends $.App {
-  constructor(p0, p1, p2) { super(Inputs$c, [p0, p1, p2]); }
+  constructor($p0, $p1, $p2) { super(Inputs$c, [$p0, $p1, $p2]); }
 }

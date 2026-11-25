@@ -1,32 +1,32 @@
 import * as $ from "@weft-ui/runtime";
 
 export class LayoutModel extends $.Model {
-  static from(v) { return v instanceof LayoutModel ? v : new LayoutModel(v); }
-  constructor(v) { super([v.width, v.inset, v.gap, v.grow, v.ratio, v.fill, v.align, v.justify, v.alignment, v.indicators, v.spacer, $c0(v.labels)]); }
+  static from($v) { return $v instanceof LayoutModel ? $v : new LayoutModel($v); }
+  constructor($v) { super([$v.width, $v.inset, $v.gap, $v.grow, $v.ratio, $v.fill, $v.align, $v.justify, $v.alignment, $v.indicators, $v.spacer, $c0($v.labels)]); }
   get width() { return this.$v[0]; }
-  set width(v) { this.$set(0, v); }
+  set width($v) { this.$set(0, $v); }
   get inset() { return this.$v[1]; }
-  set inset(v) { this.$set(1, v); }
+  set inset($v) { this.$set(1, $v); }
   get gap() { return this.$v[2]; }
-  set gap(v) { this.$set(2, v); }
+  set gap($v) { this.$set(2, $v); }
   get grow() { return this.$v[3]; }
-  set grow(v) { this.$set(3, v); }
+  set grow($v) { this.$set(3, $v); }
   get ratio() { return this.$v[4]; }
-  set ratio(v) { this.$set(4, v); }
+  set ratio($v) { this.$set(4, $v); }
   get fill() { return this.$v[5]; }
-  set fill(v) { this.$set(5, v); }
+  set fill($v) { this.$set(5, $v); }
   get align() { return this.$v[6]; }
-  set align(v) { this.$set(6, v); }
+  set align($v) { this.$set(6, $v); }
   get justify() { return this.$v[7]; }
-  set justify(v) { this.$set(7, v); }
+  set justify($v) { this.$set(7, $v); }
   get alignment() { return this.$v[8]; }
-  set alignment(v) { this.$set(8, v); }
+  set alignment($v) { this.$set(8, $v); }
   get indicators() { return this.$v[9]; }
-  set indicators(v) { this.$set(9, v); }
+  set indicators($v) { this.$set(9, $v); }
   get spacer() { return this.$v[10]; }
-  set spacer(v) { this.$set(10, v); }
+  set spacer($v) { this.$set(10, $v); }
   get labels() { return this.$v[11]; }
-  set labels(v) { if (v !== this.$v[11]) this.$set(11, $c0(v)); }
+  set labels($v) { if ($v !== this.$v[11]) this.$set(11, $c0($v)); }
   toJSON() { return { width: this.$v[0], inset: this.$v[1], gap: this.$v[2], grow: this.$v[3], ratio: this.$v[4], fill: this.$v[5], align: this.$v[6], justify: this.$v[7], alignment: this.$v[8], indicators: this.$v[9], spacer: this.$v[10], labels: this.$v[11] }; }
 }
 
@@ -169,5 +169,5 @@ export function Layout$c(app, args, children, depth) {
 }
 
 export class Layout extends $.App {
-  constructor(p0) { super(Layout$c, [LayoutModel.from(p0)]); }
+  constructor($p0) { super(Layout$c, [LayoutModel.from($p0)]); }
 }

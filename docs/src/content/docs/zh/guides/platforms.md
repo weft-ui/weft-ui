@@ -24,8 +24,9 @@ export default defineConfig({
 | --- | --- | --- |
 | `platforms` | `web`、`wechat`、`ios`、`macos`、`android`、`windows`、`linux` | `vite build --app` 构建的平台，也是 `WEFT_PLATFORM` 可显式指定的平台。 |
 | `apps` | `./apps` | 各平台工程的输出目录，可用绝对路径或相对于 Vite 根目录的路径。 |
+| `assets` | `assets` | 打包图片、图标和字体的目录，相对于 Vite 根目录。 |
 | `native` | 按目标平台解析已安装的原生壳包 | 指定包含 `apple/`、`android/`、`windows/` 和 `linux/` 原生壳包的目录，覆盖已安装的包。可用绝对路径或相对于 Vite 根目录的路径。 |
-| `app.id` | `""` | 填入需要应用 ID 的模板，例如 Apple 的 Bundle ID 或 Android 的应用 ID。请在首次构建前设置；它不是微信小程序的 AppID。 |
+| `app.id` | `com.example.<name>`（由 `app.name` 推导） | 填入需要应用 ID 的模板，例如 Apple 的 Bundle ID 或 Android 的应用 ID。请在首次构建前设置；它不是微信小程序的 AppID。 |
 | `app.name` | Vite 根目录的目录名 | 首次构建时填入平台工程模板的显示名称。 |
 | `include` | `src/**/*.weft` | 相对于 Vite 根目录的 glob。Web 以外的平台会将匹配的 `.weft` 文件一起编译。 |
 | `entry` | 按顺序查找，取第一个存在的文件：`src/index.js`、`src/index.ts`、`src/index.mjs`、`src/index.mts`、`src/index.cjs`、`src/index.cts` | Web 以外平台的 JS 或 TS 逻辑入口，相对于 Vite 根目录解析。Web 从 `index.html` 启动。 |

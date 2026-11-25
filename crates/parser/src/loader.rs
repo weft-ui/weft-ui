@@ -44,6 +44,20 @@ impl SourceLoader for MemoryLoader {
 /// Resolves `spec` (as written in an `import`) relative to the importing module.
 #[must_use]
 pub fn resolve_import(importer: &str, spec: &str) -> String {
+    if spec.contains("://") {
+        return normalize(spec);
+    }
+    if let Some((prefix, path)) = split_uri_prefix(importer) {
+        let resolved = if spec.starts_with('/') {
+            normalize(spec)
+        } else {
+            match path.rfind('/') {
+                Some(slash) => normalize(&format!("{}/{spec}", &path[..slash])),
+                None => normalize(spec),
+            }
+        };
+        return format!("{prefix}{}", resolved.trim_start_matches('/'));
+    }
     if spec.starts_with('/') {
         return normalize(spec);
     }
@@ -53,13 +67,38 @@ pub fn resolve_import(importer: &str, spec: &str) -> String {
     }
 }
 
+/// Splits `<scheme>://<authority>/` (or `inmemory:///`) from its path, keeping
+/// empty authorities intact.
+fn split_uri_prefix(path: &str) -> Option<(&str, &str)> {
+    let scheme_end = path.find("://")?;
+    let after_scheme = scheme_end + 3;
+    match path[after_scheme..].find('/') {
+        Some(slash) => {
+            let path_start = after_scheme + slash + 1;
+            Some((&path[..path_start], &path[path_start..]))
+        }
+        None => Some((path, "")),
+    }
+}
+
 /// Collapses `.` and `..` segments and duplicate separators.
 ///
 /// Leading `..` segments that would climb above the root are kept, so the
-/// result stays meaningful for relative paths.
+/// result stays meaningful for relative paths. URI prefixes such as
+/// `inmemory:///` and `vscode-vfs://authority/` are preserved.
 #[must_use]
 pub fn normalize(path: &str) -> String {
-    let absolute = path.starts_with('/');
+    if let Some((prefix, rest)) = split_uri_prefix(path) {
+        let normalized = normalize_path(rest, true);
+        if prefix.ends_with('/') {
+            return format!("{prefix}{}", normalized.trim_start_matches('/'));
+        }
+        return format!("{prefix}{normalized}");
+    }
+    normalize_path(path, path.starts_with('/'))
+}
+
+fn normalize_path(path: &str, absolute: bool) -> String {
     let mut segments: Vec<&str> = Vec::new();
     for segment in path.split('/') {
         match segment {
@@ -93,5 +132,14 @@ mod tests {
         assert_eq!(resolve_import("app.weft", "../x.weft"), "../x.weft");
         assert_eq!(resolve_import("ui/app.weft", "/lib/x.weft"), "/lib/x.weft");
         assert_eq!(normalize("/../a//./b"), "/a/b");
+        assert_eq!(
+            resolve_import("inmemory:///ui/app.weft", "../models.weft"),
+            "inmemory:///models.weft"
+        );
+        assert_eq!(
+            resolve_import("vscode-vfs://github/org/repo/ui/app.weft", "../models.weft"),
+            "vscode-vfs://github/org/repo/models.weft"
+        );
+        assert_eq!(normalize("inmemory:///../a//./b"), "inmemory:///a/b");
     }
 }

@@ -70,9 +70,7 @@ export function declarations(css: Css, value: Value, tokens?: ReadonlySet<string
     case "keyword": {
       if (typeof value !== "boolean" && typeof value !== "string") return "";
       const key = String(value);
-      formatted = Object.prototype.hasOwnProperty.call(css.keywords, key)
-        ? css.keywords[key]
-        : typeof value === "string" ? value : "";
+      formatted = Object.prototype.hasOwnProperty.call(css.keywords, key) ? css.keywords[key]! : "";
       break;
     }
     default: {

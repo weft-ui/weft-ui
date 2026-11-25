@@ -9,7 +9,7 @@ With Weft UI, you write the view in `.weft` and share one JavaScript or TypeScri
 
 ## Set up the workspace
 
-You'll need Git, Node.js 24, and the pnpm version pinned in the [root `package.json`](https://github.com/weft-ui/weft-ui/blob/master/package.json). The example uses the Weft UI compiler built from this checkout, so you'll also need Rust and Cargo, the [`wasm32-unknown-unknown` target](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html), and `wasm-bindgen-cli` matching the [compiler's pinned version](https://github.com/weft-ui/weft-ui/blob/master/crates/wasm/Cargo.toml). If you installed Rust through rustup, set up the target and CLI with:
+You'll need Git, Node.js 26, and the pnpm version pinned in the [root `package.json`](https://github.com/weft-ui/weft-ui/blob/master/package.json). The example uses the Weft UI compiler built from this checkout, so you'll also need Rust and Cargo, the [`wasm32-unknown-unknown` target](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html), and `wasm-bindgen-cli` matching the [workspace's pinned version](https://github.com/weft-ui/weft-ui/blob/master/Cargo.toml). If you installed Rust through rustup, set up the target and CLI with:
 
 ```sh
 rustup target add wasm32-unknown-unknown
@@ -80,4 +80,4 @@ Once the handlers are registered, `run(app)` from `@weft-ui/platform` mounts the
 - [Logic](/guides/logic/): initialize models and handle view events in JavaScript or TypeScript.
 - [Platform API](/guides/platform-api/): share code that uses storage or makes network requests.
 - [Platforms](/guides/platforms/): build and open the app on another target.
-- [Tooling](/guides/tooling/): set up the Vite plugin, TypeScript, and your editor.
+- [Tooling](/guides/tooling/): format `.weft` files, connect your editor to the language server, and type-check `.weft` imports in TypeScript.

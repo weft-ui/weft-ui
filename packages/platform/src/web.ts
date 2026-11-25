@@ -77,11 +77,11 @@ function observeEnvironment(notify: () => void): void {
   watchScale();
 }
 
-const userAgent = navigator.userAgent;
-
 class WebPlatform extends Environment {
   readonly os = "web";
-  get version(): string { return userAgent; }
+  get version(): string {
+    return typeof navigator === "object" && navigator !== null ? navigator.userAgent : "";
+  }
 }
 
 /** Browser platform, user agent and window environment. */

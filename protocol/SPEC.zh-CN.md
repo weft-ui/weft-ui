@@ -8,7 +8,7 @@ JS 逻辑层（`@weft-ui/runtime/remote` 和生成的 remote 模式逻辑模块�
 
 ## 布局
 
-`ViewLayout`（`crates/transformer/src/view.rs`）从整个应用的 Program 推导，JSON 形式由 WASM 的 `compileApp(...).layout` 给出，例子见 `crates/transformer/tests/snapshots/TodoList/layout.json`。
+`ViewLayout`（`crates/transformer/src/view/mod.rs`）从整个应用的 Program 推导，JSON 形式由 WASM 的 `compileApp(...).layout` 给出，例子见 `crates/transformer/tests/snapshots/TodoList/layout.json`。
 
 ```json
 {

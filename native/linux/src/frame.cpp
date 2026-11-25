@@ -5,16 +5,19 @@
 namespace weft {
 
 JsonNode *parse_json(std::string_view json, const char *what) {
+  if (json.empty()) throw std::runtime_error(std::string("weft: invalid ") + what + " (empty)");
   JsonParser *parser = json_parser_new();
   GError *error = nullptr;
   bool ok = json_parser_load_from_data(parser, json.data(), gssize(json.size()), &error);
-  JsonNode *root = ok ? json_node_copy(json_parser_get_root(parser)) : nullptr;
+  JsonNode *parsed = ok ? json_parser_get_root(parser) : nullptr;
+  JsonNode *root = parsed ? json_node_copy(parsed) : nullptr;
   g_object_unref(parser);
-  if (!ok) {
-    std::string message = std::string("weft: invalid ") + what + " (" + error->message + ")";
-    g_error_free(error);
-    throw std::runtime_error(message);
+  if (!root) {
+    std::string detail = error ? error->message : "empty JSON document";
+    if (error) g_error_free(error);
+    throw std::runtime_error(std::string("weft: invalid ") + what + " (" + detail + ")");
   }
+  if (error) g_error_free(error);
   return root;
 }
 

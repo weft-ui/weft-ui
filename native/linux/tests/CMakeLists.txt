@@ -50,3 +50,8 @@ target_link_libraries(weft_linux_asset_tests PRIVATE weft_linux)
 target_include_directories(weft_linux_asset_tests PRIVATE ../src)
 add_test(NAME linux.assets COMMAND weft_linux_asset_tests)
 set_tests_properties(linux.assets PROPERTIES SKIP_RETURN_CODE 77)
+
+add_executable(weft_linux_platform_tests platform_test.cpp)
+target_link_libraries(weft_linux_platform_tests PRIVATE weft_linux)
+target_include_directories(weft_linux_platform_tests PRIVATE ../src)
+add_test(NAME linux.platform COMMAND weft_linux_platform_tests)

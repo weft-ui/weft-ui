@@ -362,6 +362,7 @@ public sealed class WeftSlider : WeftElement
     private readonly Slider slider = new() { Maximum = 100, StepFrequency = 1, SmallChange = 1, SnapsTo = SliderSnapsTo.StepValues };
     private double value, minimum, maximum = 100, step = 1;
     private bool updating;
+    private bool disabled;
 
     public WeftSlider(Func<double, bool> edit)
     {
@@ -369,7 +370,10 @@ public sealed class WeftSlider : WeftElement
         slider.ValueChanged += (_, _) =>
         {
             if (updating) return;
-            var now = RoundValue(slider.Value, minimum, slider.Maximum, step);
+            var lo = ValidRange ? minimum : 0;
+            var hi = ValidRange ? maximum : 1;
+            var inc = ValidStep;
+            var now = RoundValue(slider.Value, lo, hi, inc);
             if (now == VisibleValue || !edit(now)) Show();
         };
     }
@@ -378,34 +382,63 @@ public sealed class WeftSlider : WeftElement
     public double Value { set { this.value = value; Show(); } }
     public double Min { set { minimum = value; UpdateRange(); } }
     public double Max { set { maximum = value; UpdateRange(); } }
-    public double Step { set { step = Math.Max(1, value); UpdateRange(); } }
-    public bool Disabled { set => slider.IsEnabled = !value; }
+    public double Step { set { step = value; UpdateRange(); } }
+    public bool Disabled { set { disabled = value; SyncEnabled(); } }
 
-    private double VisibleValue => RoundValue(value, minimum, slider.Maximum, step);
+    private bool ValidRange => double.IsFinite(minimum) && double.IsFinite(maximum) && minimum < maximum;
+    private double ValidStep => double.IsFinite(step) && step >= 1 ? step : 1;
+    private double VisibleValue => ValidRange
+        ? RoundValue(value, minimum, maximum, ValidStep)
+        : 0;
+
+    private void SyncEnabled() => slider.IsEnabled = !disabled && ValidRange;
 
     // Keep the requested value and bounds even when the native Slider coerces a slot.
     // Slots arrive independently, so changing the range must reapply the current value.
     private void UpdateRange()
     {
         updating = true;
-        var high = Math.Max(minimum, maximum);
-        if (minimum > slider.Maximum) slider.Maximum = high;
-        slider.Minimum = minimum;
-        slider.Maximum = high;
-        slider.StepFrequency = step;
-        slider.SmallChange = step;
-        Show();
-        updating = false;
+        try
+        {
+            var lo = ValidRange ? minimum : 0;
+            var hi = ValidRange ? maximum : 1;
+            var inc = ValidStep;
+            if (lo > slider.Maximum) slider.Maximum = hi;
+            slider.Minimum = lo;
+            slider.Maximum = hi;
+            slider.StepFrequency = inc;
+            slider.SmallChange = inc;
+            SyncEnabled();
+            Show();
+        }
+        finally
+        {
+            updating = false;
+        }
     }
 
     private void Show()
     {
-        var visible = VisibleValue;
-        if (slider.Value != visible) slider.Value = visible;
+        var wasUpdating = updating;
+        updating = true;
+        try
+        {
+            var visible = VisibleValue;
+            if (slider.Value != visible) slider.Value = visible;
+        }
+        finally
+        {
+            updating = wasUpdating;
+        }
     }
 
     internal static double RoundValue(double value, double min, double max, double step)
     {
+        if (!double.IsFinite(min) || !double.IsFinite(max) || !double.IsFinite(step) || step <= 0 || max < min)
+        {
+            return double.IsFinite(min) ? min : 0;
+        }
+        if (!double.IsFinite(value)) return min;
         var index = (Math.Clamp(value, min, max) - min) / step;
         // Step values are anchored at min, with ties rounded toward the larger value.
         return min + Math.Min(Math.Floor(index + 0.5), Math.Floor((max - min) / step)) * step;
@@ -444,7 +477,10 @@ public sealed class WeftPicker : WeftElement
         }
     }
 
-    private int VisibleIndex => selected >= 0 && selected < count ? (int)selected : -1;
+    private int VisibleIndex => PickerIndex(selected, count);
+
+    internal static int PickerIndex(double selected, int count) =>
+        double.IsFinite(selected) && selected >= 0 && selected < count ? (int)selected : -1;
 
     private void Show()
     {

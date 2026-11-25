@@ -445,16 +445,30 @@ public struct WeftTextArea: View {
 @MainActor public func weftSlider(
     value: CGFloat, min: CGFloat, max: CGFloat, step: CGFloat, edit: @escaping @MainActor (Double) -> Double?
 ) -> some View {
+    let params = sanitizedSliderParams(value: value, min: min, max: max, step: step)
+    return WeftControl(value: params.value, edit: { edit(roundedSliderValue($0)) }) { binding in
+        Slider(value: binding,
+               in: params.lower...params.upper,
+               step: params.step)
+            .disabled(!params.valid)
+    }
+}
+
+func sanitizedSliderParams(value: CGFloat, min: CGFloat, max: CGFloat, step: CGFloat)
+    -> (value: Double, lower: Double, upper: Double, step: Double, valid: Bool) {
     let lower = Double(min)
     let upper = Double(max)
     let increment = Double(step)
     let valid = lower.isFinite && upper.isFinite && lower < upper
-    return WeftControl(value: valid ? Double(value) : 0, edit: { edit(roundedSliderValue($0)) }) { binding in
-        Slider(value: binding,
-               in: valid ? lower...upper : 0...1,
-               step: increment.isFinite && increment > 0 ? increment : 1)
-            .disabled(!valid)
-    }
+    let raw = Double(value)
+    let clamped = valid ? Swift.min(Swift.max(raw.isFinite ? raw : lower, lower), upper) : 0
+    return (
+        value: clamped,
+        lower: valid ? lower : 0,
+        upper: valid ? upper : 1,
+        step: increment.isFinite && increment > 0 ? increment : 1,
+        valid: valid
+    )
 }
 
 func roundedSliderValue(_ value: Double) -> Double {
@@ -502,9 +516,14 @@ func pickerLabel(selected: CGFloat, options: [String], placeholder: String) -> S
     #endif
 }
 
+func clampedProgressValue(_ value: CGFloat) -> Double {
+    let raw = Double(value)
+    return raw.isFinite ? Swift.min(Swift.max(raw, 0), 1) : 0
+}
+
 /// A native progress bar displaying a fraction from zero to one.
 @MainActor public func weftProgress(value: CGFloat, color: WeftColor?) -> some View {
-    ProgressView(value: Double(value)).tint(color?.resolved)
+    ProgressView(value: clampedProgressValue(value)).tint(color?.resolved)
 }
 
 /// A horizontal or vertical native separator.

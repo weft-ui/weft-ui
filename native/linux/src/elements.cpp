@@ -13,6 +13,7 @@
 #include "appearance.hpp"
 #include "assets.hpp"
 #include "container.hpp"
+#include "platform.hpp"
 #include "texture_cache.hpp"
 #include "weft/gtk.hpp"
 
@@ -741,19 +742,72 @@ SoupSession *images_session() {
 /// A load in flight: the picture it is for, unless it is gone, and the source.
 struct Load {
   GWeakRef picture;
+  GCancellable *cancellable = nullptr;
   std::string src;
+  std::vector<uint8_t> body;
+
+  ~Load() {
+    g_weak_ref_clear(&picture);
+    g_clear_object(&cancellable);
+  }
 };
 
+bool within_image_pixel_limit(const uint8_t *data, size_t len) {
+  GdkPixbufLoader *loader = gdk_pixbuf_loader_new();
+  struct Probe {
+    bool seen = false;
+    bool ok = false;
+  } probe;
+  g_signal_connect(
+      loader, "size-prepared",
+      G_CALLBACK(+[](GdkPixbufLoader *, int width, int height, gpointer user_data) {
+        auto *p = static_cast<Probe *>(user_data);
+        p->seen = true;
+        p->ok = width > 0 && height > 0 && int64_t(width) * int64_t(height) <= platform::kMaxImagePixels;
+      }),
+      &probe);
+  GError *err = nullptr;
+  // Write only in small slices so oversized headers abort without decoding huge rasters.
+  size_t step = std::min<size_t>(len, 4096);
+  size_t offset = 0;
+  while (offset < len && !probe.seen) {
+    size_t n = std::min(step, len - offset);
+    if (!gdk_pixbuf_loader_write(loader, data + offset, n, &err)) {
+      if (err) g_error_free(err);
+      gdk_pixbuf_loader_close(loader, nullptr);
+      g_object_unref(loader);
+      return probe.seen ? probe.ok : false;
+    }
+    offset += n;
+  }
+  gdk_pixbuf_loader_close(loader, nullptr);
+  g_object_unref(loader);
+  return probe.seen && probe.ok;
+}
+
 /// Shows `bytes` in the picture of `load` if it still shows that source.
-void loaded(Load *load, GBytes *bytes, GError *error) {
+void loaded(std::unique_ptr<Load> load, GBytes *bytes, GError *error) {
+  if (load->cancellable && g_cancellable_is_cancelled(load->cancellable)) {
+    if (error) g_error_free(error);
+    if (bytes) g_bytes_unref(bytes);
+    return;
+  }
   GdkTexture *texture = nullptr;
-  if (bytes) texture = gdk_texture_new_from_bytes(bytes, &error);
+  if (bytes) {
+    gsize len = 0;
+    const auto *ptr = static_cast<const uint8_t *>(g_bytes_get_data(bytes, &len));
+    if (len > platform::kMaxImageBytes || !within_image_pixel_limit(ptr, len)) {
+      error = g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "image exceeds size or pixel limits");
+    } else {
+      texture = gdk_texture_new_from_bytes(bytes, &error);
+    }
+  }
   if (!texture) {
     std::fprintf(stderr, "[weft warn] weft: cannot load the image %s (%s)\n", load->src.c_str(),
                  error ? error->message : "unknown error");
   }
   if (auto *picture = static_cast<GtkPicture *>(g_weak_ref_get(&load->picture))) {
-    if (g_object_get_data(G_OBJECT(picture), "weft-load") == load) {
+    if (g_object_get_data(G_OBJECT(picture), "weft-load") == load.get()) {
       g_object_set_data(G_OBJECT(picture), "weft-load", nullptr);
       if (texture) gtk_picture_set_paintable(picture, GDK_PAINTABLE(texture));
     }
@@ -765,8 +819,42 @@ void loaded(Load *load, GBytes *bytes, GError *error) {
   }
   if (error) g_error_free(error);
   if (bytes) g_bytes_unref(bytes);
-  g_weak_ref_clear(&load->picture);
-  delete load;
+}
+
+void read_image_chunk(GInputStream *stream, std::unique_ptr<Load> load);
+
+void on_image_chunk(GObject *source, GAsyncResult *result, gpointer data) {
+  std::unique_ptr<Load> load(static_cast<Load *>(data));
+  auto *stream = G_INPUT_STREAM(source);
+  GError *error = nullptr;
+  GBytes *chunk = g_input_stream_read_bytes_finish(stream, result, &error);
+  if (!chunk) {
+    loaded(std::move(load), nullptr, error);
+    return;
+  }
+  gsize n = 0;
+  const auto *ptr = static_cast<const uint8_t *>(g_bytes_get_data(chunk, &n));
+  if (n == 0) {
+    g_bytes_unref(chunk);
+    GBytes *bytes = g_bytes_new(load->body.data(), load->body.size());
+    loaded(std::move(load), bytes, nullptr);
+    return;
+  }
+  if (load->body.size() + n > platform::kMaxImageBytes) {
+    g_bytes_unref(chunk);
+    loaded(std::move(load), nullptr,
+           g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "image exceeds 16 MiB limit"));
+    return;
+  }
+  load->body.insert(load->body.end(), ptr, ptr + n);
+  g_bytes_unref(chunk);
+  read_image_chunk(stream, std::move(load));
+}
+
+void read_image_chunk(GInputStream *stream, std::unique_ptr<Load> load) {
+  GCancellable *cancellable = load->cancellable;
+  g_input_stream_read_bytes_async(stream, 65536, G_PRIORITY_LOW, cancellable, on_image_chunk,
+                                  load.release());
 }
 
 }  // namespace
@@ -780,7 +868,19 @@ Image::Image() : Decorated(widget_new(gtk_picture_new())), picture_(GTK_PICTURE(
   }), this);
 }
 
+Image::~Image() {
+  if (load_cancellable_) {
+    g_cancellable_cancel(load_cancellable_);
+    g_clear_object(&load_cancellable_);
+  }
+  if (picture_) g_object_set_data(G_OBJECT(picture_), "weft-load", nullptr);
+}
+
 void Image::set_src(std::string_view src) {
+  if (load_cancellable_) {
+    g_cancellable_cancel(load_cancellable_);
+    g_clear_object(&load_cancellable_);
+  }
   g_object_set_data(G_OBJECT(picture_), "weft-load", nullptr);
   if (src.starts_with("asset:")) {
     asset_name_.assign(src.substr(6));
@@ -793,48 +893,57 @@ void Image::set_src(std::string_view src) {
     gtk_picture_set_paintable(picture_, nullptr);
     return;
   }
+  if (!platform::is_http_url(src)) {
+    gtk_picture_set_paintable(picture_, nullptr);
+    return;
+  }
   std::string source(src);
   if (auto *cached = textures().find(source)) {
     gtk_picture_set_paintable(picture_, GDK_PAINTABLE(cached));
     return;
   }
   gtk_picture_set_paintable(picture_, nullptr);
-  auto *load = new Load{{}, std::move(source)};
+  load_cancellable_ = g_cancellable_new();
+  auto load = std::make_unique<Load>();
+  load->src = std::move(source);
+  load->cancellable = G_CANCELLABLE(g_object_ref(load_cancellable_));
   g_weak_ref_init(&load->picture, picture_);
-  g_object_set_data(G_OBJECT(picture_), "weft-load", load);
-  if (src.starts_with("http:") || src.starts_with("https:")) {
-    SoupMessage *message = soup_message_new(SOUP_METHOD_GET, load->src.c_str());
-    if (!message) {
-      loaded(load, nullptr, g_error_new(G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT, "invalid URL"));
-      return;
-    }
-    soup_session_send_and_read_async(
-        images_session(), message, G_PRIORITY_LOW, nullptr,
-        [](GObject *session, GAsyncResult *result, gpointer data) {
-          GError *error = nullptr;
-          GBytes *bytes = soup_session_send_and_read_finish(SOUP_SESSION(session), result, &error);
-          auto *message = soup_session_get_async_result_message(SOUP_SESSION(session), result);
-          if (bytes && !SOUP_STATUS_IS_SUCCESSFUL(soup_message_get_status(message))) {
-            error = g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "HTTP %u", soup_message_get_status(message));
-            g_bytes_unref(bytes);
-            bytes = nullptr;
-          }
-          loaded(static_cast<Load *>(data), bytes, error);
-        },
-        load);
-    g_object_unref(message);
+  g_object_set_data(G_OBJECT(picture_), "weft-load", load.get());
+  SoupMessage *message = soup_message_new(SOUP_METHOD_GET, load->src.c_str());
+  if (!message) {
+    loaded(std::move(load), nullptr, g_error_new(G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT, "invalid URL"));
     return;
   }
-  GFile *file = g_file_new_for_commandline_arg(load->src.c_str());
-  g_file_load_bytes_async(
-      file, nullptr,
-      [](GObject *file, GAsyncResult *result, gpointer data) {
+  GCancellable *cancellable = load->cancellable;
+  soup_session_send_async(
+      images_session(), message, G_PRIORITY_LOW, cancellable,
+      [](GObject *session, GAsyncResult *result, gpointer data) {
+        std::unique_ptr<Load> load(static_cast<Load *>(data));
         GError *error = nullptr;
-        GBytes *bytes = g_file_load_bytes_finish(G_FILE(file), result, nullptr, &error);
-        loaded(static_cast<Load *>(data), bytes, error);
+        GInputStream *stream = soup_session_send_finish(SOUP_SESSION(session), result, &error);
+        if (!stream) {
+          loaded(std::move(load), nullptr, error);
+          return;
+        }
+        auto *message = soup_session_get_async_result_message(SOUP_SESSION(session), result);
+        if (!SOUP_STATUS_IS_SUCCESSFUL(soup_message_get_status(message))) {
+          g_object_unref(stream);
+          loaded(std::move(load), nullptr,
+                 g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "HTTP %u", soup_message_get_status(message)));
+          return;
+        }
+        auto content_len = soup_message_headers_get_content_length(soup_message_get_response_headers(message));
+        if (content_len > goffset(platform::kMaxImageBytes)) {
+          g_object_unref(stream);
+          loaded(std::move(load), nullptr,
+                 g_error_new(G_IO_ERROR, G_IO_ERROR_FAILED, "image exceeds 16 MiB limit"));
+          return;
+        }
+        read_image_chunk(stream, std::move(load));
+        g_object_unref(stream);
       },
-      load);
-  g_object_unref(file);
+      load.release());
+  g_object_unref(message);
 }
 
 void Image::load_asset(std::string_view name) {

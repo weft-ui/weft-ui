@@ -46,6 +46,9 @@ fn binary_op(kind: TokenKind) -> Option<(BinaryOp, u8)> {
     })
 }
 
+/// Maximum AST nesting depth before stopping with a diagnostic.
+const MAX_RECURSION_DEPTH: u16 = 128;
+
 /// Contextual keyword that starts a top-level item.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ItemKeyword {
@@ -68,6 +71,8 @@ struct Parser<'src> {
     last_error_at: Option<u32>,
     /// Parsing the tokens of one `${...}` interpolation.
     in_interpolation: bool,
+    depth: u16,
+    depth_exceeded: bool,
 }
 
 impl<'src> Parser<'src> {
@@ -80,7 +85,23 @@ impl<'src> Parser<'src> {
             diags,
             last_error_at: None,
             in_interpolation: false,
+            depth: 0,
+            depth_exceeded: false,
         }
+    }
+
+    fn with_depth<T>(&mut self, span: Span, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
+        if self.depth >= MAX_RECURSION_DEPTH {
+            if !self.depth_exceeded {
+                self.depth_exceeded = true;
+                self.error(span, "nesting limit exceeded");
+            }
+            return None;
+        }
+        self.depth += 1;
+        let out = f(self);
+        self.depth -= 1;
+        Some(out)
     }
 
     // ---- token helpers -------------------------------------------------
@@ -471,10 +492,7 @@ impl<'src> Parser<'src> {
                 }
                 TokenKind::Float => {
                     self.bump();
-                    let number = self
-                        .text_of(token.span)
-                        .parse::<f64>()
-                        .expect("lexer only produces valid float literals");
+                    let number = self.parse_float(token.span)?;
                     ThemeValue::Float(if negative { -number } else { number })
                 }
                 _ => {
@@ -659,49 +677,75 @@ impl<'src> Parser<'src> {
 
     fn type_expr(&mut self) -> TypeExpr {
         let start = self.token().span;
-        if self.at(TokenKind::Str) {
-            let kind = self
-                .union_members()
-                .map_or(TypeExprKind::Error, TypeExprKind::Union);
-            return TypeExpr {
-                kind,
-                span: self.span_from(start),
+        let Some(ty) = self.with_depth(start, |p| {
+            if p.at(TokenKind::Str) {
+                let kind = p
+                    .union_members()
+                    .map_or(TypeExprKind::Error, TypeExprKind::Union);
+                return TypeExpr {
+                    kind,
+                    span: p.span_from(start),
+                };
+            }
+            let Some(name) = p.ident("type") else {
+                return TypeExpr {
+                    kind: TypeExprKind::Error,
+                    span: start,
+                };
             };
-        }
-        let Some(name) = self.ident("type") else {
+            let args = if p.eat(TokenKind::Lt) {
+                let payload = p.type_expr();
+                p.expect(TokenKind::Gt);
+                vec![payload]
+            } else {
+                Vec::new()
+            };
+            let mut ty = TypeExpr {
+                span: p.span_from(start),
+                kind: TypeExprKind::Named { name, args },
+            };
+            loop {
+                if p.at(TokenKind::LBracket) {
+                    p.bump();
+                    p.expect(TokenKind::RBracket);
+                    ty = TypeExpr {
+                        kind: TypeExprKind::Array(Box::new(ty)),
+                        span: p.span_from(start),
+                    };
+                } else if p.eat(TokenKind::Question) {
+                    ty = TypeExpr {
+                        kind: TypeExprKind::Optional(Box::new(ty)),
+                        span: p.span_from(start),
+                    };
+                } else {
+                    return ty;
+                }
+            }
+        }) else {
+            let mut angles = 0usize;
+            while !matches!(
+                self.peek(),
+                TokenKind::Eof | TokenKind::Comma | TokenKind::RParen | TokenKind::RBrace
+            ) {
+                match self.peek() {
+                    TokenKind::Lt => {
+                        angles += 1;
+                        self.bump();
+                    }
+                    TokenKind::Gt if angles > 0 => {
+                        angles -= 1;
+                        self.bump();
+                    }
+                    TokenKind::Gt => break,
+                    _ => self.skip_balanced(),
+                }
+            }
             return TypeExpr {
                 kind: TypeExprKind::Error,
                 span: start,
             };
         };
-        let args = if self.eat(TokenKind::Lt) {
-            let payload = self.type_expr();
-            self.expect(TokenKind::Gt);
-            vec![payload]
-        } else {
-            Vec::new()
-        };
-        let mut ty = TypeExpr {
-            span: self.span_from(start),
-            kind: TypeExprKind::Named { name, args },
-        };
-        loop {
-            if self.at(TokenKind::LBracket) {
-                self.bump();
-                self.expect(TokenKind::RBracket);
-                ty = TypeExpr {
-                    kind: TypeExprKind::Array(Box::new(ty)),
-                    span: self.span_from(start),
-                };
-            } else if self.eat(TokenKind::Question) {
-                ty = TypeExpr {
-                    kind: TypeExprKind::Optional(Box::new(ty)),
-                    span: self.span_from(start),
-                };
-            } else {
-                return ty;
-            }
-        }
+        ty
     }
 
     fn union_members(&mut self) -> Option<Vec<(String, Span)>> {
@@ -727,25 +771,42 @@ impl<'src> Parser<'src> {
 
     fn block(&mut self) -> Block {
         let start = self.token().span;
-        let mut lets = Vec::new();
-        let mut nodes = Vec::new();
-        if self.expect(TokenKind::LBrace).is_some() {
-            while self.at_binding("let") {
-                lets.extend(self.let_decl());
+        if !self.at(TokenKind::LBrace) {
+            self.expect(TokenKind::LBrace);
+            return Block {
+                lets: Vec::new(),
+                nodes: Vec::new(),
+                span: self.span_from(start),
+            };
+        }
+        let Some(block) = self.with_depth(start, |p| {
+            let mut lets = Vec::new();
+            let mut nodes = Vec::new();
+            p.bump(); // `{`
+            while p.at_binding("let") {
+                lets.extend(p.let_decl());
             }
-            while !self.at(TokenKind::RBrace) && !self.at(TokenKind::Eof) {
-                if self.at_item_start() {
+            while !p.at(TokenKind::RBrace) && !p.at(TokenKind::Eof) {
+                if p.at_item_start() {
                     break;
                 }
-                nodes.extend(self.node());
+                nodes.extend(p.node());
             }
-            self.expect(TokenKind::RBrace);
-        }
-        Block {
-            lets,
-            nodes,
-            span: self.span_from(start),
-        }
+            p.expect(TokenKind::RBrace);
+            Block {
+                lets,
+                nodes,
+                span: p.span_from(start),
+            }
+        }) else {
+            self.skip_balanced();
+            return Block {
+                lets: Vec::new(),
+                nodes: Vec::new(),
+                span: self.span_from(start),
+            };
+        };
+        block
     }
 
     /// Parses one node; on garbage, reports and skips it, returning `None`.
@@ -936,8 +997,16 @@ impl<'src> Parser<'src> {
             TokenKind::Minus => UnaryOp::Neg,
             _ => return self.postfix(),
         };
-        let start = self.bump().span;
-        let expr = self.unary();
+        let start = self.token().span;
+        let Some(expr) = self.with_depth(start, |p| {
+            p.bump();
+            p.unary()
+        }) else {
+            while matches!(self.peek(), TokenKind::Bang | TokenKind::Minus) {
+                self.bump();
+            }
+            return self.error_expr();
+        };
         Expr {
             span: start.to(expr.span),
             kind: ExprKind::Unary {
@@ -998,11 +1067,8 @@ impl<'src> Parser<'src> {
             }
             TokenKind::Float => {
                 self.bump();
-                let value = self
-                    .text_of(token.span)
-                    .parse::<f64>()
-                    .expect("lexer only produces valid float literals");
-                ExprKind::Float(value)
+                self.parse_float(token.span)
+                    .map_or(ExprKind::Error, ExprKind::Float)
             }
             TokenKind::Str => {
                 self.bump();
@@ -1021,9 +1087,15 @@ impl<'src> Parser<'src> {
                 ExprKind::Ident(self.text_of(token.span).to_owned())
             }
             TokenKind::LParen => {
-                self.bump();
-                let inner = self.expr();
-                self.expect(TokenKind::RParen);
+                let Some(inner) = self.with_depth(token.span, |p| {
+                    p.bump();
+                    let inner = p.expr();
+                    p.expect(TokenKind::RParen);
+                    inner
+                }) else {
+                    self.skip_balanced();
+                    return self.error_expr();
+                };
                 return Expr {
                     kind: inner.kind,
                     span: self.span_from(token.span),
@@ -1042,51 +1114,84 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn if_expr(&mut self) -> Expr {
-        let start = self.bump().span;
-        let cond = self.paren_expr();
-        let then = self.expr();
-        let else_ = if self.expect(TokenKind::Else).is_some() {
-            self.expr()
+    fn parse_float(&mut self, span: Span) -> Option<f64> {
+        let value = self
+            .text_of(span)
+            .parse::<f64>()
+            .expect("lexer only produces valid float literals");
+        if value.is_finite() {
+            Some(value)
         } else {
-            self.error_expr()
-        };
-        Expr {
-            kind: ExprKind::If {
-                cond: Box::new(cond),
-                then: Box::new(then),
-                else_: Box::new(else_),
-            },
-            span: self.span_from(start),
+            self.error(span, "floating-point literal is out of range for `Float`");
+            None
         }
     }
 
-    fn lambda(&mut self) -> Lambda {
-        self.bump(); // `{`
-        let param = if self.at(TokenKind::Ident) && self.peek_at(1) == TokenKind::Arrow {
-            let param = self.ident("lambda parameter");
-            self.bump(); // `->`
-            param
-        } else {
-            None
+    fn if_expr(&mut self) -> Expr {
+        let start = self.token().span;
+        let Some(expr) = self.with_depth(start, |p| {
+            p.bump(); // `if`
+            let cond = p.paren_expr();
+            let then = p.expr();
+            let else_ = if p.expect(TokenKind::Else).is_some() {
+                p.expr()
+            } else {
+                p.error_expr()
+            };
+            Expr {
+                kind: ExprKind::If {
+                    cond: Box::new(cond),
+                    then: Box::new(then),
+                    else_: Box::new(else_),
+                },
+                span: p.span_from(start),
+            }
+        }) else {
+            self.bump(); // `if`
+            if self.at(TokenKind::LParen) {
+                self.skip_balanced();
+            }
+            return self.error_expr();
         };
-        let mut body = Vec::new();
-        while !self.at(TokenKind::RBrace) && !self.at(TokenKind::Eof) {
-            match self.lambda_stmt() {
-                Some(stmt) => body.push(stmt),
-                None => {
-                    while !matches!(
-                        self.peek(),
-                        TokenKind::Semi | TokenKind::RBrace | TokenKind::Eof
-                    ) {
-                        self.skip_balanced();
+        expr
+    }
+
+    fn lambda(&mut self) -> Lambda {
+        let start = self.token().span;
+        let Some(lambda) = self.with_depth(start, |p| {
+            p.bump(); // `{`
+            let param = if p.at(TokenKind::Ident) && p.peek_at(1) == TokenKind::Arrow {
+                let param = p.ident("lambda parameter");
+                p.bump(); // `->`
+                param
+            } else {
+                None
+            };
+            let mut body = Vec::new();
+            while !p.at(TokenKind::RBrace) && !p.at(TokenKind::Eof) {
+                match p.lambda_stmt() {
+                    Some(stmt) => body.push(stmt),
+                    None => {
+                        while !matches!(
+                            p.peek(),
+                            TokenKind::Semi | TokenKind::RBrace | TokenKind::Eof
+                        ) {
+                            p.skip_balanced();
+                        }
                     }
                 }
+                p.eat(TokenKind::Semi);
             }
-            self.eat(TokenKind::Semi);
-        }
-        self.expect(TokenKind::RBrace);
-        Lambda { param, body }
+            p.expect(TokenKind::RBrace);
+            Lambda { param, body }
+        }) else {
+            self.skip_balanced();
+            return Lambda {
+                param: None,
+                body: Vec::new(),
+            };
+        };
+        lambda
     }
 
     fn lambda_stmt(&mut self) -> Option<LambdaStmt> {
@@ -1226,10 +1331,20 @@ impl<'src> Parser<'src> {
         let tokens = lex(self.file, text, inner.start, &mut diags);
         let mut sub = Parser::new(self.file, self.text, tokens, diags);
         sub.in_interpolation = true;
-        let expr = sub.expr();
-        if !sub.at(TokenKind::Eof) {
-            sub.error_expected("`}` to end the interpolation");
-        }
+        sub.depth = self.depth.saturating_add(1);
+        let Some(expr) = sub.with_depth(inner, |p| {
+            let expr = p.expr();
+            if !p.at(TokenKind::Eof) {
+                p.error_expected("`}` to end the interpolation");
+            }
+            expr
+        }) else {
+            self.diags.append(&mut sub.diags);
+            return Expr {
+                kind: ExprKind::Error,
+                span: inner,
+            };
+        };
         self.diags.append(&mut sub.diags);
         expr
     }
@@ -1376,5 +1491,48 @@ mod tests {
             .collect();
         assert_eq!(names, ["A", "E", "C", "B"]);
         assert_eq!(diags.len(), 4, "{diags:#?}");
+    }
+
+    #[test]
+    fn rejects_overflowing_float_literals() {
+        let (_, diags) = parse(FileId(0), "component C() { state x = 1e999 }");
+        assert!(
+            diags
+                .iter()
+                .any(|d| d.message.contains("out of range for `Float`")),
+            "{diags:#?}"
+        );
+        let (_, theme_diags) = parse(FileId(0), "theme { big = 1e999 }");
+        assert!(
+            theme_diags
+                .iter()
+                .any(|d| d.message.contains("out of range for `Float`")),
+            "{theme_diags:#?}"
+        );
+    }
+
+    #[test]
+    fn nesting_limit_prevents_stack_overflow() {
+        let parens = format!(
+            "component C() {{ Text({}1{}) }}",
+            "(".repeat(500),
+            ")".repeat(500)
+        );
+        let unary = format!("component C() {{ Text({}true) }}", "!".repeat(500));
+        let blocks = format!(
+            "component C() {{ {}Text(\"hi\"){} }}",
+            "Column { ".repeat(500),
+            " }".repeat(500)
+        );
+        let types = format!("event E(x: {}Int{})", "Event<".repeat(500), ">".repeat(500));
+        for src in [parens, unary, blocks, types] {
+            let (_, diags) = parse(FileId(0), &src);
+            assert!(
+                diags
+                    .iter()
+                    .any(|d| d.message.contains("nesting limit exceeded")),
+                "{diags:#?}"
+            );
+        }
     }
 }

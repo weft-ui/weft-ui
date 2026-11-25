@@ -260,6 +260,15 @@ export class List {
    * positions are moved.
    */
   set(items: readonly unknown[]): void {
+    const seen = new Set<unknown>();
+    const keys = new Array<unknown>(items.length);
+    for (let i = 0; i < items.length; i++) {
+      const key = this.key(items[i]);
+      if (seen.has(key)) throw new Error(`weft: duplicate key \`${String(key)}\` in for loop`);
+      seen.add(key);
+      keys[i] = key;
+    }
+
     const old = this.rows;
     const byKey = new Map<unknown, number>();
     for (let i = 0; i < old.length; i++) byKey.set(this.key(old[i].item), i);
@@ -267,13 +276,9 @@ export class List {
     const rows = new Array<Row>(items.length);
     const sources = new Array<number>(items.length);
     const reused = new Uint8Array(old.length);
-    const seen = new Set<unknown>();
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const key = this.key(item);
-      if (seen.has(key)) throw new Error(`weft: duplicate key \`${String(key)}\` in for loop`);
-      seen.add(key);
-      const j = byKey.get(key);
+      const j = byKey.get(keys[i]);
       if (j !== undefined && !reused[j]) {
         reused[j] = 1;
         const row = old[j];
@@ -405,7 +410,12 @@ export class App extends AppBase {
       classList.toggle("w-safe", (this.constructor as typeof App).safeArea ?? true);
     }
     const root = this.#create(this, this.$args, [], 0);
-    root.mount(target, null);
+    try {
+      root.mount(target, null);
+    } catch (error) {
+      root.destroy(true);
+      throw error;
+    }
     this.#root = root;
   }
 
@@ -489,10 +499,10 @@ export function style(node: HTMLElement, index: number, value: Value, mask = -1)
   let start = 0;
   let bit = 1;
   while (start < output.length) {
-    const colon = output.indexOf(":", start);
-    const separator = output.indexOf(";", colon + 1);
+    const separator = output.indexOf(";", start);
     const end = separator < 0 ? output.length : separator;
-    if ((mask & bit) !== 0) {
+    const colon = output.indexOf(":", start);
+    if (colon > start && colon < end && (mask & bit) !== 0) {
       inline.setProperty(output.slice(start, colon), output.slice(colon + 1, end));
     }
     start = end + 1;
@@ -504,10 +514,8 @@ export function style(node: HTMLElement, index: number, value: Value, mask = -1)
 export function theme(tokens: Record<string, readonly [string, string]>): void {
   const names = Object.keys(tokens);
   if (names.length === 0) return;
-  if (typeof document === "undefined") {
-    webThemeColors = new Set(names);
-    return;
-  }
+  webThemeColors = new Set(names);
+  if (typeof document === "undefined") return;
   if (document.querySelector("style[data-weft-theme]")) return;
   const style = document.createElement("style");
   style.dataset.weftTheme = "";
@@ -520,7 +528,6 @@ export function theme(tokens: Record<string, readonly [string, string]>): void {
   }
   style.textContent = `:root{${light}}@media (prefers-color-scheme: dark){:root{${dark}}}`;
   document.head.append(style);
-  webThemeColors = new Set(names);
 }
 
 /** Lazily parsed `<template>`; returns a fresh clone per call. */

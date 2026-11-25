@@ -1,4 +1,4 @@
-import type { Script } from "../../test/harness.ts";
+import type { Script } from "../../conformance/harness.ts";
 import { Board } from "./Board.weft";
 
 /**

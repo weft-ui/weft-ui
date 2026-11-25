@@ -99,15 +99,22 @@ export function androidAdapter(runTool: RunTool, shell: string): NativeAdapter {
       const windows = process.platform === "win32";
       const wrapper = join(project, windows ? "gradlew.bat" : "gradlew");
       const args = [release ? "assembleRelease" : "assembleDebug", "--quiet", "--console=plain"];
-      await runTool(wrapper, args, {
-        cwd: project,
-        env: { ...process.env, ANDROID_HOME: sdk },
-        // Batch files only run through a shell.
-        shell: windows,
-      }, {
-        missing: `weft: the Gradle wrapper is missing (${wrapper}); restore it from the Android template`,
-        failed: `weft: the Gradle build failed in ${project}`,
-      });
+      if (windows && wrapper.includes('"')) {
+        throw new Error(`weft: Gradle wrapper path cannot contain \`"\`: ${wrapper}`);
+      }
+      await runTool(
+        windows ? (process.env.ComSpec ?? "cmd.exe") : wrapper,
+        windows ? ["/d", "/s", "/c", `""${wrapper}" ${args.join(" ")}"`] : args,
+        {
+          cwd: project,
+          env: { ...process.env, ANDROID_HOME: sdk },
+          ...(windows ? { windowsVerbatimArguments: true } : {}),
+        },
+        {
+          missing: `weft: the Gradle wrapper is missing (${wrapper}); restore it from the Android template`,
+          failed: `weft: the Gradle build failed in ${project}`,
+        },
+      );
     },
   };
 }

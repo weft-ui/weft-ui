@@ -627,3 +627,12 @@ fn verify_fixtures(dir: &Path) -> usize {
     }
     count
 }
+
+#[test]
+fn preserves_empty_parens_before_ident_for_let_node() {
+    golden(
+        "component C() { let() Text(\"hi\") }",
+        "component C() {\n    let()\n    Text(\"hi\")\n}\n",
+        Options::default(),
+    );
+}

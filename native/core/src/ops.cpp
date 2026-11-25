@@ -4,6 +4,7 @@
 #include <bit>
 #include <charconv>
 #include <cmath>
+#include <limits>
 #include <string>
 
 namespace weft::ops {
@@ -194,14 +195,19 @@ bool Reader::next(Op &op) {
       op.index = take_u32(at_, end_);
       op.child = take_u32(at_, end_);
       return true;
-    case protocol::Code::Rows:
+    case protocol::Code::Rows: {
       op.scope = take_u32(at_, end_);
       op.index = take_u32(at_, end_);
       op.count = take_u32(at_, end_);
-      need(at_, end_, size_t(op.count) * 4);
+      if (size_t(op.count) > std::numeric_limits<size_t>::max() / 4) {
+        throw Error(Error::Kind::Truncated, "weft ops: truncated batch");
+      }
+      size_t bytes = size_t(op.count) * 4;
+      need(at_, end_, bytes);
       op.rows = at_;
-      at_ += size_t(op.count) * 4;
+      at_ += bytes;
       return true;
+    }
   }
   throw Error(Error::Kind::Opcode, "weft ops: unknown opcode " + std::to_string(code));
 }

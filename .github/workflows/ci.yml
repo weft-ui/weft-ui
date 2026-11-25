@@ -37,6 +37,9 @@ jobs:
       pull-requests: read
     outputs:
       rust: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.rust == 'true' }}
+      ts: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.ts == 'true' }}
+      docs: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.docs == 'true' }}
+      tree_sitter: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.tree_sitter == 'true' }}
       core: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.core == 'true' }}
       linux: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.linux == 'true' }}
       apple: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.apple == 'true' }}
@@ -66,11 +69,36 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - tests/conformance/**
+              - tests/fixtures/**
             rust:
               - .github/workflows/ci.yml
               - crates/**
               - Cargo.toml
               - Cargo.lock
+            ts:
+              - .github/workflows/ci.yml
+              - .github/actions/**
+              - protocol/**
+              - crates/**
+              - Cargo.toml
+              - Cargo.lock
+              - packages/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - tests/**
+              - example/**
+              - showcase/**
+            docs:
+              - .github/workflows/ci.yml
+              - .github/actions/**
+              - docs/**
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+            tree_sitter:
+              - .github/workflows/ci.yml
+              - packages/tree-sitter/**
+              - '**/*.weft'
             core:
               - *kernel
               - *compiler
@@ -82,6 +110,8 @@ jobs:
             apple:
               - *kernel
               - native/apple/**
+              - tests/vite/fixtures/assets/assets/**
+              - showcase/assets/fonts/**
             android:
               - *kernel
               - *compiler
@@ -101,14 +131,53 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+          targets: wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
       - run: cargo test --workspace
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: |
+          cargo fmt --manifest-path crates/zed/Cargo.toml --check
+          cargo check --manifest-path crates/zed/Cargo.toml --target wasm32-wasip2
+          cargo clippy --manifest-path crates/zed/Cargo.toml --target wasm32-wasip2 -- -D warnings
+
+  tree-sitter:
+    needs: changes
+    if: needs.changes.outputs.tree_sitter == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: tree-sitter
+      - run: cd packages/tree-sitter && tree-sitter test
+      - run: packages/tree-sitter/test/fixtures.sh
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter docs
+      - run: pnpm --filter docs build
 
   # The compiler WASM of @weft-ui/compiler, shared by every job that compiles
   # .weft files.
   wasm:
+    needs: changes
+    if: >-
+      needs.changes.outputs.ts == 'true' ||
+      needs.changes.outputs.core == 'true' ||
+      needs.changes.outputs.linux == 'true' ||
+      needs.changes.outputs.apple == 'true' ||
+      needs.changes.outputs.android == 'true' ||
+      needs.changes.outputs.windows == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -129,29 +198,16 @@ jobs:
           retention-days: 3
 
   ts:
-    needs: wasm
+    needs: [changes, wasm]
+    if: needs.changes.outputs.ts == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       - run: pnpm -r --filter "./packages/*" build
       - run: pnpm --filter showcase exec playwright install --with-deps chromium
+      - run: pnpm typecheck
       - run: pnpm test
-      # TypeScript errors may not grow beyond the counts recorded when the
-      # check was introduced (PLAN-M0.md B0). `tests` imports .weft files,
-      # typed by the content mapper, which runs only with --runExternalCode.
-      - name: tsc error budget
-        run: |
-          status=0
-          for entry in "packages/runtime 0" "packages/platform 0" "packages/vite 16" "packages/content-mapper 0" "tests 56 --runExternalCode"; do
-            read -r dir budget flags <<< "$entry"
-            # shellcheck disable=SC2086 # flags is empty or one word
-            count=$( (cd "$dir" && pnpm exec tsc -p . $flags || true) | grep -c 'error TS' || true)
-            echo "$dir: $count errors (budget $budget)"
-            if [ "$count" -gt "$budget" ]; then status=1; fi
-          done
-          exit $status
-      - run: pnpm --filter docs build
 
   core:
     needs: [changes, wasm]

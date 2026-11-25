@@ -160,7 +160,7 @@ private fun WeftEditableText(
             // Composing text and moves of the cursor are local to the field.
             new
         } else {
-            val limited = new.text.limitUtf16(maxLength.toInt())
+            val limited = new.text.limitUtf16(sanitizedMaxLength(maxLength))
             val restored = if (limited == value) null else edit(limited)
             when (restored) {
                 null -> if (limited.length == new.text.length) new else TextFieldValue(limited, new.selection)
@@ -287,6 +287,30 @@ fun WeftSwitch(checked: Boolean, disabled: Boolean = false, modifier: Modifier =
     Switch(checked = checked, onCheckedChange = edit, enabled = !disabled, modifier = modifier)
 }
 
+internal fun sanitizedMaxLength(maxLength: Float): Int = when {
+    !maxLength.isFinite() -> -1
+    maxLength >= Int.MAX_VALUE.toFloat() -> Int.MAX_VALUE
+    maxLength <= -1f -> -1
+    else -> maxLength.toInt()
+}
+
+internal data class SliderParams(val value: Float, val min: Float, val max: Float, val step: Float, val enabled: Boolean)
+
+internal fun sanitizedSliderParams(value: Float, min: Float, max: Float, step: Float, disabled: Boolean): SliderParams {
+    val valid = min.isFinite() && max.isFinite() && min < max
+    val lo = if (valid) min else 0f
+    val hi = if (valid) max else 1f
+    val inc = if (step.isFinite() && step >= 1f) step else 1f
+    val shown = snapSliderValue(if (value.isFinite()) value else lo, lo, hi, inc)
+    return SliderParams(shown, lo, hi, inc, enabled = !disabled && valid)
+}
+
+internal fun sanitizedPickerIndex(selected: Float): Int =
+    if (!selected.isFinite() || selected < 0f || selected > Int.MAX_VALUE.toFloat()) -1 else selected.toInt()
+
+internal fun sanitizedProgress(value: Float): Float =
+    if (value.isFinite()) value.coerceIn(0f, 1f) else 0f
+
 /** `Slider`: a Material slider that proposes integer values on the specified step grid. */
 @Composable
 fun WeftSlider(
@@ -298,28 +322,30 @@ fun WeftSlider(
     modifier: Modifier = Modifier,
     edit: (Float) -> Unit,
 ) {
-    val upper = max.coerceAtLeast(min)
-    val increment = step.coerceAtLeast(1f)
-    val intervals = (upper.toDouble() - min) / increment
+    val params = sanitizedSliderParams(value, min, max, step, disabled)
+    val intervals = (params.max.toDouble() - params.min) / params.step
     // Compose divides discrete tracks evenly and allocates a tick for each step.
     // Use a continuous track for uneven or very dense grids, snapping proposals ourselves.
     val steps = if (intervals in 2.0..1000.0 && intervals == floor(intervals)) intervals.toInt() - 1 else 0
-    val shown = snapSliderValue(value, min, upper, increment)
     Slider(
-        value = shown,
+        value = params.value,
         onValueChange = { proposed ->
-            val snapped = snapSliderValue(proposed, min, upper, increment)
-            if (snapped != shown) edit(snapped)
+            val snapped = snapSliderValue(proposed, params.min, params.max, params.step)
+            if (snapped != params.value) edit(snapped)
         },
         modifier = modifier,
-        enabled = !disabled && upper > min,
-        valueRange = min..upper,
+        enabled = params.enabled,
+        valueRange = params.min..params.max,
         steps = steps,
     )
 }
 
 /** Snaps to the nearest in-range point on the step grid, breaking ties upwards. */
 internal fun snapSliderValue(value: Float, min: Float, max: Float, step: Float): Float {
+    if (!min.isFinite() || !max.isFinite() || !step.isFinite() || step <= 0f || max <= min) {
+        return if (min.isFinite()) min else 0f
+    }
+    if (!value.isFinite()) return min
     val offset = (value.toDouble() - min) / step
     val last = floor((max.toDouble() - min) / step)
     val tick = floor(offset + 0.5).coerceIn(0.0, last)
@@ -339,7 +365,7 @@ fun WeftPicker(
 ) {
     var open by remember { mutableStateOf(false) }
     val expanded = open && !disabled
-    val index = selected.toInt()
+    val index = sanitizedPickerIndex(selected)
     val label = options.getOrNull(index)
     val state = remember(label) { TextFieldState(label.orEmpty()) }
     val textStyle = MaterialTheme.typography.bodyMedium
@@ -384,7 +410,8 @@ fun WeftSpinner(color: WeftColor? = null, modifier: Modifier = Modifier) {
 /** `Progress`: a Material progress bar showing a completed fraction. */
 @Composable
 fun WeftProgress(value: Float, color: WeftColor? = null, modifier: Modifier = Modifier) {
-    LinearProgressIndicator(progress = { value }, modifier = modifier, color = color?.resolve() ?: Color(0xff007aff))
+    val clamped = sanitizedProgress(value)
+    LinearProgressIndicator(progress = { clamped }, modifier = modifier, color = color?.resolve() ?: Color(0xff007aff))
 }
 
 /** `Divider`: a Material separator oriented along the requested axis. */

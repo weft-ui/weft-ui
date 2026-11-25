@@ -51,7 +51,8 @@ public sealed class WeftSession
     private string? lastError;
     private readonly nint runtime;
     /// <summary>The bytecode, 16-byte aligned, alive as long as the runtime.</summary>
-    private readonly unsafe byte* bytecode;
+    private unsafe byte* bytecode;
+    private GCHandle selfHandle;
 
     internal WeftTheme? Theme { get; }
     internal ElementTheme ActualTheme => root.ActualTheme;
@@ -107,31 +108,41 @@ public sealed class WeftSession
         bytecode = (byte*)NativeMemory.AlignedAlloc((nuint)Math.Max(data.Length, 1), 16);
         data.CopyTo(new Span<byte>(bytecode, data.Length));
 
-        var version = Encoding.UTF8.GetBytes(Environment.OSVersion.Version + "\0");
-        environment = WindowEnvironment.Initial();
-        environment.WriteJson(environmentJson);
-        environmentJson.GetSpan(1)[0] = 0;
-        environmentJson.Advance(1);
-        fixed (byte* versionBytes = version, jsonBytes = environmentJson.WrittenSpan)
+        try
         {
-            var host = new Native.Host
+            var version = Encoding.UTF8.GetBytes(Environment.OSVersion.Version + "\0");
+            environment = WindowEnvironment.Initial();
+            environment.WriteJson(environmentJson);
+            environmentJson.GetSpan(1)[0] = 0;
+            environmentJson.Advance(1);
+            // The runtime calls back for as long as the app runs; freed below only if startup fails.
+            selfHandle = GCHandle.Alloc(this);
+            fixed (byte* versionBytes = version, jsonBytes = environmentJson.WrittenSpan)
             {
-                // The runtime calls back for as long as the app runs, so the handle is never freed.
-                Ctx = GCHandle.ToIntPtr(GCHandle.Alloc(this)),
-                Commit = &OnCommit,
-                Schedule = &OnSchedule,
-                Supports = &OnSupports,
-                Call = &OnCall,
-                Log = &OnLog,
-                Version = versionBytes,
-                Environment = jsonBytes,
-            };
-            runtime = Native.RuntimeNew(&host, bytecode, (nuint)data.Length, layoutHash);
+                var host = new Native.Host
+                {
+                    Ctx = GCHandle.ToIntPtr(selfHandle),
+                    Commit = &OnCommit,
+                    Schedule = &OnSchedule,
+                    Supports = &OnSupports,
+                    Call = &OnCall,
+                    Log = &OnLog,
+                    Version = versionBytes,
+                    Environment = jsonBytes,
+                };
+                runtime = Native.RuntimeNew(&host, bytecode, (nuint)data.Length, layoutHash);
+            }
+            if (runtime == 0)
+            {
+                ReleaseStartupResources();
+                Fail(lastError ?? "weft: the app failed to start");
+                return;
+            }
         }
-        if (runtime == 0)
+        catch
         {
-            Fail(lastError ?? "weft: the app failed to start");
-            return;
+            if (runtime == 0) ReleaseStartupResources();
+            throw;
         }
 
         root.Loaded += (_, _) =>
@@ -331,6 +342,16 @@ public sealed class WeftSession
     // Kernel callbacks; every one arrives on the UI thread. Exceptions must not
     // unwind into the kernel.
 
+    private unsafe void ReleaseStartupResources()
+    {
+        if (selfHandle.IsAllocated) selfHandle.Free();
+        if (bytecode != null)
+        {
+            NativeMemory.AlignedFree(bytecode);
+            bytecode = null;
+        }
+    }
+
     private static WeftSession From(nint ctx) => (WeftSession)GCHandle.FromIntPtr(ctx).Target!;
 
     private static unsafe string Utf8(byte* text) => Marshal.PtrToStringUTF8((nint)text) ?? "";
@@ -338,8 +359,15 @@ public sealed class WeftSession
     [UnmanagedCallersOnly]
     private static unsafe void OnCommit(nint ctx, byte* ops, nuint len)
     {
-        var session = From(ctx);
-        session.Commit(new ReadOnlySpan<byte>(ops, checked((int)len)));
+        try
+        {
+            var session = From(ctx);
+            session.Commit(new ReadOnlySpan<byte>(ops, checked((int)len)));
+        }
+        catch (Exception error)
+        {
+            WeftLog.Write(Native.LogError, $"weft: commit callback failed ({error.Message})");
+        }
     }
 
     [UnmanagedCallersOnly]
@@ -356,22 +384,45 @@ public sealed class WeftSession
     }
 
     [UnmanagedCallersOnly]
-    private static unsafe byte OnSupports(nint ctx, byte* module) =>
-        module != null && PlatformModules.Supported.Contains(Utf8(module)) ? (byte)1 : (byte)0;
+    private static unsafe byte OnSupports(nint ctx, byte* module)
+    {
+        try
+        {
+            return module != null && PlatformModules.Supported.Contains(Utf8(module)) ? (byte)1 : (byte)0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
 
     [UnmanagedCallersOnly]
     private static unsafe void OnCall(nint ctx, uint id, byte* module, byte* method, byte* args, nuint len)
     {
-        var bytes = new ReadOnlySpan<byte>(args, checked((int)len)).ToArray();
-        From(ctx).Call(id, Utf8(module), Utf8(method), bytes);
+        try
+        {
+            var bytes = new ReadOnlySpan<byte>(args, checked((int)len)).ToArray();
+            From(ctx).Call(id, Utf8(module), Utf8(method), bytes);
+        }
+        catch (Exception error)
+        {
+            WeftLog.Write(Native.LogError, $"weft: platform call dispatch failed ({error.Message})");
+        }
     }
 
     [UnmanagedCallersOnly]
     private static unsafe void OnLog(nint ctx, int level, byte* message, nuint len)
     {
-        var text = Encoding.UTF8.GetString(message, checked((int)len));
-        WeftLog.Write(level, text);
-        if (level >= Native.LogError) From(ctx).lastError = text;
+        try
+        {
+            var text = Encoding.UTF8.GetString(message, checked((int)len));
+            WeftLog.Write(level, text);
+            if (level >= Native.LogError) From(ctx).lastError = text;
+        }
+        catch (Exception error)
+        {
+            WeftLog.Write(Native.LogError, $"weft: log callback failed ({error.Message})");
+        }
     }
 }
 

@@ -80,5 +80,5 @@ export function Controls$c(app, args, children, depth) {
 }
 
 export class Controls extends $.App {
-  constructor(p0, p1, p2, p3) { super(Controls$c, [$c0(p0), p1, p2, p3]); }
+  constructor($p0, $p1, $p2, $p3) { super(Controls$c, [$c0($p0), $p1, $p2, $p3]); }
 }

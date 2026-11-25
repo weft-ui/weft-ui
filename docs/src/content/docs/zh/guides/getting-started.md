@@ -9,7 +9,7 @@ sidebar:
 
 ## 准备工作区
 
-你需要 Git、Node.js 24，以及[仓库根目录 `package.json`](https://github.com/weft-ui/weft-ui/blob/master/package.json) 指定版本的 pnpm。示例用的是从仓库源码构建的 Weft UI 编译器，因此还需要 Rust 和 Cargo、[`wasm32-unknown-unknown` 目标](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html)，以及与[编译器锁定版本](https://github.com/weft-ui/weft-ui/blob/master/crates/wasm/Cargo.toml)一致的 `wasm-bindgen-cli`。如果你用 rustup 安装了 Rust，可用以下命令安装目标和 CLI：
+你需要 Git、Node.js 26，以及[仓库根目录 `package.json`](https://github.com/weft-ui/weft-ui/blob/master/package.json) 指定版本的 pnpm。示例用的是从仓库源码构建的 Weft UI 编译器，因此还需要 Rust 和 Cargo、[`wasm32-unknown-unknown` 目标](https://doc.rust-lang.org/rustc/platform-support/wasm32-unknown-unknown.html)，以及与[工作区锁定版本](https://github.com/weft-ui/weft-ui/blob/master/Cargo.toml)一致的 `wasm-bindgen-cli`。如果你用 rustup 安装了 Rust，可用以下命令安装目标和 CLI：
 
 ```sh
 rustup target add wasm32-unknown-unknown
@@ -80,4 +80,4 @@ app.onAdd((model) => {
 - [逻辑](/zh/guides/logic/)：用 JavaScript 或 TypeScript 初始化模型、处理视图事件。
 - [平台 API](/zh/guides/platform-api/)：在各平台共用存储和网络请求代码。
 - [平台](/zh/guides/platforms/)：为其他平台构建并运行应用。
-- [工具](/zh/guides/tooling/)：配置 Vite 插件、TypeScript 和编辑器。
+- [工具](/zh/guides/tooling/)：格式化 `.weft` 文件、在编辑器中连接语言服务器，以及用 TypeScript 检查 `.weft` 导入的类型。

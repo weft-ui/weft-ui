@@ -160,4 +160,4 @@ const stop = platform.onChange(reportEnvironment);
 
 各目标都使用同一个 `@weft-ui/platform` 导入路径。[包的导出配置](https://github.com/weft-ui/weft-ui/blob/master/packages/platform/package.json)提供共用的 `types` 入口和三个运行时导出条件：Web 使用 `weft-web`，微信小程序使用 `weft-wechat`，iOS、macOS、Android、Windows 和 Linux 使用 `weft-native`。运行时没有 `default` 导出条件。
 
-[`@weft-ui/vite` 插件](https://github.com/weft-ui/weft-ui/blob/master/packages/vite/src/index.ts)把 `weft-<platform>` 加入各 Vite 构建环境的解析条件；如果是原生目标，再加入 `weft-native`。插件还会把构建期常量 `__WEFT_PLATFORM__` 定义为该目标的名称。开发服务器使用 Web 实现。在构建时选择目标即可，例如 `WEFT_PLATFORM=android vite build`，无需在运行时按平台切换导入。构建配置见[工具指南](/zh/guides/tooling/)。
+[`@weft-ui/vite` 插件](https://github.com/weft-ui/weft-ui/blob/master/packages/vite/src/index.ts)把 `weft-<platform>` 加入各 Vite 构建环境的解析条件；如果是原生目标，再加入 `weft-native`。插件还会把构建期常量 `__WEFT_PLATFORM__` 定义为该目标的名称。开发服务器使用 Web 实现。在构建时选择目标即可，例如 `WEFT_PLATFORM=android vite build`，无需在运行时按平台切换导入。构建配置见[平台指南](/zh/guides/platforms/#配置-vite)。

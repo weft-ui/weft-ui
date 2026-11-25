@@ -186,7 +186,7 @@ fn transform_program(
             None,
         ),
         Platform::Wechat => {
-            let layout = ViewLayout::for_platform(program, None, options);
+            let layout = ViewLayout::for_platform(program, Some(Platform::Wechat), options);
             let cx = Context::new(program, Some(&layout), platform);
             let views = crate::wechat::transform(&cx);
             (remote_modules(program, &layout), views, Some(layout))

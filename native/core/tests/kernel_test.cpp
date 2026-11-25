@@ -540,11 +540,36 @@ void corpus() {
   }
 }
 
+void bounds() {
+  Shell shell;
+  CHECK(shell.start("bounds", 0xab));
+  CHECK(shell.commits.empty());
+  CHECK(shell.calls.empty());
+  CHECK_EQ(shell.lines(), (std::vector<std::string>{"bounds-ok:false"}));
+
+  // Verify Code::Rows with count > SIZE_MAX / 4 throws Truncated instead of overflowing.
+  const std::vector<uint8_t> overflow_rows = {
+      weft::protocol::kVersion,
+      uint8_t(weft::protocol::Code::Rows),
+      1, 0, 0, 0,
+      0, 0, 0, 0,
+      0x01, 0x00, 0x00, 0x40,
+  };
+  std::string kind = "none";
+  try {
+    weft::ops::read_all(overflow_rows.data(), overflow_rows.size());
+  } catch (const weft::ops::Error &e) {
+    kind = kind_name(e.kind());
+  }
+  CHECK_EQ(kind, std::string("truncated"));
+}
+
 const std::map<std::string, std::function<void()>> kCases = {
     {"timers", timers},   {"microtasks", microtasks},   {"console", console},
     {"text", text},       {"calls", calls},             {"session", session},
     {"refused", refused}, {"stable_rows", stable_rows}, {"ops", ops},
     {"corpus", corpus},   {"unicode", unicode},         {"environment", environment},
+    {"bounds", bounds},
 };
 
 }  // namespace

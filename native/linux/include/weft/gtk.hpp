@@ -564,6 +564,7 @@ class Divider final : public Element {
 class Image final : public Decorated {
  public:
   Image();
+  ~Image() override;
 
   void set_src(std::string_view src);
   void set_fit(ImageFit fit);
@@ -574,6 +575,7 @@ class Image final : public Decorated {
   void load_asset(std::string_view name);
 
   GtkPicture *picture_;
+  GCancellable *load_cancellable_ = nullptr;
   std::string asset_name_;
   Color placeholder_ = Color::rgba(0);
 };

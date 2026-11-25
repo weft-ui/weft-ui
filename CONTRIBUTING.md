@@ -38,7 +38,7 @@ Run the checks of the code you touched before opening a pull request. CI runs ev
 | Code | Command |
 | --- | --- |
 | C-rust | `cargo fmt --all --check && cargo test --workspace && cargo clippy --workspace --all-targets -- -D warnings` |
-| C-ts | `pnpm build && pnpm test`; TypeScript errors (`pnpm exec tsc -p .` in `packages/runtime`, `packages/platform`, `packages/vite`, `packages/content-mapper`, and `tests` with `--runExternalCode` for its `.weft` imports) may not grow |
+| C-ts | `pnpm build && pnpm typecheck && pnpm test`; TypeScript errors (`pnpm typecheck`) must be zero |
 | C-core | `cmake -S native/core -B native/core/build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build native/core/build && ctest --test-dir native/core/build --output-on-failure` |
 | C-apple | `swift test --package-path native/apple` |
 | C-android | `WEFT_NATIVE=0 pnpm --filter example build:android && example/apps/android/gradlew -p example/apps/android :weft-android:testDebugUnitTest` |
@@ -83,7 +83,7 @@ Rendering depends on the OS, so record the Web, iOS and Android baselines in the
 
 ## Releasing
 
-Maintainers publish every `@weft-ui/*` package together, from master, through the Release workflow (`.github/workflows/release.yml`). It builds each prebuilt kernel on its own platform (macOS for Apple and Android, Windows x64 and arm64, Ubuntu 24.04 x64 and arm64), packs the packages with them, and stages the versions that are not on npm yet. Nothing goes live until a maintainer approves it.
+Maintainers publish every `@weft-ui/*` package together, from master, through the Release workflow (`.github/workflows/release.yml`). It builds each prebuilt kernel on its own platform (macOS for Apple, Ubuntu 24.04 for Android and Linux x64 and arm64, Windows x64 and arm64), packs the packages with them, and stages the versions that are not on npm yet. Nothing goes live until a maintainer approves it.
 
 1. Run `pnpm version-packages`, review the versions and changelogs, and merge the commit to master.
 2. Run the Release workflow on master with **stage** checked. Leave it unchecked for a dry run: it builds, checks and packs, uploads the tarballs as the `packages` artifact, and runs `npm stage publish --dry-run`.

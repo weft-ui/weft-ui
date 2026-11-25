@@ -87,43 +87,45 @@ pub(crate) fn model_class(program: &Program, id: ModelId, conv: &mut Converters,
         out.line(format!("static $m = [{}];", nested.join(", ")));
     }
     out.line(format!(
-        "static from(v) {{ return v instanceof {local} ? v : new {local}(v); }}"
+        "static from($v) {{ return $v instanceof {local} ? $v : new {local}($v); }}"
     ));
     let init: Vec<String> = model
         .fields
         .iter()
         .map(|f| {
             let read = if f.name == "__proto__" {
-                format!("v[{}]", js::string(&f.name))
+                format!("$v[{}]", js::string(&f.name))
             } else {
-                format!("v.{}", f.name)
+                format!("$v.{}", f.name)
             };
             conv.apply(program, &f.ty, &read)
         })
         .collect();
     out.line(format!(
-        "constructor(v) {{ super([{}]); }}",
+        "constructor($v) {{ super([{}]); }}",
         init.join(", ")
     ));
     for (index, field) in model.fields.iter().enumerate() {
         let name = js::member_name(&field.name);
         out.line(format!("get {name}() {{ return this.$v[{index}]; }}"));
         let set = match conv.of(program, &field.ty) {
-            Some(c) => format!("if (v !== this.$v[{index}]) this.$set({index}, {c}(v));"),
-            None => format!("this.$set({index}, v);"),
+            Some(c) => format!("if ($v !== this.$v[{index}]) this.$set({index}, {c}($v));"),
+            None => format!("this.$set({index}, $v);"),
         };
-        out.line(format!("set {name}(v) {{ {set} }}"));
+        out.line(format!("set {name}($v) {{ {set} }}"));
     }
-    let fields: Vec<String> = model
-        .fields
-        .iter()
-        .enumerate()
-        .map(|(index, field)| format!("{}: this.$v[{index}]", js::object_key(&field.name)))
-        .collect();
-    out.line(format!(
-        "toJSON() {{ return {{ {} }}; }}",
-        fields.join(", ")
-    ));
+    if !model.fields.iter().any(|field| field.name == "toJSON") {
+        let fields: Vec<String> = model
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| format!("{}: this.$v[{index}]", js::object_key(&field.name)))
+            .collect();
+        out.line(format!(
+            "toJSON() {{ return {{ {} }}; }}",
+            fields.join(", ")
+        ));
+    }
     out.close("}");
 }
 
@@ -143,7 +145,7 @@ pub(crate) fn app_class(
             ParamKind::Children => args.push("undefined".to_owned()),
             ParamKind::Callback { .. } => args.push("null".to_owned()),
             ParamKind::Value(ty) => {
-                let name = format!("p{index}");
+                let name = format!("$p{index}");
                 params.push(match &param.default {
                     Some(default) => format!("{name} = {}", expr(default, Env::default())),
                     None => name.clone(),

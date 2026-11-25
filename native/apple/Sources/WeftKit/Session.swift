@@ -100,28 +100,34 @@ public final class WeftSession {
         defer { committing = false }
         do {
             for op in try OpReader.readAll(bytes) {
-                apply(op)
+                if !apply(op) { break }
             }
         } catch {
             fail("weft: malformed ops (\(error))")
         }
     }
 
-    private func apply(_ op: Op) {
+    private func apply(_ op: Op) -> Bool {
         switch op {
         case let .create(scope, template):
             guard let made = make(template, scope, self) else {
-                return fail("weft: the views have no template \(template)")
+                fail("weft: the views have no template \(template)")
+                return false
             }
             scopes[scope] = made
+            return true
         case let .set(scope, slot, value):
             scopes[scope]?.apply(Int(slot), value)
+            return true
         case let .branch(scope, point, child):
             mount(scope, point, child == 0 ? [] : [child])
+            return true
         case let .rows(scope, point, children):
             mount(scope, point, children)
+            return true
         case let .attach(scope, point, child):
             mount(scope, point, [child])
+            return true
         }
     }
 

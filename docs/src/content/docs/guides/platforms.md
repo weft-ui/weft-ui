@@ -24,8 +24,9 @@ export default defineConfig({
 | --- | --- | --- |
 | `platforms` | `web`, `wechat`, `ios`, `macos`, `android`, `windows`, `linux` | The targets for `vite build --app` and the targets you can explicitly request with `WEFT_PLATFORM`. |
 | `apps` | `./apps` | The output directory for platform projects. Use an absolute path or a path relative to the Vite root. |
+| `assets` | `assets` | The directory for bundled images, icons, and fonts, relative to the Vite root. |
 | `native` | Resolve the installed native shell package for the target | Override the packages with a directory containing the `apple/`, `android/`, `windows/`, and `linux/` shell packages. Use an absolute path or a path relative to the Vite root. |
-| `app.id` | `""` | The ID filled into templates that use it, such as the Apple bundle identifier or Android application ID. Set it before the first build; it does not set the WeChat AppID. |
+| `app.id` | `com.example.<name>` (derived from `app.name`) | The ID filled into templates that use it, such as the Apple bundle identifier or Android application ID. Set it before the first build; it does not set the WeChat AppID. |
 | `app.name` | The name of the Vite root directory | The display name filled into platform templates on the first build. |
 | `include` | `src/**/*.weft` | A glob relative to the Vite root. Non-Web builds compile the matched `.weft` files together. |
 | `entry` | The first existing `src/index.js`, `src/index.ts`, `src/index.mjs`, `src/index.mts`, `src/index.cjs`, or `src/index.cts`, in that order | The JS or TS logic entry for non-Web builds, resolved from the Vite root. Web starts from `index.html`. |

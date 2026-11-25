@@ -28,7 +28,7 @@ export interface WeftOptions {
   native?: string;
   /** Values filled into the project templates copied to `<apps>/<platform>/` on the first build. */
   app?: {
-    /** Bundle ID / package name. */
+    /** Bundle ID / package name; defaults to `com.example.<name>`. */
     id?: string;
     /** Display name; defaults to the name of the root directory. */
     name?: string;
@@ -146,6 +146,11 @@ function placeholderEscape(name: string): ((value: string) => string) | undefine
   return undefined;
 }
 
+function defaultAppId(name: string): string {
+  const segment = name.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/^[0-9]+/, "");
+  return `com.example.${segment || "app"}`;
+}
+
 /**
  * Copies the platform's template into the project directory unless it
  * already holds anything besides the generated area: after the first
@@ -219,6 +224,7 @@ export default function weft(options: WeftOptions = {}): Plugin {
   let assetsDir: string;
   let building: boolean;
   let catalog: Assets | undefined;
+  let dtsGenerated = false;
   const assets = () => catalog ??= scanAssets(assetsDir);
   let nativeRoot: string | undefined;
   const shells = new Map<NativePlatform, string>();
@@ -238,6 +244,7 @@ export default function weft(options: WeftOptions = {}): Plugin {
       appsDir = resolve(root, options.apps ?? "./apps");
       assetsDir = resolve(root, options.assets ?? "assets");
       catalog = undefined;
+      dtsGenerated = false;
       building = env.command === "build";
       if (!building) return;
       nativeRoot = options.native === undefined ? undefined : resolve(root, options.native);
@@ -333,7 +340,8 @@ export default function weft(options: WeftOptions = {}): Plugin {
     },
     async buildStart() {
       if (building) assets();
-      if (options.dts) {
+      if (options.dts && !dtsGenerated) {
+        dtsGenerated = true;
         const outputPath = existsSync(appsDir) ? realpathSync(appsDir) : appsDir;
         for (const file of weftFiles(root, outputPath)) {
           const output = await compileApp([file], "web", (path) => readFileSync(path, "utf8"), appOptions);
@@ -375,9 +383,10 @@ export default function weft(options: WeftOptions = {}): Plugin {
       if (platform === "web" || !app) return;
       const project = join(appsDir, platform);
       const generated = join(project, "weft");
+      const name = options.app?.name ?? basename(root);
       const templated = copyTemplate(project, platform, {
-        id: options.app?.id ?? "",
-        name: options.app?.name ?? basename(root),
+        id: options.app?.id ?? defaultAppId(name),
+        name,
       });
       writeGenerated(generated, app);
       if (platform === "wechat") {

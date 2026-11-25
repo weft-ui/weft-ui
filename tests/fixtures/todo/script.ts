@@ -1,4 +1,4 @@
-import type { Script } from "../../test/harness.ts";
+import type { Script } from "../../conformance/harness.ts";
 import { TodoList } from "./TodoList.weft";
 
 /** `if` / `for` with keyed moves, a controlled input that the host transforms or rejects. */

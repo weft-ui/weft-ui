@@ -4,7 +4,7 @@
 use weft_ui_ast::span::offset;
 
 use crate::ir::{
-    Component, Dep, DepRoot, Expr, ExprKind, FieldId, InterpPart, LoopId, Model, ParamId,
+    Component, Dep, DepRoot, Expr, ExprKind, FieldId, InterpPart, LoopId, Model, ModelId, ParamId,
     ParamKind, SlotRef, StateId, Type,
 };
 
@@ -107,14 +107,19 @@ pub(crate) fn normalize(deps: &mut Vec<Dep>) {
 
 /// Expands a root of type `ty` into its leaf slots: fields of non-optional
 /// models are flattened, everything else is a single slot.
-fn flatten(dep: Dep, ty: &Type, models: &[Model], out: &mut Vec<Dep>) {
+///
+/// `visiting` breaks cycles on invalid recursive models (reported separately by
+/// semantic analysis) so dependency layout never overflows the stack.
+fn flatten(dep: Dep, ty: &Type, models: &[Model], visiting: &mut Vec<ModelId>, out: &mut Vec<Dep>) {
     match ty {
-        Type::Model(id) if !models[id.index()].fields.is_empty() => {
+        Type::Model(id) if !models[id.index()].fields.is_empty() && !visiting.contains(id) => {
+            visiting.push(*id);
             for (index, field) in models[id.index()].fields.iter().enumerate() {
                 let mut child = dep.clone();
                 child.path.push(FieldId(offset(index)));
-                flatten(child, &field.ty, models, out);
+                flatten(child, &field.ty, models, visiting, out);
             }
+            visiting.pop();
         }
         _ => out.push(dep),
     }
@@ -123,6 +128,7 @@ fn flatten(dep: Dep, ty: &Type, models: &[Model], out: &mut Vec<Dep>) {
 /// Assigns dirty-bit slots to the component and each loop, then resolves every
 /// binding's dependencies to the bits that trigger it.
 pub(crate) fn layout(component: &mut Component, models: &[Model]) {
+    let mut visiting = Vec::new();
     let roots = component
         .params
         .iter()
@@ -149,6 +155,7 @@ pub(crate) fn layout(component: &mut Component, models: &[Model]) {
             },
             ty,
             models,
+            &mut visiting,
             &mut slots,
         );
     }
@@ -165,6 +172,7 @@ pub(crate) fn layout(component: &mut Component, models: &[Model]) {
             },
             &ty,
             models,
+            &mut visiting,
             &mut slots,
         );
         component.loops[index].slots = slots;

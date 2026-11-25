@@ -1,34 +1,34 @@
 import * as $ from "@weft-ui/runtime/remote";
 
 export class LanguageItem extends $.Model {
-  static from(v) { return v instanceof LanguageItem ? v : new LanguageItem(v); }
-  constructor(v) { super([v.id, v.kind, v.name]); }
+  static from($v) { return $v instanceof LanguageItem ? $v : new LanguageItem($v); }
+  constructor($v) { super([$v.id, $v.kind, $v.name]); }
   get id() { return this.$v[0]; }
-  set id(v) { this.$set(0, v); }
+  set id($v) { this.$set(0, $v); }
   get kind() { return this.$v[1]; }
-  set kind(v) { this.$set(1, v); }
+  set kind($v) { this.$set(1, $v); }
   get name() { return this.$v[2]; }
-  set name(v) { this.$set(2, v); }
+  set name($v) { this.$set(2, $v); }
   toJSON() { return { id: this.$v[0], kind: this.$v[1], name: this.$v[2] }; }
 }
 
 export class LanguageModel extends $.Model {
-  static from(v) { return v instanceof LanguageModel ? v : new LanguageModel(v); }
-  constructor(v) { super([v.name, $c0(v.items), v.mode, v.rating, v.title, v.body, v.footer]); }
+  static from($v) { return $v instanceof LanguageModel ? $v : new LanguageModel($v); }
+  constructor($v) { super([$v.name, $c0($v.items), $v.mode, $v.rating, $v.title, $v.body, $v.footer]); }
   get name() { return this.$v[0]; }
-  set name(v) { this.$set(0, v); }
+  set name($v) { this.$set(0, $v); }
   get items() { return this.$v[1]; }
-  set items(v) { if (v !== this.$v[1]) this.$set(1, $c0(v)); }
+  set items($v) { if ($v !== this.$v[1]) this.$set(1, $c0($v)); }
   get mode() { return this.$v[2]; }
-  set mode(v) { this.$set(2, v); }
+  set mode($v) { this.$set(2, $v); }
   get rating() { return this.$v[3]; }
-  set rating(v) { this.$set(3, v); }
+  set rating($v) { this.$set(3, $v); }
   get title() { return this.$v[4]; }
-  set title(v) { this.$set(4, v); }
+  set title($v) { this.$set(4, $v); }
   get body() { return this.$v[5]; }
-  set body(v) { this.$set(5, v); }
+  set body($v) { this.$set(5, $v); }
   get footer() { return this.$v[6]; }
-  set footer(v) { this.$set(6, v); }
+  set footer($v) { this.$set(6, $v); }
   toJSON() { return { name: this.$v[0], items: this.$v[1], mode: this.$v[2], rating: this.$v[3], title: this.$v[4], body: this.$v[5], footer: this.$v[6] }; }
 }
 
@@ -49,7 +49,7 @@ export function ModeLabel$c(app, args, children, depth) {
 }
 
 export class ModeLabel extends $.App {
-  constructor(p0 = "full") { super(ModeLabel$c, [p0], "791dbd02ccbe6190"); }
+  constructor($p0 = "full") { super(ModeLabel$c, [$p0], "791dbd02ccbe6190"); }
 }
 
 export function Rating$c(app, args, children, depth) {
@@ -69,7 +69,7 @@ export function Rating$c(app, args, children, depth) {
 }
 
 export class Rating extends $.App {
-  constructor(p0) { super(Rating$c, [p0, null], "791dbd02ccbe6190"); }
+  constructor($p0) { super(Rating$c, [$p0, null], "791dbd02ccbe6190"); }
 }
 
 export function ForwardRating$c(app, args, children, depth) {
@@ -212,6 +212,6 @@ export function Language$c(app, args, children, depth) {
 }
 
 export class Language extends $.App {
-  constructor(p0) { super(Language$c, [LanguageModel.from(p0)], "791dbd02ccbe6190"); }
+  constructor($p0) { super(Language$c, [LanguageModel.from($p0)], "791dbd02ccbe6190"); }
   onRated(h) { return this.$on("Rated", h); }
 }

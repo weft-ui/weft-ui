@@ -238,6 +238,12 @@ impl SourceLoader for Loader<'_> {
         if let Some(doc) = self.docs.get(path) {
             return Ok(doc.text.clone());
         }
+        if path.contains("://") {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("no open document `{path}`"),
+            ));
+        }
         std::fs::read_to_string(path)
     }
 }
@@ -245,7 +251,7 @@ impl SourceLoader for Loader<'_> {
 // ---- conversions -----------------------------------------------------------
 
 /// Module path of a document: its normalized file system path with `/`
-/// separators, or the URI itself for documents that are not files.
+/// separators, or the normalized URI for documents that are not files.
 pub(crate) fn module_path(uri: &Uri) -> String {
     let path = Url::parse(uri.as_str())
         .ok()
@@ -253,7 +259,7 @@ pub(crate) fn module_path(uri: &Uri) -> String {
         .and_then(|url| url.to_file_path().ok());
     match path {
         Some(path) => normalize(&path.to_string_lossy().replace('\\', "/")),
-        None => uri.as_str().to_owned(),
+        None => normalize(uri.as_str()),
     }
 }
 
@@ -328,5 +334,61 @@ fn respond<P: DeserializeOwned, R: Serialize>(
     match parse::<P>(request) {
         Ok(params) => Response::new_ok(id, handler(params)),
         Err(message) => invalid_params(id, message),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolves_non_file_uris_with_relative_imports() {
+        let mut server = Server::new(false);
+        let model_uri = Uri::from_str("inmemory:///app/models.weft").expect("valid uri");
+        let app_uri = Uri::from_str("inmemory:///app/ui/App.weft").expect("valid uri");
+        server.notification(Notification::new(
+            DidOpenTextDocument::METHOD.to_owned(),
+            DidOpenTextDocumentParams {
+                text_document: lsp_types::TextDocumentItem {
+                    uri: model_uri,
+                    language_id: "weft".to_owned(),
+                    version: 1,
+                    text: "model Item { name: String }".to_owned(),
+                },
+            },
+        ));
+        let diags = server.notification(Notification::new(
+            DidOpenTextDocument::METHOD.to_owned(),
+            DidOpenTextDocumentParams {
+                text_document: lsp_types::TextDocumentItem {
+                    uri: app_uri.clone(),
+                    language_id: "weft".to_owned(),
+                    version: 1,
+                    text:
+                        "import \"../models.weft\"\ncomponent App(item: Item) { Text(item.name) }"
+                            .to_owned(),
+                },
+            },
+        ));
+        assert!(diags.iter().all(|n| {
+            serde_json::from_value::<PublishDiagnosticsParams>(n.params.clone())
+                .expect("publish diagnostics params")
+                .diagnostics
+                .is_empty()
+        }));
+
+        let vfs_uri = Uri::from_str("vscode-vfs://github/org/repo/App.weft").expect("valid uri");
+        assert_eq!(
+            module_path(&vfs_uri),
+            "vscode-vfs://github/org/repo/App.weft"
+        );
+        let mut loader = Loader {
+            docs: &server.docs,
+            overlay: None,
+        };
+        let err = loader
+            .load("vscode-vfs://github/org/repo/Missing.weft")
+            .expect_err("unopened virtual URI returns NotFound");
+        assert_eq!(err.kind(), io::ErrorKind::NotFound);
     }
 }

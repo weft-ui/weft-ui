@@ -125,8 +125,13 @@ fn render_snippet(
     let line_start = file.line_start(line) as usize;
 
     // Underline at least one column, and never past the end of the first line.
-    let start = span.start as usize - line_start;
-    let end = (span.end as usize - line_start).min(text.len()).max(start);
+    let start = (span.start as usize)
+        .saturating_sub(line_start)
+        .min(text.len());
+    let end = (span.end as usize)
+        .saturating_sub(line_start)
+        .min(text.len())
+        .max(start);
     let lead = text[..start].chars().count();
     let width = text[start..end].chars().count().max(1);
 
@@ -146,4 +151,19 @@ pub fn render_all(diagnostics: &[Diagnostic], sources: &SourceMap) -> String {
         .map(|d| d.render(sources))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_handles_eof_span_after_bare_cr() {
+        let mut sources = SourceMap::new();
+        let file = sources.add("cr.weft".into(), "component C()\r".into());
+        let eof = sources.get(file).text().len() as u32;
+        let rendered =
+            Diagnostic::error(Span::new(file, eof, eof), "unexpected end").render(&sources);
+        assert!(rendered.contains("cr.weft:1:15"), "{rendered}");
+    }
 }

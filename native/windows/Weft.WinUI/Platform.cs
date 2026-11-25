@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading;
 using System.Threading.Tasks;
 using Weft.WinUI.Protocol;
 
@@ -16,6 +17,7 @@ namespace Weft.WinUI;
 /// <summary>The platform modules of the shell; byte formats in protocol/SPEC.md ("Platform calls").</summary>
 internal static class PlatformModules
 {
+    internal const int MaxFetchBytes = 32 * 1024 * 1024;
     public static readonly HashSet<string> Supported = [WeftProtocol.FetchModule, WeftProtocol.StorageModule];
 
     private static readonly HttpClient Http = new();
@@ -24,16 +26,55 @@ internal static class PlatformModules
     {
         (WeftProtocol.FetchModule, WeftProtocol.FetchRequest) => Fetch(args),
         (WeftProtocol.StorageModule, WeftProtocol.StorageGet or WeftProtocol.StorageSet or WeftProtocol.StorageRemove) =>
-            Task.FromResult(Storage.Call(method, args)),
+            Storage.Default.CallAsync(method, args),
         _ => throw new InvalidOperationException($"weft: {module}.{method} is not implemented"),
     };
+
+    internal static Uri ValidatedHttpUri(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (!uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+             !uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"weft: unsupported URL {url}");
+        }
+        return uri;
+    }
+
+    internal static async Task<byte[]> ReadBoundedAsync(Stream stream, int maxBytes, CancellationToken ct = default)
+    {
+        using var outStream = new MemoryStream();
+        var buffer = new byte[8192];
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer, ct);
+            if (read == 0) break;
+            if (outStream.Length + read > maxBytes)
+            {
+                throw new InvalidOperationException($"weft: response exceeds {maxBytes} byte limit");
+            }
+            outStream.Write(buffer, 0, read);
+        }
+        return outStream.ToArray();
+    }
+
+    internal static async Task<byte[]> ReadHttpBytesAsync(Uri uri, int maxBytes, CancellationToken ct = default)
+    {
+        using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        if (response.Content.Headers.ContentLength > maxBytes)
+        {
+            throw new InvalidOperationException($"weft: response exceeds {maxBytes} byte limit");
+        }
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        return await ReadBoundedAsync(stream, maxBytes, ct);
+    }
 
     /// <summary><c>fetch.request</c> through <see cref="HttpClient"/>.</summary>
     private static async Task<byte[]> Fetch(byte[] args)
     {
         var (head, body) = Unframe(args);
-        var url = head["url"]?.GetValue<string>();
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) throw new InvalidOperationException($"weft: invalid URL {url}");
+        var uri = ValidatedHttpUri(head["url"]?.GetValue<string>());
         using var request = new HttpRequestMessage(new HttpMethod(head["method"]?.GetValue<string>() ?? "GET"), uri);
         if (body.Length > 0) request.Content = new ByteArrayContent(body);
         foreach (var (name, value) in head["headers"]?.AsObject() ?? new JsonObject())
@@ -42,8 +83,13 @@ internal static class PlatformModules
             // Content headers such as Content-Type belong to the body.
             if (!request.Headers.TryAddWithoutValidation(name, text)) request.Content?.Headers.TryAddWithoutValidation(name, text);
         }
-        using var response = await Http.SendAsync(request);
-        var data = await response.Content.ReadAsByteArrayAsync();
+        using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        if (response.Content.Headers.ContentLength > MaxFetchBytes)
+        {
+            throw new InvalidOperationException($"weft: fetch response exceeds {MaxFetchBytes} byte limit");
+        }
+        await using var stream = await response.Content.ReadAsStreamAsync();
+        var data = await ReadBoundedAsync(stream, MaxFetchBytes);
         return Frame(new JsonObject { ["status"] = (int)response.StatusCode }, data);
     }
 
@@ -70,6 +116,117 @@ internal static class PlatformModules
     }
 }
 
+internal sealed class StorageStore(string filePath)
+{
+    private readonly SemaphoreSlim gate = new(1, 1);
+    private Dictionary<string, string>? values;
+
+    internal static string[] ParseStringArray(string method, byte[] args)
+    {
+        JsonNode? parsed;
+        try
+        {
+            parsed = JsonNode.Parse(args);
+        }
+        catch (JsonException)
+        {
+            throw new InvalidOperationException($"weft: storage.{method} expects a JSON array of strings");
+        }
+        if (parsed is not JsonArray array || array.Count == 0)
+        {
+            throw new InvalidOperationException($"weft: storage.{method} expects a JSON array of strings");
+        }
+        var result = new string[array.Count];
+        for (var i = 0; i < array.Count; i++)
+        {
+            if (array[i] is not JsonValue v || v.GetValueKind() != JsonValueKind.String)
+            {
+                throw new InvalidOperationException($"weft: storage.{method} expects a JSON array of strings");
+            }
+            result[i] = v.GetValue<string>();
+        }
+        return result;
+    }
+
+    public async Task<byte[]> CallAsync(string method, byte[] args)
+    {
+        var list = ParseStringArray(method, args);
+        await gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            return await Task.Run(() => CallLocked(method, list)).ConfigureAwait(false);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    private byte[] CallLocked(string method, string[] list)
+    {
+        var key = list[0];
+        var stored = values ??= Load();
+        switch (method)
+        {
+            case WeftProtocol.StorageGet:
+                return JsonSerializer.SerializeToUtf8Bytes(stored.GetValueOrDefault(key));
+            case WeftProtocol.StorageSet:
+            {
+                if (list.Length != 2) throw new InvalidOperationException("weft: storage.set expects [key, value]");
+                var hadOld = stored.TryGetValue(key, out var oldVal);
+                stored[key] = list[1];
+                try
+                {
+                    Save(stored);
+                }
+                catch
+                {
+                    if (hadOld) stored[key] = oldVal!;
+                    else stored.Remove(key);
+                    throw;
+                }
+                return [];
+            }
+            default:
+            {
+                if (!stored.TryGetValue(key, out var oldVal)) return [];
+                stored.Remove(key);
+                try
+                {
+                    Save(stored);
+                }
+                catch
+                {
+                    stored[key] = oldVal;
+                    throw;
+                }
+                return [];
+            }
+        }
+    }
+
+    private Dictionary<string, string> Load()
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllBytes(filePath)) ?? [];
+        }
+        catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Writes the file through a temporary one, so a crash never leaves it half written.</summary>
+    private void Save(Dictionary<string, string> stored)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        var temporary = filePath + ".tmp";
+        File.WriteAllBytes(temporary, JsonSerializer.SerializeToUtf8Bytes(stored));
+        File.Move(temporary, filePath, overwrite: true);
+    }
+}
+
 /// <summary>
 /// <c>storage.get</c> / <c>set</c> / <c>remove</c>: a JSON object of strings in
 /// <c>%LOCALAPPDATA%\&lt;app id&gt;\storage.json</c>. The app id is the
@@ -78,7 +235,7 @@ internal static class PlatformModules
 /// </summary>
 internal static class Storage
 {
-    private static Dictionary<string, string>? values;
+    internal static readonly StorageStore Default = new(FilePath);
 
     private static string FilePath
     {
@@ -89,49 +246,5 @@ internal static class Storage
             if (string.IsNullOrEmpty(id)) id = app?.GetName().Name ?? "Weft";
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), id, "storage.json");
         }
-    }
-
-    public static byte[] Call(string method, byte[] args)
-    {
-        var list = JsonSerializer.Deserialize<string[]>(args);
-        if (list is not { Length: > 0 }) throw new InvalidOperationException($"weft: storage.{method} expects a JSON array of strings");
-        var key = list[0];
-        var stored = values ??= Load();
-        switch (method)
-        {
-            case WeftProtocol.StorageGet:
-                return JsonSerializer.SerializeToUtf8Bytes(stored.GetValueOrDefault(key));
-            case WeftProtocol.StorageSet:
-                if (list.Length != 2) throw new InvalidOperationException("weft: storage.set expects [key, value]");
-                stored[key] = list[1];
-                break;
-            default:
-                if (!stored.Remove(key)) return [];
-                break;
-        }
-        Save(stored);
-        return [];
-    }
-
-    private static Dictionary<string, string> Load()
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllBytes(FilePath)) ?? [];
-        }
-        catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException)
-        {
-            return [];
-        }
-    }
-
-    /// <summary>Writes the file through a temporary one, so a crash never leaves it half written.</summary>
-    private static void Save(Dictionary<string, string> stored)
-    {
-        var path = FilePath;
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var temporary = path + ".tmp";
-        File.WriteAllBytes(temporary, JsonSerializer.SerializeToUtf8Bytes(stored));
-        File.Move(temporary, path, overwrite: true);
     }
 }

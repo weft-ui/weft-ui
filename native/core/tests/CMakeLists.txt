@@ -45,7 +45,7 @@ function(weft_test_host target)
 endfunction()
 weft_test_host(weft_core_tests)
 add_dependencies(weft_core_tests weft_core_test_bundles)
-foreach(name timers microtasks console text unicode calls environment session refused stable_rows ops corpus)
+foreach(name timers microtasks console text unicode calls environment session refused stable_rows ops corpus bounds)
   add_test(NAME core.${name} COMMAND weft_core_tests ${CMAKE_CURRENT_BINARY_DIR}/js ${name})
 endforeach()
 

@@ -1,24 +1,24 @@
 import * as $ from "@weft-ui/runtime/remote";
 
 export class AppearanceModel extends $.Model {
-  static from(v) { return v instanceof AppearanceModel ? v : new AppearanceModel(v); }
-  constructor(v) { super([v.opacity, v.hidden, v.background, v.radius, v.border, v.borderColor, v.shadow, v.clip]); }
+  static from($v) { return $v instanceof AppearanceModel ? $v : new AppearanceModel($v); }
+  constructor($v) { super([$v.opacity, $v.hidden, $v.background, $v.radius, $v.border, $v.borderColor, $v.shadow, $v.clip]); }
   get opacity() { return this.$v[0]; }
-  set opacity(v) { this.$set(0, v); }
+  set opacity($v) { this.$set(0, $v); }
   get hidden() { return this.$v[1]; }
-  set hidden(v) { this.$set(1, v); }
+  set hidden($v) { this.$set(1, $v); }
   get background() { return this.$v[2]; }
-  set background(v) { this.$set(2, v); }
+  set background($v) { this.$set(2, $v); }
   get radius() { return this.$v[3]; }
-  set radius(v) { this.$set(3, v); }
+  set radius($v) { this.$set(3, $v); }
   get border() { return this.$v[4]; }
-  set border(v) { this.$set(4, v); }
+  set border($v) { this.$set(4, $v); }
   get borderColor() { return this.$v[5]; }
-  set borderColor(v) { this.$set(5, v); }
+  set borderColor($v) { this.$set(5, $v); }
   get shadow() { return this.$v[6]; }
-  set shadow(v) { this.$set(6, v); }
+  set shadow($v) { this.$set(6, $v); }
   get clip() { return this.$v[7]; }
-  set clip(v) { this.$set(7, v); }
+  set clip($v) { this.$set(7, $v); }
   toJSON() { return { opacity: this.$v[0], hidden: this.$v[1], background: this.$v[2], radius: this.$v[3], border: this.$v[4], borderColor: this.$v[5], shadow: this.$v[6], clip: this.$v[7] }; }
 }
 
@@ -59,5 +59,5 @@ export function Appearance$c(app, args, children, depth) {
 }
 
 export class Appearance extends $.App {
-  constructor(p0) { super(Appearance$c, [AppearanceModel.from(p0)], "70627c3a51016ed9"); }
+  constructor($p0) { super(Appearance$c, [AppearanceModel.from($p0)], "70627c3a51016ed9"); }
 }

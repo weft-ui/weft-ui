@@ -289,26 +289,53 @@ internal sealed class WeftPoint(WeftRegion region)
         survivors.Reverse();
 
         var stable = StableRows(survivors, children);
-        var previous = new HashSet<WeftScope>(survivors);
+        var survivorIndices = new Dictionary<WeftScope, int>(survivors.Count);
+        for (var i = 0; i < survivors.Count; i++) survivorIndices[survivors[i]] = i;
+
+        var keepInPlace = new bool[survivors.Count];
+        for (var i = 0; i < children.Count; i++)
+        {
+            if (stable[i]) keepInPlace[survivorIndices[children[i]]] = true;
+        }
+
+        // Remove non-stable survivors right-to-left using their known offsets in O(N).
+        var survivorOffsets = new int[survivors.Count];
+        var pos = start;
+        for (var i = 0; i < survivors.Count; i++)
+        {
+            survivorOffsets[i] = pos;
+            pos += survivors[i].Count;
+        }
+        for (var i = survivors.Count - 1; i >= 0; i--)
+        {
+            if (keepInPlace[i]) continue;
+            var count = survivors[i].Count;
+            container.Remove(survivorOffsets[i], count);
+            end -= count;
+        }
+
+        var stableOffsets = new Dictionary<WeftScope, int>(survivors.Count);
+        pos = start;
+        for (var i = 0; i < survivors.Count; i++)
+        {
+            if (!keepInPlace[i]) continue;
+            stableOffsets[survivors[i]] = pos;
+            pos += survivors[i].Count;
+        }
+
         var controls = new List<UIElement>();
         // Place the children last to first in front of `anchor`, the index where the next child's controls start.
         var anchor = end;
         for (var i = children.Count - 1; i >= 0; i--)
         {
             var child = children[i];
-            controls.Clear();
-            child.Collect(controls);
             if (stable[i])
             {
-                if (controls.Count > 0) anchor = container.Controls.IndexOf(controls[0]);
+                anchor = stableOffsets[child];
                 continue;
             }
-            if (previous.Contains(child) && controls.Count > 0)
-            {
-                var from = container.Controls.IndexOf(controls[0]);
-                container.Remove(from, controls.Count);
-                if (from < anchor) anchor -= controls.Count;
-            }
+            controls.Clear();
+            child.Collect(controls);
             container.Insert(anchor, controls);
         }
     }

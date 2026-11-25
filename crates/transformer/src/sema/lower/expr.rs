@@ -501,6 +501,19 @@ impl Lowerer<'_, '_> {
     }
 
     fn coalesce(&mut self, lhs: Expr, rhs: &ast::Expr, hint: Option<&Type>, span: Span) -> Expr {
+        if lhs.ty == Type::Null {
+            let rhs = self.expr_with_hint(rhs, hint);
+            let ty = rhs.ty.clone();
+            return Expr {
+                kind: ExprKind::Binary {
+                    op: BinaryOp::Coalesce,
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                },
+                ty,
+                span,
+            };
+        }
         let present = match &lhs.ty {
             Type::Optional(inner) => inner,
             ty => ty,

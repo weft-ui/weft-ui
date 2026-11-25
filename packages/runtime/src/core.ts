@@ -254,6 +254,7 @@ export interface Job {
 
 let queue: Job[] = [];
 let scheduled = false;
+let flushing = false;
 /** Incremented by every flush; blocks created during a flush skip its updates. */
 let epoch = 0;
 let pendingEvents: [AppBase, string, object][] = [];
@@ -319,7 +320,7 @@ export function schedule(): void {
 
 /** Runs the pending flush now instead of in its microtask. */
 export function flushSync(): void {
-  if (scheduled) flush();
+  if (scheduled && !flushing) flush();
 }
 
 export function enqueue(job: Job): void {
@@ -335,37 +336,56 @@ export function enqueue(job: Job): void {
  * that modify models schedule the next flush instead of re-entering this one.
  */
 function flush(): void {
+  if (flushing) return;
+  flushing = true;
   epoch++;
   let batch: Job[] = [];
+  let events: [AppBase, string, object][] = [];
+  let callbacks: (() => void)[] = [];
   try {
-    while (queue.length > 0) {
-      batch = queue;
+    try {
+      while (queue.length > 0) {
+        batch = queue;
+        queue = [];
+        batch.sort((a, b) => a.depth - b.depth);
+        for (const job of batch) {
+          job.queued = false;
+          if (!job.dead) job.flush();
+        }
+      }
+      batch = [];
+      for (const commit of commits) commit();
+    } catch (error) {
+      // After an exception, unprocessed jobs must be able to queue again.
+      for (const job of batch) job.queued = false;
+      for (const job of queue) job.queued = false;
       queue = [];
-      batch.sort((a, b) => a.depth - b.depth);
-      for (const job of batch) {
-        job.queued = false;
-        if (!job.dead) job.flush();
+      pendingEvents = [];
+      throw error;
+    } finally {
+      scheduled = false;
+      events = pendingEvents;
+      callbacks = afterFlush;
+      pendingEvents = [];
+      afterFlush = [];
+    }
+    for (const [app, name, payload] of events) app.$emit(name, payload);
+  } finally {
+    try {
+      if (holds === 0 && deferredRestores.length > 0) {
+        const restores = deferredRestores;
+        deferredRestores = [];
+        for (const restore of restores) restore();
+      }
+    } finally {
+      try {
+        for (const callback of callbacks) callback();
+      } finally {
+        flushing = false;
+        if (queue.length > 0 || afterFlush.length > 0) schedule();
       }
     }
-    for (const commit of commits) commit();
-  } finally {
-    // After an exception, unprocessed jobs must be able to queue again.
-    for (const job of batch) job.queued = false;
-    for (const job of queue) job.queued = false;
-    queue = [];
-    scheduled = false;
   }
-  const events = pendingEvents;
-  const callbacks = afterFlush;
-  pendingEvents = [];
-  afterFlush = [];
-  for (const [app, name, payload] of events) app.$emit(name, payload);
-  if (holds === 0) {
-    const restores = deferredRestores;
-    deferredRestores = [];
-    for (const restore of restores) restore();
-  }
-  for (const callback of callbacks) callback();
 }
 
 /** Resolves after the next flush (one is scheduled if none is pending). */

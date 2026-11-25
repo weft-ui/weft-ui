@@ -8,7 +8,7 @@ The headless renderer in `@weft-ui/runtime/testing` is the reference implementat
 
 ## Layout
 
-`ViewLayout` (`crates/transformer/src/view.rs`) is derived from the entire application's Program. WASM exposes the JSON form through `compileApp(...).layout`; see `crates/transformer/tests/snapshots/TodoList/layout.json` for an example.
+`ViewLayout` (`crates/transformer/src/view/mod.rs`) is derived from the entire application's Program. WASM exposes the JSON form through `compileApp(...).layout`; see `crates/transformer/tests/snapshots/TodoList/layout.json` for an example.
 
 ```json
 {

@@ -73,13 +73,22 @@ private fun RenderImage(painter: Painter, intrinsic: Size, fit: WeftImageFit, mo
         contentDescription = null,
         modifier = modifier.layout { measurable, constraints ->
             val (w, h) = intrinsic
-            val scale = when {
+            if (!w.isFinite() || !h.isFinite() || w <= 0f || h <= 0f) {
+                val placeable = measurable.measure(Constraints.fixed(constraints.minWidth, constraints.minHeight))
+                return@layout layout(constraints.minWidth, constraints.minHeight) { placeable.place(0, 0) }
+            }
+            val rawScale = when {
                 constraints.hasFixedWidth -> constraints.maxWidth / w
                 constraints.hasFixedHeight -> constraints.maxHeight / h
                 else -> minOf(1f, constraints.maxWidth / w, constraints.maxHeight / h)
             }
-            val width = (w * scale).roundToInt().coerceIn(constraints.minWidth, constraints.maxWidth)
-            val height = (h * scale).roundToInt().coerceIn(constraints.minHeight, constraints.maxHeight)
+            val scale = if (rawScale.isFinite()) rawScale else 0f
+            val scaledW = w * scale
+            val scaledH = h * scale
+            val width = (if (scaledW.isFinite()) scaledW.roundToInt() else constraints.maxWidth)
+                .coerceIn(constraints.minWidth, constraints.maxWidth)
+            val height = (if (scaledH.isFinite()) scaledH.roundToInt() else constraints.maxHeight)
+                .coerceIn(constraints.minHeight, constraints.maxHeight)
             val placeable = measurable.measure(Constraints.fixed(width, height))
             layout(width, height) { placeable.place(0, 0) }
         },
@@ -91,19 +100,55 @@ private fun RenderImage(painter: Painter, intrinsic: Size, fit: WeftImageFit, mo
     )
 }
 
+internal const val MAX_IMAGE_BYTES = 16 * 1024 * 1024
+internal const val MAX_IMAGE_PIXELS = 16_777_216L
+
+internal fun validatedImageUrl(src: String): URL? = try {
+    val url = URL(src)
+    val scheme = url.protocol.lowercase()
+    if (scheme == "http" || scheme == "https") url else null
+} catch (_: Exception) {
+    null
+}
+
+internal fun imageCacheCapacityKiB(maxMemoryBytes: Long): Int =
+    ((maxMemoryBytes / 8L) / 1024L).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+
+internal fun bitmapSizeKiB(width: Int, height: Int): Int {
+    if (width <= 0 || height <= 0) return 1
+    val bytes = width.toLong() * height.toLong() * 4L
+    return (bytes / 1024L).coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+}
+
+internal fun withinImagePixelLimit(width: Int, height: Int): Boolean =
+    width > 0 && height > 0 && width.toLong() * height.toLong() <= MAX_IMAGE_PIXELS
+
+internal fun readBoundedImageBytes(stream: java.io.InputStream, limit: Int = MAX_IMAGE_BYTES): ByteArray? {
+    val buffer = ByteArray(8192)
+    val out = java.io.ByteArrayOutputStream()
+    while (true) {
+        val read = stream.read(buffer)
+        if (read < 0) break
+        if (out.size() + read > limit) return null
+        out.write(buffer, 0, read)
+    }
+    return out.toByteArray()
+}
+
 /** Downloaded images by URL. */
 private object Images {
-    /** Up to an eighth of the heap, in bytes. */
-    private val cache = object : LruCache<String, ImageBitmap>((Runtime.getRuntime().maxMemory() / 8).toInt()) {
-        override fun sizeOf(key: String, value: ImageBitmap): Int = value.width * value.height * 4
+    /** Up to an eighth of the heap, in KiB. */
+    private val cache = object : LruCache<String, ImageBitmap>(imageCacheCapacityKiB(Runtime.getRuntime().maxMemory())) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int = bitmapSizeKiB(value.width, value.height)
     }
 
     fun cached(src: String): ImageBitmap? = cache.get(src)
 
     /** Downloads and decodes [src]; null when it fails. Blocks. */
     fun load(src: String): ImageBitmap? {
+        val url = validatedImageUrl(src) ?: return null
         val connection = try {
-            URL(src).openConnection() as? HttpURLConnection ?: return null
+            url.openConnection() as? HttpURLConnection ?: return null
         } catch (error: Exception) {
             WeftLog.warn("weft: cannot load the image $src ($error)")
             return null
@@ -113,7 +158,22 @@ private object Images {
                 WeftLog.warn("weft: cannot load the image $src (status ${connection.responseCode})")
                 return null
             }
-            val bitmap = connection.inputStream.use { BitmapFactory.decodeStream(it) }
+            if (connection.contentLengthLong > MAX_IMAGE_BYTES.toLong()) {
+                WeftLog.warn("weft: image $src exceeds ${MAX_IMAGE_BYTES} byte limit")
+                return null
+            }
+            val bytes = connection.inputStream.use { readBoundedImageBytes(it, MAX_IMAGE_BYTES) }
+            if (bytes == null) {
+                WeftLog.warn("weft: image $src exceeds ${MAX_IMAGE_BYTES} byte limit")
+                return null
+            }
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (!withinImagePixelLimit(bounds.outWidth, bounds.outHeight)) {
+                WeftLog.warn("weft: image $src exceeds ${MAX_IMAGE_PIXELS} pixel limit")
+                return null
+            }
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             bitmap?.asImageBitmap()?.also { cache.put(src, it) }
         } catch (error: Exception) {
             WeftLog.warn("weft: cannot load the image $src ($error)")

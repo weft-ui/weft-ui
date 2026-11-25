@@ -18,12 +18,24 @@ enum PlatformModules {
         }
     }
 
+    static let maxFetchBytes = 32 * 1024 * 1024
+
+    static func validatedFetchURL(_ text: String) throws -> URL {
+        guard let url = URL(string: text),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            throw PlatformFailure("weft: unsupported fetch URL \(text)")
+        }
+        return url
+    }
+
     /// `fetch.request` through URLSession.
     private static func fetch(_ args: Data) async throws -> Data {
         let (head, body) = try unframe(args)
-        guard let text = head["url"] as? String, let url = URL(string: text) else {
+        guard let text = head["url"] as? String else {
             throw PlatformFailure("weft: invalid URL \(head["url"] ?? "")")
         }
+        let url = try validatedFetchURL(text)
         var request = URLRequest(url: url)
         request.httpMethod = head["method"] as? String ?? "GET"
         for (name, value) in head["headers"] as? [String: String] ?? [:] {
@@ -32,10 +44,24 @@ enum PlatformModules {
         if !body.isEmpty {
             request.httpBody = body
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        // Responses without a status (`data:` and `file:` URLs) succeeded.
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 200
-        return try frame(["status": status], data)
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw PlatformFailure("weft: fetch expected an HTTP response")
+        }
+        if http.expectedContentLength > Int64(maxFetchBytes) {
+            throw PlatformFailure("weft: fetch response exceeds \(maxFetchBytes) bytes")
+        }
+        var data = Data()
+        if http.expectedContentLength > 0 {
+            data.reserveCapacity(Int(http.expectedContentLength))
+        }
+        for try await byte in bytes {
+            if data.count >= maxFetchBytes {
+                throw PlatformFailure("weft: fetch response exceeds \(maxFetchBytes) bytes")
+            }
+            data.append(byte)
+        }
+        return try frame(["status": http.statusCode], data)
     }
 
     /// `storage.get` / `set` / `remove` on the standard user defaults.

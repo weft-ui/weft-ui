@@ -1,15 +1,24 @@
 using System;
+using System.IO;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
+using Windows.Storage.Streams;
 
 namespace Weft.WinUI;
 
 /// <summary><c>Image</c>: a bundled bitmap or icon, or a remote bitmap.</summary>
 public sealed class WeftImage : WeftDecoratedElement
 {
+    internal const int MaxImageBytes = 16 * 1024 * 1024;
+    internal const ulong MaxImagePixels = 16_777_216UL;
+
     private const string AssetPrefix = "asset:";
     private readonly WeftImageContent content = new();
     private WeftBrush placeholder;
@@ -18,6 +27,7 @@ public sealed class WeftImage : WeftDecoratedElement
     private WeftAssets.ImageVariant? variant;
     private XamlRoot? root;
     private bool selected;
+    private CancellationTokenSource? loadCts;
 
     public WeftImage(Action? tap = null)
     {
@@ -50,9 +60,15 @@ public sealed class WeftImage : WeftDecoratedElement
             selected = false;
             variant = null;
             UpdateRoot(assetName is null ? null : Box.XamlRoot);
+            CancelLoad();
             if (assetName is null)
             {
-                Load(Uri.TryCreate(value, UriKind.Absolute, out var uri) ? new BitmapImage(uri) : null, 1);
+                Load(null, 1);
+                if (ValidatedRemoteUri(value) is { } uri)
+                {
+                    loadCts = new CancellationTokenSource();
+                    _ = LoadRemoteAsync(value, uri, loadCts.Token);
+                }
             }
             else if (root is not null)
             {
@@ -90,7 +106,62 @@ public sealed class WeftImage : WeftDecoratedElement
         if (root is not null) SelectAsset(root.RasterizationScale);
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs args) => UpdateRoot(null);
+    private void OnUnloaded(object sender, RoutedEventArgs args)
+    {
+        UpdateRoot(null);
+        CancelLoad();
+    }
+
+    internal static Uri? ValidatedRemoteUri(string? value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)) return null;
+        return uri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            || uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            ? uri
+            : null;
+    }
+
+    internal static bool WithinPixelLimit(uint width, uint height) =>
+        width > 0 && height > 0 && (ulong)width * height <= MaxImagePixels;
+
+    private void CancelLoad()
+    {
+        loadCts?.Cancel();
+        loadCts?.Dispose();
+        loadCts = null;
+    }
+
+    private async Task LoadRemoteAsync(string expectedSrc, Uri uri, CancellationToken token)
+    {
+        try
+        {
+            var bytes = await PlatformModules.ReadHttpBytesAsync(uri, MaxImageBytes, token);
+            if (token.IsCancellationRequested || src != expectedSrc) return;
+            using var stream = new InMemoryRandomAccessStream();
+            await stream.WriteAsync(bytes.AsBuffer()).AsTask(token);
+            await stream.FlushAsync().AsTask(token);
+            stream.Seek(0);
+            var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(token);
+            if (!WithinPixelLimit(decoder.PixelWidth, decoder.PixelHeight))
+            {
+                WeftLog.Write(Native.LogWarn, $"weft: image `{expectedSrc}` exceeds {MaxImagePixels} pixel limit");
+                return;
+            }
+            if (token.IsCancellationRequested || src != expectedSrc) return;
+            stream.Seek(0);
+            var bitmap = new BitmapImage();
+            await bitmap.SetSourceAsync(stream).AsTask(token);
+            if (token.IsCancellationRequested || src != expectedSrc) return;
+            Load(bitmap, 1);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception error)
+        {
+            WeftLog.Write(Native.LogWarn, $"weft: cannot load remote image `{expectedSrc}`: {error.Message}");
+        }
+    }
 
     private void UpdateRoot(XamlRoot? next)
     {

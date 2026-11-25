@@ -295,20 +295,25 @@ export class List {
    * new rows are created. The new order is sent only when it changed.
    */
   set(items: readonly unknown[]): void {
+    const seen = new Set<unknown>();
+    const keys = new Array<unknown>(items.length);
+    for (let i = 0; i < items.length; i++) {
+      const key = this.keyOf(items[i]);
+      if (seen.has(key)) throw new Error(`weft: duplicate key \`${String(key)}\` in for loop`);
+      seen.add(key);
+      keys[i] = key;
+    }
+
     const old = this.rows;
     const byKey = new Map<unknown, number>();
     for (let i = 0; i < old.length; i++) byKey.set(this.keyOf(old[i].item), i);
 
     const rows = new Array<Row>(items.length);
     const reused = new Uint8Array(old.length);
-    const seen = new Set<unknown>();
     let changed = items.length !== old.length;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const key = this.keyOf(item);
-      if (seen.has(key)) throw new Error(`weft: duplicate key \`${String(key)}\` in for loop`);
-      seen.add(key);
-      const j = byKey.get(key);
+      const j = byKey.get(keys[i]);
       if (j !== undefined && !reused[j]) {
         reused[j] = 1;
         const row = old[j];
@@ -421,10 +426,17 @@ export class App extends AppBase {
     });
     this.$sink = sink;
     mounted.add(this);
-    const root = this.#create(this, this.$args, [], 0);
-    this.$root = root;
-    sink.attach(0, 0, root.id);
-    schedule();
+    try {
+      const root = this.#create(this, this.$args, [], 0);
+      this.$root = root;
+      sink.attach(0, 0, root.id);
+      schedule();
+    } catch (error) {
+      mounted.delete(this);
+      this.$root = null;
+      this.$sink = null;
+      throw error;
+    }
   }
 
   unmount(): void {

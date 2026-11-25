@@ -39,5 +39,5 @@ export function Assets$c(app, args, children, depth) {
 }
 
 export class Assets extends $.App {
-  constructor(p0, p1, p2, p3) { super(Assets$c, [p0, p1, p2, p3]); }
+  constructor($p0, $p1, $p2, $p3) { super(Assets$c, [$p0, $p1, $p2, $p3]); }
 }

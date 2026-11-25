@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <stdexcept>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -14,16 +15,6 @@ GtkWidget *child_at(GtkWidget *container, size_t index) {
   auto *child = gtk_widget_get_first_child(container);
   for (; child && index > 0; index--) child = gtk_widget_get_next_sibling(child);
   return child;
-}
-
-size_t index_of(GtkWidget *container, GtkWidget *widget) {
-  size_t index = 0;
-  for (GtkWidget *child = gtk_widget_get_first_child(container); child != widget;
-       child = gtk_widget_get_next_sibling(child)) {
-    if (!child) throw std::logic_error("the widget is not in the container");
-    index++;
-  }
-  return index;
 }
 
 /// For each scope of `next`, whether its widgets keep their place.
@@ -186,23 +177,49 @@ void Point::mount(std::vector<Scope *> next) {
   std::reverse(survivors.begin(), survivors.end());
 
   std::vector<uint8_t> stable = stable_rows(survivors, children);
-  std::unordered_set<Scope *> previous(survivors.begin(), survivors.end());
+  std::unordered_map<Scope *, size_t> survivor_indices;
+  survivor_indices.reserve(survivors.size());
+  for (size_t i = 0; i < survivors.size(); i++) survivor_indices.emplace(survivors[i], i);
+
+  std::vector<bool> keep_in_place(survivors.size(), false);
+  for (size_t i = 0; i < children.size(); i++) {
+    if (stable[i]) keep_in_place[survivor_indices.at(children[i])] = true;
+  }
+
+  // Remove non-stable survivors right-to-left using their known offsets in O(N).
+  std::vector<size_t> survivor_offsets(survivors.size());
+  size_t pos = start;
+  for (size_t i = 0; i < survivors.size(); i++) {
+    survivor_offsets[i] = pos;
+    pos += survivors[i]->roots_.count();
+  }
+  for (size_t i = survivors.size(); i-- > 0;) {
+    if (keep_in_place[i]) continue;
+    size_t count = survivors[i]->roots_.count();
+    container->remove(survivor_offsets[i], count);
+    end -= count;
+  }
+
+  std::unordered_map<Scope *, size_t> stable_offsets;
+  stable_offsets.reserve(survivors.size());
+  pos = start;
+  for (size_t i = 0; i < survivors.size(); i++) {
+    if (!keep_in_place[i]) continue;
+    stable_offsets.emplace(survivors[i], pos);
+    pos += survivors[i]->roots_.count();
+  }
+
   std::vector<GtkWidget *> widgets;
   // Place the children last to first in front of `anchor`, the index where the next child's widgets start.
   size_t anchor = end;
   for (size_t i = children.size(); i-- > 0;) {
     Scope *child = children[i];
-    widgets.clear();
-    child->roots_.collect(widgets);
     if (stable[i]) {
-      if (!widgets.empty()) anchor = index_of(container->container_, widgets.front());
+      anchor = stable_offsets.at(child);
       continue;
     }
-    if (previous.contains(child) && !widgets.empty()) {
-      size_t from = index_of(container->container_, widgets.front());
-      container->remove(from, widgets.size());
-      if (from < anchor) anchor -= widgets.size();
-    }
+    widgets.clear();
+    child->roots_.collect(widgets);
     for (size_t j = 0; j < widgets.size(); j++) container->insert(anchor + j, widgets[j]);
   }
 }

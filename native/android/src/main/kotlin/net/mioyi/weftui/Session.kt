@@ -117,7 +117,9 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     private fun commit(ops: ByteBuffer) {
         committing = true
         try {
-            for (op in OpReader.readAll(ops)) apply(op)
+            for (op in OpReader.readAll(ops)) {
+                if (!apply(op)) break
+            }
         } catch (error: OpException) {
             fail("weft: malformed ops (${error.message})")
         } catch (error: RuntimeException) {
@@ -127,11 +129,14 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
         }
     }
 
-    private fun apply(op: Op) {
+    private fun apply(op: Op): Boolean {
         when (op) {
             is Op.Create -> {
                 val made = make(op.template, op.scope, this)
-                    ?: return fail("weft: the views have no template ${op.template}")
+                if (made == null) {
+                    fail("weft: the views have no template ${op.template}")
+                    return false
+                }
                 scopes[op.scope] = made
             }
             is Op.Set -> scopes[op.scope]?.apply(op.slot, op.value)
@@ -139,6 +144,7 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
             is Op.Rows -> mount(op.scope, op.point, op.children)
             is Op.Attach -> mount(op.scope, op.point, intArrayOf(op.child))
         }
+        return true
     }
 
     /**

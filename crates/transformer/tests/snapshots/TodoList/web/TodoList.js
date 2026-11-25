@@ -1,22 +1,22 @@
 import * as $ from "@weft-ui/runtime";
 
 export class Todo extends $.Model {
-  static from(v) { return v instanceof Todo ? v : new Todo(v); }
-  constructor(v) { super([v.id, v.name]); }
+  static from($v) { return $v instanceof Todo ? $v : new Todo($v); }
+  constructor($v) { super([$v.id, $v.name]); }
   get id() { return this.$v[0]; }
-  set id(v) { this.$set(0, v); }
+  set id($v) { this.$set(0, $v); }
   get name() { return this.$v[1]; }
-  set name(v) { this.$set(1, v); }
+  set name($v) { this.$set(1, $v); }
   toJSON() { return { id: this.$v[0], name: this.$v[1] }; }
 }
 
 export class TodoListModel extends $.Model {
-  static from(v) { return v instanceof TodoListModel ? v : new TodoListModel(v); }
-  constructor(v) { super([$c0(v.todos), v.draft]); }
+  static from($v) { return $v instanceof TodoListModel ? $v : new TodoListModel($v); }
+  constructor($v) { super([$c0($v.todos), $v.draft]); }
   get todos() { return this.$v[0]; }
-  set todos(v) { if (v !== this.$v[0]) this.$set(0, $c0(v)); }
+  set todos($v) { if ($v !== this.$v[0]) this.$set(0, $c0($v)); }
   get draft() { return this.$v[1]; }
-  set draft(v) { this.$set(1, v); }
+  set draft($v) { this.$set(1, $v); }
   toJSON() { return { todos: this.$v[0], draft: this.$v[1] }; }
 }
 
@@ -92,7 +92,7 @@ export function TodoList$c(app, args, children, depth) {
 }
 
 export class TodoList extends $.App {
-  constructor(p0) { super(TodoList$c, [TodoListModel.from(p0)]); }
+  constructor($p0) { super(TodoList$c, [TodoListModel.from($p0)]); }
   onTextChanged(h) { return this.$on("TextChanged", h); }
   onRemove(h) { return this.$on("Remove", h); }
 }

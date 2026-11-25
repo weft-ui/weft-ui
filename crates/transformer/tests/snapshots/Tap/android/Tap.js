@@ -1,12 +1,12 @@
 import * as $ from "@weft-ui/runtime/remote";
 
 export class TapModel extends $.Model {
-  static from(v) { return v instanceof TapModel ? v : new TapModel(v); }
-  constructor(v) { super([v.image, v.opacity]); }
+  static from($v) { return $v instanceof TapModel ? $v : new TapModel($v); }
+  constructor($v) { super([$v.image, $v.opacity]); }
   get image() { return this.$v[0]; }
-  set image(v) { this.$set(0, v); }
+  set image($v) { this.$set(0, $v); }
   get opacity() { return this.$v[1]; }
-  set opacity(v) { this.$set(1, v); }
+  set opacity($v) { this.$set(1, $v); }
   toJSON() { return { image: this.$v[0], opacity: this.$v[1] }; }
 }
 
@@ -31,6 +31,6 @@ export function Tap$c(app, args, children, depth) {
 }
 
 export class Tap extends $.App {
-  constructor(p0) { super(Tap$c, [TapModel.from(p0)], "e3346ca1afcb3b60"); }
+  constructor($p0) { super(Tap$c, [TapModel.from($p0)], "e3346ca1afcb3b60"); }
   onActivated(h) { return this.$on("Activated", h); }
 }

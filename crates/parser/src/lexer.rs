@@ -233,29 +233,53 @@ impl<'src, 'd> Lexer<'src, 'd> {
 
     fn string(&mut self) {
         let start = self.pos;
-        match scan_string(self.bytes, self.pos) {
+        match scan_string_depth(self.bytes, self.pos, 0) {
             Ok(end) => self.pos = end,
-            Err(end) => {
+            Err(ScanError::Unterminated(end)) => {
                 self.pos = end;
                 self.diags.push(
                     Diagnostic::error(self.span(start, start + 1), "unterminated string literal")
                         .with_label("string starts here"),
                 );
             }
+            Err(ScanError::NestingLimit(end)) => {
+                self.pos = end;
+                self.diags.push(Diagnostic::error(
+                    self.span(start, start + 1),
+                    "string interpolation nesting limit exceeded",
+                ));
+            }
         }
     }
+}
+
+/// Maximum nested `${...}` interpolation depth before stopping with a diagnostic.
+const MAX_INTERPOLATION_DEPTH: usize = 128;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScanError {
+    Unterminated(usize),
+    NestingLimit(usize),
+}
+
+fn skip_to_line_end(bytes: &[u8], mut i: usize) -> usize {
+    while matches!(bytes.get(i), Some(&b) if b != b'\n') {
+        i += 1;
+    }
+    i
 }
 
 /// Scans a string literal starting at the opening quote `bytes[start]`.
 ///
 /// Returns the index just past the closing quote, or `Err` with the index where
-/// scanning stopped (newline or end of input) if the literal is unterminated.
-pub(crate) fn scan_string(bytes: &[u8], start: usize) -> Result<usize, usize> {
+/// scanning stopped (newline or end of input) if the literal is unterminated or
+/// exceeds [`MAX_INTERPOLATION_DEPTH`].
+fn scan_string_depth(bytes: &[u8], start: usize, depth: usize) -> Result<usize, ScanError> {
     debug_assert_eq!(bytes[start], b'"');
     let mut i = start + 1;
     loop {
         match bytes.get(i) {
-            None | Some(b'\n') => return Err(i),
+            None | Some(b'\n') => return Err(ScanError::Unterminated(i)),
             Some(b'"') => return Ok(i + 1),
             Some(b'\\') => {
                 i += if bytes.get(i + 1).is_some_and(|&b| b != b'\n') {
@@ -264,7 +288,12 @@ pub(crate) fn scan_string(bytes: &[u8], start: usize) -> Result<usize, usize> {
                     1
                 }
             }
-            Some(b'$') if bytes.get(i + 1) == Some(&b'{') => i = scan_interpolation(bytes, i + 2)?,
+            Some(b'$') if bytes.get(i + 1) == Some(&b'{') => {
+                if depth >= MAX_INTERPOLATION_DEPTH {
+                    return Err(ScanError::NestingLimit(skip_to_line_end(bytes, i + 2)));
+                }
+                i = scan_interpolation_depth(bytes, i + 2, depth + 1)?;
+            }
             Some(_) => i += 1,
         }
     }
@@ -275,19 +304,25 @@ pub(crate) fn scan_string(bytes: &[u8], start: usize) -> Result<usize, usize> {
 /// Returns the index just past the matching `}`, or `Err` if a newline or the
 /// end of input is reached first.
 pub(crate) fn scan_interpolation(bytes: &[u8], start: usize) -> Result<usize, usize> {
-    let mut depth = 0usize;
+    scan_interpolation_depth(bytes, start, 0).map_err(|err| match err {
+        ScanError::Unterminated(end) | ScanError::NestingLimit(end) => end,
+    })
+}
+
+fn scan_interpolation_depth(bytes: &[u8], start: usize, depth: usize) -> Result<usize, ScanError> {
+    let mut braces = 0usize;
     let mut i = start;
     loop {
         match bytes.get(i) {
-            None | Some(b'\n') => return Err(i),
-            Some(b'"') => i = scan_string(bytes, i)?,
+            None | Some(b'\n') => return Err(ScanError::Unterminated(i)),
+            Some(b'"') => i = scan_string_depth(bytes, i, depth)?,
             Some(b'{') => {
-                depth += 1;
+                braces += 1;
                 i += 1;
             }
-            Some(b'}') if depth == 0 => return Ok(i + 1),
+            Some(b'}') if braces == 0 => return Ok(i + 1),
             Some(b'}') => {
-                depth -= 1;
+                braces -= 1;
                 i += 1;
             }
             Some(_) => i += 1,
@@ -355,5 +390,18 @@ mod tests {
         let (k, d) = kinds("\"abc\nx");
         assert_eq!(k, [TokenKind::Str, TokenKind::Ident, TokenKind::Eof]);
         assert_eq!(d.len(), 1);
+    }
+
+    #[test]
+    fn deeply_nested_interpolation_hits_limit_without_overflow() {
+        let depth = 500;
+        let src = format!("{}\"x\"{}", "\"${".repeat(depth), "}\"".repeat(depth));
+        let (k, d) = kinds(&src);
+        assert_eq!(k.last(), Some(&TokenKind::Eof));
+        assert!(
+            d.iter()
+                .any(|diag| diag.message.contains("nesting limit exceeded")),
+            "{d:?}"
+        );
     }
 }

@@ -69,16 +69,15 @@ pub(crate) fn declarations(css: Css<'_>, value: &Constant) -> String {
             repeated(properties, format_args!("{}{suffix}", css_number(number)))
         }
         CssUnit::Keyword(keywords) => {
-            let (key, fallback) = match value {
-                Constant::Bool(true) => ("true", ""),
-                Constant::Bool(false) => ("false", ""),
-                Constant::String(key) => (key.as_str(), key.as_str()),
+            let key = match value {
+                Constant::Bool(true) => "true",
+                Constant::Bool(false) => "false",
+                Constant::String(key) => key.as_str(),
                 _ => return String::new(),
             };
-            let mapped = keywords
-                .iter()
-                .find(|(name, _)| *name == key)
-                .map_or(fallback, |(_, value)| value);
+            let Some((_, mapped)) = keywords.iter().find(|(name, _)| *name == key) else {
+                return String::new();
+            };
             if mapped.is_empty() {
                 String::new()
             } else {

@@ -487,12 +487,20 @@ impl<'cx> Lowerer<'cx, '_> {
             positional: false,
             required: false,
         }));
+        let has_style_param = params.iter().any(|(_, param)| param.name == STYLE);
         let is_style = |arg: &ast::Arg| arg.name.as_ref().is_some_and(|name| name.name == STYLE);
-        for arg in e.args.iter().filter(|arg| is_style(arg)) {
-            self.error(arg.span, "`style` only applies to built-in elements");
-        }
-        let args = e.args.iter().filter(|arg| !is_style(arg));
-        let matched = self.match_args(&callee.name, &slots, args, span);
+        let args = if has_style_param {
+            e.args.iter().collect::<Vec<_>>()
+        } else {
+            for arg in e.args.iter().filter(|arg| is_style(arg)) {
+                self.error(arg.span, "`style` only applies to built-in elements");
+            }
+            e.args
+                .iter()
+                .filter(|arg| !is_style(arg))
+                .collect::<Vec<_>>()
+        };
+        let matched = self.match_args(&callee.name, &slots, args.into_iter(), span);
         self.record_args(args_span(e, span), &matched, |i| match params.get(i) {
             Some(&(param, _)) => Target::ComponentParam(id, param.index()),
             None => Target::Prop {

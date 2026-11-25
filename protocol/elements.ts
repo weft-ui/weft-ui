@@ -122,8 +122,8 @@ function validateCss(css: Css, path: string): void {
   }
   if (css.unit === "keyword") {
     if (typeof css.keywords !== "object" || css.keywords === null || Array.isArray(css.keywords) ||
-      Object.values(css.keywords).some((value) => typeof value !== "string")) {
-      invalid(`${path}.keywords`, "expected a map of string keys to CSS keywords");
+      Object.values(css.keywords).some((value) => typeof value !== "string" || /[:;{}\r\n]/.test(value))) {
+      invalid(`${path}.keywords`, "expected a map of string keys to single-value CSS keywords");
     }
   } else if (css.keywords !== undefined) invalid(`${path}.keywords`, "expected the keyword CSS unit");
 }
@@ -142,7 +142,17 @@ function validateMembers(members: LocatedMember[], unions: Record<string, string
     if (!Object.hasOwn(propTypes, member.type) && !Object.hasOwn(unions, member.type)) {
       invalid(`${path}.type`, `unknown property type ${quote(member.type)}`);
     }
-    if (member.css !== undefined) validateCss(member.css, `${path}.css`);
+    if (member.css !== undefined) {
+      validateCss(member.css, `${path}.css`);
+      if (member.css.unit === "keyword" && Object.hasOwn(unions, member.type)) {
+        const keywords = member.css.keywords!;
+        for (const variant of unions[member.type]!) {
+          if (!Object.hasOwn(keywords, variant)) {
+            invalid(`${path}.css.keywords`, `missing keyword mapping for union member ${quote(variant)}`);
+          }
+        }
+      }
+    }
   }
 }
 
@@ -295,7 +305,7 @@ function rustCss(css: Css): string {
   let unit: string;
   if (css.unit === "keyword") {
     const keywords = Object.entries(css.keywords!).map(([name, value]) => `(${quote(name)}, ${quote(value)})`);
-    unit = keywords.join(", ").length <= 56 ? `Keyword(&[${keywords.join(", ")}])`
+    unit = keywords.join(", ").length <= 70 ? `Keyword(&[${keywords.join(", ")}])`
       : `Keyword(&[\n${keywords.map((pair) => `            ${pair},`).join("\n")}\n        ])`;
   } else if (css.unit === "custom") unit = `Custom(CustomCss::${rustCustom[css.custom as keyof typeof rustCustom]})`;
   else unit = rustUnits[css.unit as keyof typeof rustUnits];

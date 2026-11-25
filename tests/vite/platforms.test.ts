@@ -1,9 +1,11 @@
 // @vitest-environment node
+import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { compileApp } from "@weft-ui/compiler";
 import { CSS } from "@weft-ui/runtime/elements";
 import { PLATFORMS } from "@weft-ui/runtime/protocol";
@@ -547,4 +549,70 @@ test("compile errors fail the build with rendered diagnostics", async () => {
 test("WEFT_PLATFORM must name a configured platform", async () => {
   await expect(build("mac")).rejects.toThrow(/unknown platform "mac"/);
   await expect(build("ios")).rejects.toThrow(/"ios" is not in the platforms option/);
+});
+
+test("default app.id derives com.example.<name> when omitted", async () => {
+  const prevNative = process.env.WEFT_NATIVE;
+  const prevPlatform = process.env.WEFT_PLATFORM;
+  process.env.WEFT_NATIVE = "0";
+  process.env.WEFT_PLATFORM = "android";
+  try {
+    const builder = await createBuilder({
+      root,
+      configFile: false,
+      logLevel: "silent",
+      plugins: [weft({ platforms: ["android"] })],
+    });
+    await builder.buildApp();
+  } finally {
+    if (prevNative === undefined) delete process.env.WEFT_NATIVE;
+    else process.env.WEFT_NATIVE = prevNative;
+    if (prevPlatform === undefined) delete process.env.WEFT_PLATFORM;
+    else process.env.WEFT_PLATFORM = prevPlatform;
+  }
+  const gradle = await readFile(join(root, "apps/android/app/build.gradle.kts"), "utf8");
+  expect(gradle).toMatch(/applicationId = "com\.example\.weftvite[a-z0-9]*"/);
+});
+
+test("dts: true writes .d.weft.ts declarations that typecheck with allowArbitraryExtensions", async () => {
+  await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+    compilerOptions: {
+      target: "ES2022",
+      module: "ESNext",
+      moduleResolution: "bundler",
+      allowArbitraryExtensions: true,
+      strict: true,
+      noEmit: true,
+      types: [],
+    },
+    include: ["src/**/*.ts"],
+  }));
+  await writeFile(
+    join(root, "src/Consumer.ts"),
+    'import { App } from "./App.weft";\nexport const instance = new App({ clicked: false, tint: "red" });\n',
+  );
+  await build("web,wechat", { dts: true });
+  expect(existsSync(join(root, "src/App.d.weft.ts"))).toBe(true);
+  const tsc = fileURLToPath(new URL("../node_modules/typescript/bin/tsc", import.meta.url));
+  await promisify(execFile)(process.execPath, [tsc, "--noEmit", "-p", join(root, "tsconfig.json")], { cwd: root });
+});
+
+test("Windows Weft.targets and Linux CMakeLists escape special path characters", async () => {
+  const customShells = join(root, "shells & $%");
+  await mkdir(join(customShells, "windows"), { recursive: true });
+  await mkdir(join(customShells, "linux"), { recursive: true });
+  await cp(join(WEFT_WINUI, "package.json"), join(customShells, "windows/package.json"));
+  await cp(join(WEFT_LINUX, "package.json"), join(customShells, "linux/package.json"));
+  const previous = process.env.WEFT_NATIVE;
+  process.env.WEFT_NATIVE = "0";
+  try {
+    await build("windows,linux", { platforms: ["windows", "linux"], native: customShells });
+  } finally {
+    if (previous === undefined) delete process.env.WEFT_NATIVE;
+    else process.env.WEFT_NATIVE = previous;
+  }
+  const targets = await readFile(join(root, "apps/windows/weft/Weft.targets"), "utf8");
+  expect(targets).toContain("shells &amp; %24%25\\windows\\Weft.WinUI.targets");
+  const cmake = await readFile(join(root, "apps/linux/weft/CMakeLists.txt"), "utf8");
+  expect(cmake).toContain("shells & \\$%/linux");
 });

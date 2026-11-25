@@ -659,7 +659,7 @@ fn layout_rejects_nonfinite_float_literals_before_serializing() {
     let src = "component C() { Row(grow = -1e999) }";
     assert_eq!(
         diagnostics(&[("layout.weft", src)]),
-        ["layout.weft:1:28: floating-point literal is out of range for `Float`"]
+        ["layout.weft:1:29: floating-point literal is out of range for `Float`"]
     );
 }
 
@@ -1147,4 +1147,95 @@ fn app_programs_share_imports_and_names() {
         .map(|d| d.message.as_str())
         .collect();
     assert_eq!(messages, ["`A` is declared more than once"]);
+}
+
+#[test]
+fn cyclic_models_in_params_state_and_loops_do_not_overflow() {
+    let src = r#"
+model SelfRef { next: SelfRef }
+model A { b: B }
+model B { a: A }
+component C(p: SelfRef, items: A[]) {
+    state s: B = p
+    for (item in items; key = item) {
+        Text("ok")
+    }
+}
+"#;
+    let diags = diagnostics(&[("cycle.weft", src)]);
+    assert!(
+        diags
+            .iter()
+            .any(|d| d.contains("recursive model has infinite size")),
+        "{diags:#?}"
+    );
+}
+
+#[test]
+fn null_coalesce_and_component_style_param_compile() {
+    let src = r#"
+component Card(style: String) {
+    Text(style)
+}
+component App() {
+    let s = null ?? "x"
+    let n = null ?? 42
+    let opt: String? = null ?? null
+    Column {
+        Text(s)
+        Text("${n}")
+        Text(opt ?? "empty")
+        Card(style = "custom")
+    }
+}
+"#;
+    assert_eq!(diagnostics(&[("ok.weft", src)]), Vec::<String>::new());
+
+    let err = r#"
+component Plain(title: String) { Text(title) }
+component App() { Plain("hi", style = "x") }
+"#;
+    assert!(
+        diagnostics(&[("err.weft", err)])
+            .iter()
+            .any(|d| d.contains("`style` only applies to built-in elements"))
+    );
+}
+
+#[test]
+fn model_and_param_names_avoid_generated_host_collisions() {
+    use weft_ui_transformer::AppOptions;
+    use weft_ui_transformer::transform::Platform;
+
+    let src = r#"
+model v { value: String, toJSON: String }
+model p0 { item: v }
+component App(m: p0) {
+    Text(m.item.value)
+}
+"#;
+    let mut loader = MemoryLoader::new();
+    loader.insert("host.weft", src);
+    let output = weft_ui_transformer::compile_app(
+        load(&["host.weft"], &mut loader),
+        Platform::Web,
+        &AppOptions::default(),
+    );
+    assert!(
+        !output.compilation.has_errors(),
+        "{}",
+        output.compilation.render_diagnostics()
+    );
+    let js = &output.logic[0].code;
+    assert!(
+        js.contains("static from($v) { return $v instanceof v ? $v : new v($v); }"),
+        "{js}"
+    );
+    assert!(
+        js.contains("constructor($p0) { super(App$c, [p0.from($p0)]); }"),
+        "{js}"
+    );
+    let (v_class, p0_class) = js.split_once("export class p0").expect("p0 class");
+    assert!(!v_class.contains("\n  toJSON() {"), "{v_class}");
+    assert!(p0_class.contains("\n  toJSON() {"), "{p0_class}");
 }

@@ -554,7 +554,7 @@ impl<'src> Printer<'src, '_> {
                     && !(element.path.len() == 1
                         && matches!(
                             element.path[0].name.as_str(),
-                            "state" | "model" | "event" | "component"
+                            "let" | "state" | "model" | "event" | "component"
                         )
                         && self.tokens[open + 2].kind == TokenKind::Ident);
                 if elide_pair {

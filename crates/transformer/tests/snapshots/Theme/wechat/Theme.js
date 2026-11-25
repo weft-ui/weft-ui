@@ -1,10 +1,10 @@
 import * as $ from "@weft-ui/runtime/remote";
 
 export class Model extends $.Model {
-  static from(v) { return v instanceof Model ? v : new Model(v); }
-  constructor(v) { super([v.flag]); }
+  static from($v) { return $v instanceof Model ? $v : new Model($v); }
+  constructor($v) { super([$v.flag]); }
   get flag() { return this.$v[0]; }
-  set flag(v) { this.$set(0, v); }
+  set flag($v) { this.$set(0, $v); }
   toJSON() { return { flag: this.$v[0] }; }
 }
 
@@ -22,7 +22,7 @@ export function Badge$c(app, args, children, depth) {
 }
 
 export class Badge extends $.App {
-  constructor(p0) { super(Badge$c, [p0], "7cc75271705805fa"); }
+  constructor($p0) { super(Badge$c, [$p0], "7cc75271705805fa"); }
 }
 
 export function Theme$c(app, args, children, depth) {
@@ -42,5 +42,5 @@ export function Theme$c(app, args, children, depth) {
 }
 
 export class Theme extends $.App {
-  constructor(p0) { super(Theme$c, [Model.from(p0)], "7cc75271705805fa"); }
+  constructor($p0) { super(Theme$c, [Model.from($p0)], "7cc75271705805fa"); }
 }

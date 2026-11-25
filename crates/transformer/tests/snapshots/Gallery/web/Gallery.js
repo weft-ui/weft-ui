@@ -1,39 +1,39 @@
 import * as $ from "@weft-ui/runtime";
 
 export class GalleryStyle extends $.Model {
-  static from(v) { return v instanceof GalleryStyle ? v : new GalleryStyle(v); }
-  constructor(v) { super([v.padding, v.gap, v.width, v.height, v.background, v.color, v.size, v.weight]); }
+  static from($v) { return $v instanceof GalleryStyle ? $v : new GalleryStyle($v); }
+  constructor($v) { super([$v.padding, $v.gap, $v.width, $v.height, $v.background, $v.color, $v.size, $v.weight]); }
   get padding() { return this.$v[0]; }
-  set padding(v) { this.$set(0, v); }
+  set padding($v) { this.$set(0, $v); }
   get gap() { return this.$v[1]; }
-  set gap(v) { this.$set(1, v); }
+  set gap($v) { this.$set(1, $v); }
   get width() { return this.$v[2]; }
-  set width(v) { this.$set(2, v); }
+  set width($v) { this.$set(2, $v); }
   get height() { return this.$v[3]; }
-  set height(v) { this.$set(3, v); }
+  set height($v) { this.$set(3, $v); }
   get background() { return this.$v[4]; }
-  set background(v) { this.$set(4, v); }
+  set background($v) { this.$set(4, $v); }
   get color() { return this.$v[5]; }
-  set color(v) { this.$set(5, v); }
+  set color($v) { this.$set(5, $v); }
   get size() { return this.$v[6]; }
-  set size(v) { this.$set(6, v); }
+  set size($v) { this.$set(6, $v); }
   get weight() { return this.$v[7]; }
-  set weight(v) { this.$set(7, v); }
+  set weight($v) { this.$set(7, $v); }
   toJSON() { return { padding: this.$v[0], gap: this.$v[1], width: this.$v[2], height: this.$v[3], background: this.$v[4], color: this.$v[5], size: this.$v[6], weight: this.$v[7] }; }
 }
 
 export class GalleryModel extends $.Model {
   static $m = [0];
-  static from(v) { return v instanceof GalleryModel ? v : new GalleryModel(v); }
-  constructor(v) { super([GalleryStyle.from(v.style), v.checked, v.imageUrl, $c0(v.labels)]); }
+  static from($v) { return $v instanceof GalleryModel ? $v : new GalleryModel($v); }
+  constructor($v) { super([GalleryStyle.from($v.style), $v.checked, $v.imageUrl, $c0($v.labels)]); }
   get style() { return this.$v[0]; }
-  set style(v) { if (v !== this.$v[0]) this.$set(0, GalleryStyle.from(v)); }
+  set style($v) { if ($v !== this.$v[0]) this.$set(0, GalleryStyle.from($v)); }
   get checked() { return this.$v[1]; }
-  set checked(v) { this.$set(1, v); }
+  set checked($v) { this.$set(1, $v); }
   get imageUrl() { return this.$v[2]; }
-  set imageUrl(v) { this.$set(2, v); }
+  set imageUrl($v) { this.$set(2, $v); }
   get labels() { return this.$v[3]; }
-  set labels(v) { if (v !== this.$v[3]) this.$set(3, $c0(v)); }
+  set labels($v) { if ($v !== this.$v[3]) this.$set(3, $c0($v)); }
   toJSON() { return { style: this.$v[0], checked: this.$v[1], imageUrl: this.$v[2], labels: this.$v[3] }; }
 }
 
@@ -174,6 +174,6 @@ export function Gallery$c(app, args, children, depth) {
 }
 
 export class Gallery extends $.App {
-  constructor(p0) { super(Gallery$c, [GalleryModel.from(p0)]); }
+  constructor($p0) { super(Gallery$c, [GalleryModel.from($p0)]); }
   onChecked(h) { return this.$on("Checked", h); }
 }

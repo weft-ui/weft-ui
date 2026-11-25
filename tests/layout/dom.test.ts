@@ -1,4 +1,5 @@
-import { tick } from "@weft-ui/runtime";
+import { style, tick } from "@weft-ui/runtime";
+import { CSS_PROPS } from "../../packages/runtime/src/elements.ts";
 import { Window } from "happy-dom";
 import { expect, test, vi } from "vitest";
 import { Layout } from "../../crates/transformer/tests/fixtures/Layout.weft";
@@ -66,4 +67,22 @@ test("generated DOM applies layout styles and context through reactive updates",
     app.unmount();
     vi.unstubAllGlobals();
   }
+});
+
+test("style() rejects injected keyword strings and clears the property without looping", () => {
+  const doc = new Window().document as unknown as Document;
+  const el = doc.createElement("div") as unknown as HTMLElement;
+  const alignIndex = CSS_PROPS.findIndex((p) => "property" in p && p.property === "text-align");
+  expect(alignIndex).toBeGreaterThanOrEqual(0);
+
+  style(el, alignIndex, "center");
+  expect(el.style.textAlign).toBe("center");
+
+  style(el, alignIndex, "end;color:red");
+  expect(el.style.textAlign).toBe("");
+  expect(el.style.color).toBe("");
+
+  // Even a property whose keyword mapping is empty clears cleanly without hanging.
+  style(el, alignIndex, ";");
+  expect(el.style.textAlign).toBe("");
 });

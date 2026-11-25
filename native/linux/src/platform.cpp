@@ -56,11 +56,53 @@ std::string to_json(JsonNode *node) {
   return json;
 }
 
-// fetch.request through libsoup.
+// fetch.request through libsoup with 32 MiB streaming cap.
 
 SoupSession *http() {
   static SoupSession *session = soup_session_new();
   return session;
+}
+
+struct FetchStream {
+  std::unique_ptr<Pending> pending;
+  guint status = 0;
+  std::vector<uint8_t> body;
+};
+
+void read_fetch_chunk(GInputStream *stream, std::unique_ptr<FetchStream> state);
+
+void on_fetch_chunk(GObject *source, GAsyncResult *result, gpointer data) {
+  std::unique_ptr<FetchStream> state(static_cast<FetchStream *>(data));
+  auto *stream = G_INPUT_STREAM(source);
+  GError *error = nullptr;
+  GBytes *chunk = g_input_stream_read_bytes_finish(stream, result, &error);
+  if (!chunk) {
+    state->pending->finish(false, bytes_of(error ? error->message : "fetch read failed"));
+    if (error) g_error_free(error);
+    return;
+  }
+  gsize n = 0;
+  const auto *ptr = static_cast<const uint8_t *>(g_bytes_get_data(chunk, &n));
+  if (n == 0) {
+    g_bytes_unref(chunk);
+    std::string head = "{\"status\":" + std::to_string(state->status) + "}";
+    state->pending->finish(true, frame::frame(head, state->body.data(), state->body.size()));
+    return;
+  }
+  if (state->body.size() + n > kMaxFetchBytes) {
+    g_bytes_unref(chunk);
+    state->pending->finish(false, bytes_of("weft: fetch response exceeds 32 MiB limit"));
+    return;
+  }
+  state->body.insert(state->body.end(), ptr, ptr + n);
+  g_bytes_unref(chunk);
+  read_fetch_chunk(stream, std::move(state));
+}
+
+void read_fetch_chunk(GInputStream *stream, std::unique_ptr<FetchStream> state) {
+  GCancellable *cancellable = state->pending->cancellable;
+  g_input_stream_read_bytes_async(stream, 65536, G_PRIORITY_DEFAULT, cancellable, on_fetch_chunk,
+                                  state.release());
 }
 
 /// Sends the request; `pending` is released once the request is sent.
@@ -68,6 +110,10 @@ void fetch(const std::vector<uint8_t> &args, std::unique_ptr<Pending> &pending) 
   auto [head, body] = frame::unframe(args);
   JsonObject *object = json_node_get_object(head);
   std::string url = json_object_get_string_member_with_default(object, "url", "");
+  if (!is_http_url(url)) {
+    json_node_unref(head);
+    throw std::runtime_error("weft: unsupported fetch URL " + url);
+  }
   std::string method = json_object_get_string_member_with_default(object, "method", "GET");
   SoupMessage *message = soup_message_new(method.c_str(), url.c_str());
   if (!message) {
@@ -93,23 +139,29 @@ void fetch(const std::vector<uint8_t> &args, std::unique_ptr<Pending> &pending) 
     g_bytes_unref(bytes);
   }
   GCancellable *cancellable = pending->cancellable;
-  soup_session_send_and_read_async(
+  soup_session_send_async(
       http(), message, G_PRIORITY_DEFAULT, cancellable,
       [](GObject *session, GAsyncResult *result, gpointer data) {
         std::unique_ptr<Pending> pending(static_cast<Pending *>(data));
         GError *error = nullptr;
-        GBytes *bytes = soup_session_send_and_read_finish(SOUP_SESSION(session), result, &error);
-        if (!bytes) {
-          pending->finish(false, bytes_of(error->message));
-          g_error_free(error);
+        GInputStream *stream = soup_session_send_finish(SOUP_SESSION(session), result, &error);
+        if (!stream) {
+          pending->finish(false, bytes_of(error ? error->message : "fetch failed"));
+          if (error) g_error_free(error);
           return;
         }
-        auto *message = soup_session_get_async_result_message(SOUP_SESSION(session), result);
-        std::string head = "{\"status\":" + std::to_string(soup_message_get_status(message)) + "}";
-        gsize len = 0;
-        auto *body = static_cast<const uint8_t *>(g_bytes_get_data(bytes, &len));
-        pending->finish(true, frame::frame(head, body, len));
-        g_bytes_unref(bytes);
+        auto *msg = soup_session_get_async_result_message(SOUP_SESSION(session), result);
+        auto content_len = soup_message_headers_get_content_length(soup_message_get_response_headers(msg));
+        if (content_len > goffset(kMaxFetchBytes)) {
+          g_object_unref(stream);
+          pending->finish(false, bytes_of("weft: fetch response exceeds 32 MiB limit"));
+          return;
+        }
+        auto state = std::make_unique<FetchStream>();
+        state->pending = std::move(pending);
+        state->status = soup_message_get_status(msg);
+        read_fetch_chunk(stream, std::move(state));
+        g_object_unref(stream);
       },
       pending.release());
   g_object_unref(message);
@@ -171,25 +223,13 @@ void save(const std::map<std::string, std::string> &values) {
   g_free(directory);
   GError *error = nullptr;
   if (!g_file_set_contents(path.c_str(), json.data(), gssize(json.size()), &error)) {
-    std::string message = std::string("weft: cannot write ") + path + " (" + error->message + ")";
-    g_error_free(error);
+    std::string message = std::string("weft: cannot write ") + path + " (" + (error ? error->message : "unknown") + ")";
+    if (error) g_error_free(error);
     throw std::runtime_error(message);
   }
 }
 
-std::vector<uint8_t> storage(const std::string &method, const std::vector<uint8_t> &args) {
-  JsonNode *root = parse_json({reinterpret_cast<const char *>(args.data()), args.size()}, "storage arguments");
-  std::vector<std::string> list;
-  if (JSON_NODE_HOLDS_ARRAY(root)) {
-    JsonArray *array = json_node_get_array(root);
-    for (guint i = 0; i < json_array_get_length(array); i++) {
-      JsonNode *item = json_array_get_element(array, i);
-      if (!JSON_NODE_HOLDS_VALUE(item) || json_node_get_value_type(item) != G_TYPE_STRING) break;
-      list.emplace_back(json_node_get_string(item));
-    }
-  }
-  json_node_unref(root);
-  if (list.empty()) throw std::runtime_error("weft: storage." + method + " expects a JSON array of strings");
+std::vector<uint8_t> storage(const std::string &method, const std::vector<std::string> &list) {
   auto &values = stored();
   if (method == protocol::kStorageGet) {
     auto found = values.find(list[0]);
@@ -201,15 +241,88 @@ std::vector<uint8_t> storage(const std::string &method, const std::vector<uint8_
   }
   if (method == protocol::kStorageSet) {
     if (list.size() != 2) throw std::runtime_error("weft: storage.set expects [key, value]");
+    auto it = values.find(list[0]);
+    bool had_old = it != values.end();
+    std::string old_value = had_old ? it->second : std::string();
     values[list[0]] = list[1];
-  } else if (values.erase(list[0]) == 0) {
-    return {};
+    try {
+      save(values);
+    } catch (...) {
+      if (had_old) values[list[0]] = std::move(old_value);
+      else values.erase(list[0]);
+      throw;
+    }
+  } else {
+    auto it = values.find(list[0]);
+    if (it == values.end()) return {};
+    std::string old_value = it->second;
+    values.erase(it);
+    try {
+      save(values);
+    } catch (...) {
+      values.emplace(list[0], std::move(old_value));
+      throw;
+    }
   }
-  save(values);
   return {};
 }
 
+struct StorageJob {
+  std::string method;
+  std::vector<std::string> list;
+  std::unique_ptr<Pending> pending;
+};
+
+GThreadPool *storage_pool() {
+  static GThreadPool *pool = g_thread_pool_new(
+      [](gpointer data, gpointer) {
+        std::unique_ptr<StorageJob> job(static_cast<StorageJob *>(data));
+        try {
+          auto result = storage(job->method, job->list);
+          finish_later(std::move(job->pending), true, std::move(result));
+        } catch (const std::runtime_error &error) {
+          finish_later(std::move(job->pending), false, bytes_of(error.what()));
+        }
+      },
+      nullptr, 1, TRUE, nullptr);
+  return pool;
+}
+
 }  // namespace
+
+bool is_http_url(std::string_view url) {
+  std::string terminated(url);
+  GUri *uri = g_uri_parse(terminated.c_str(), G_URI_FLAGS_NONE, nullptr);
+  if (!uri) return false;
+  const char *scheme = g_uri_get_scheme(uri);
+  bool ok = scheme && (g_ascii_strcasecmp(scheme, "http") == 0 || g_ascii_strcasecmp(scheme, "https") == 0);
+  g_uri_unref(uri);
+  return ok;
+}
+
+std::vector<std::string> parse_storage_args(std::string_view method, const std::vector<uint8_t> &args) {
+  JsonNode *root = parse_json({reinterpret_cast<const char *>(args.data()), args.size()}, "storage arguments");
+  std::vector<std::string> list;
+  bool valid = JSON_NODE_HOLDS_ARRAY(root);
+  if (valid) {
+    JsonArray *array = json_node_get_array(root);
+    guint len = json_array_get_length(array);
+    list.reserve(len);
+    for (guint i = 0; i < len; i++) {
+      JsonNode *item = json_array_get_element(array, i);
+      if (!JSON_NODE_HOLDS_VALUE(item) || json_node_get_value_type(item) != G_TYPE_STRING) {
+        valid = false;
+        break;
+      }
+      list.emplace_back(json_node_get_string(item));
+    }
+  }
+  json_node_unref(root);
+  if (!valid || list.empty()) {
+    throw std::runtime_error("weft: storage." + std::string(method) + " expects a JSON array of strings");
+  }
+  return list;
+}
 
 bool supported(std::string_view module) {
   return module == protocol::kFetchModule || module == protocol::kStorageModule;
@@ -223,13 +336,19 @@ void call(const std::string &module, const std::string &method, std::vector<uint
       fetch(args, pending);
     } else if (module == protocol::kStorageModule &&
                (method == protocol::kStorageGet || method == protocol::kStorageSet || method == protocol::kStorageRemove)) {
-      auto result = storage(method, args);
-      finish_later(std::move(pending), true, std::move(result));
+      auto list = parse_storage_args(method, args);
+      auto job = std::make_unique<StorageJob>(StorageJob{method, std::move(list), std::move(pending)});
+      GError *error = nullptr;
+      if (!g_thread_pool_push(storage_pool(), job.release(), &error)) {
+        std::string message = error ? error->message : "failed to queue storage job";
+        if (error) g_error_free(error);
+        throw std::runtime_error(message);
+      }
     } else {
       throw std::runtime_error("weft: " + module + "." + method + " is not implemented");
     }
   } catch (const std::runtime_error &error) {
-    // `pending` is still owned here: `fetch` only releases it once the request is sent.
+    // `pending` is still owned here: `fetch` and `storage` only release it once queued.
     if (pending) finish_later(std::move(pending), false, bytes_of(error.what()));
   }
 }

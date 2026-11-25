@@ -39,9 +39,11 @@ services:
       - ../../..:/workspace
       - node_modules:/workspace/node_modules
       - compiler_modules:/workspace/packages/compiler/node_modules
+      - content_mapper_modules:/workspace/packages/content-mapper/node_modules
       - platform_modules:/workspace/packages/platform/node_modules
       - runtime_modules:/workspace/packages/runtime/node_modules
       - vite_modules:/workspace/packages/vite/node_modules
+      - docs_modules:/workspace/docs/node_modules
       - native_apple_modules:/workspace/native/apple/node_modules
       - native_android_modules:/workspace/native/android/node_modules
       - native_windows_modules:/workspace/native/windows/node_modules
@@ -62,9 +64,11 @@ services:
 volumes:
   node_modules:
   compiler_modules:
+  content_mapper_modules:
   platform_modules:
   runtime_modules:
   vite_modules:
+  docs_modules:
   native_apple_modules:
   native_android_modules:
   native_windows_modules:

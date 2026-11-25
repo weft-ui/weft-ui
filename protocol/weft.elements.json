@@ -182,7 +182,7 @@
       },
       {
         "name": "decoration", "type": "Decoration", "default": "none",
-        "css": { "property": "text-decoration-line", "unit": "keyword", "keywords": { "lineThrough": "line-through" } },
+        "css": { "property": "text-decoration-line", "unit": "keyword", "keywords": { "none": "none", "underline": "underline", "lineThrough": "line-through" } },
         "doc": { "en": "Underlines or strikes through the text.", "zh": "为文字添加下划线或删除线。" }
       },
       {
@@ -211,12 +211,12 @@
         },
         {
           "name": "align", "type": "CrossAlign", "default": "start",
-          "css": { "property": "align-items", "unit": "keyword", "keywords": { "start": "flex-start", "end": "flex-end" } },
+          "css": { "property": "align-items", "unit": "keyword", "keywords": { "start": "flex-start", "center": "center", "end": "flex-end", "stretch": "stretch" } },
           "doc": { "en": "Positions children on the horizontal cross axis.", "zh": "设置子元素在水平交叉轴上的位置。" }
         },
         {
           "name": "justify", "type": "Justify", "default": "start",
-          "css": { "property": "justify-content", "unit": "keyword", "keywords": { "start": "flex-start", "end": "flex-end", "spaceBetween": "space-between", "spaceAround": "space-around", "spaceEvenly": "space-evenly" } },
+          "css": { "property": "justify-content", "unit": "keyword", "keywords": { "start": "flex-start", "center": "center", "end": "flex-end", "spaceBetween": "space-between", "spaceAround": "space-around", "spaceEvenly": "space-evenly" } },
           "doc": { "en": "Distributes remaining space on the vertical main axis.", "zh": "分配纵向主轴上的剩余空间。" }
         }
       ]
@@ -233,12 +233,12 @@
         },
         {
           "name": "align", "type": "CrossAlign", "default": "start",
-          "css": { "property": "align-items", "unit": "keyword", "keywords": { "start": "flex-start", "end": "flex-end" } },
+          "css": { "property": "align-items", "unit": "keyword", "keywords": { "start": "flex-start", "center": "center", "end": "flex-end", "stretch": "stretch" } },
           "doc": { "en": "Positions children on the vertical cross axis.", "zh": "设置子元素在纵向交叉轴上的位置。" }
         },
         {
           "name": "justify", "type": "Justify", "default": "start",
-          "css": { "property": "justify-content", "unit": "keyword", "keywords": { "start": "flex-start", "end": "flex-end", "spaceBetween": "space-between", "spaceAround": "space-around", "spaceEvenly": "space-evenly" } },
+          "css": { "property": "justify-content", "unit": "keyword", "keywords": { "start": "flex-start", "center": "center", "end": "flex-end", "spaceBetween": "space-between", "spaceAround": "space-around", "spaceEvenly": "space-evenly" } },
           "doc": { "en": "Distributes remaining space on the horizontal main axis.", "zh": "分配横向主轴上的剩余空间。" }
         }
       ]
@@ -256,7 +256,7 @@
         },
         {
           "name": "align", "type": "TextAlign", "default": "start",
-          "css": { "property": "text-align", "unit": "keyword", "keywords": {} },
+          "css": { "property": "text-align", "unit": "keyword", "keywords": { "start": "start", "center": "center", "end": "end" } },
           "doc": { "en": "Aligns lines within the text box.", "zh": "设置各行文字在文本框中的对齐方式。" }
         },
         {
@@ -397,7 +397,7 @@
         },
         {
           "name": "fit", "type": "ImageFit", "default": "cover",
-          "css": { "property": "object-fit", "unit": "keyword", "keywords": {} },
+          "css": { "property": "object-fit", "unit": "keyword", "keywords": { "cover": "cover", "contain": "contain", "fill": "fill" } },
           "doc": { "en": "Crops (`cover`), fits (`contain`), or stretches (`fill`) the image to its box.", "zh": "在盒内裁剪（`cover`）、完整显示（`contain`）或拉伸（`fill`）图片。" }
         },
         {
@@ -440,7 +440,7 @@
         },
         {
           "name": "align", "type": "CrossAlign", "default": "start",
-          "css": { "property": "align-items", "unit": "keyword", "keywords": { "start": "flex-start", "end": "flex-end" } },
+          "css": { "property": "align-items", "unit": "keyword", "keywords": { "start": "flex-start", "center": "center", "end": "flex-end", "stretch": "stretch" } },
           "doc": { "en": "Positions children on the non-scrolling cross axis.", "zh": "设置子元素在非滚动交叉轴上的位置。" }
         },
         {

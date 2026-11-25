@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -11,7 +12,35 @@ struct WeftImageContent {
 }
 
 extension WeftImageContent {
+    static let maxBytes = 16 * 1024 * 1024
+    static let maxPixels: Int64 = 16_777_216
+
+    static func validatedRemoteURL(_ src: String) -> URL? {
+        guard let url = URL(string: src),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            return nil
+        }
+        return url
+    }
+
+    static func withinPixelLimit(_ data: Data) -> Bool {
+        guard data.count <= maxBytes,
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = props[kCGImagePropertyPixelWidth] as? NSNumber,
+              let height = props[kCGImagePropertyPixelHeight] as? NSNumber else {
+            return false
+        }
+        let w = width.int64Value
+        let h = height.int64Value
+        guard w > 0, h > 0 else { return false }
+        let (pixels, overflow) = w.multipliedReportingOverflow(by: h)
+        return !overflow && pixels <= maxPixels
+    }
+
     init?(data: Data) {
+        guard Self.withinPixelLimit(data) else { return nil }
         #if os(iOS)
         guard let native = UIImage(data: data) else { return nil }
         self.init(image: Image(uiImage: native), size: native.size)
@@ -56,12 +85,26 @@ public struct WeftImage: View {
             box(remote?.src == src ? remote?.content : nil)
                 .task(id: src) {
                     remote = nil
-                    guard let url = URL(string: src),
-                          let (data, response) = try? await URLSession.shared.data(from: url),
-                          !Task.isCancelled,
-                          (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) != false,
-                          let content = WeftImageContent(data: data) else { return }
-                    remote = (src, content)
+                    guard let url = WeftImageContent.validatedRemoteURL(src) else { return }
+                    do {
+                        let (bytes, response) = try await URLSession.shared.bytes(for: URLRequest(url: url))
+                        guard !Task.isCancelled,
+                              let http = response as? HTTPURLResponse,
+                              (200..<300).contains(http.statusCode),
+                              http.expectedContentLength <= Int64(WeftImageContent.maxBytes) else { return }
+                        var data = Data()
+                        if http.expectedContentLength > 0 {
+                            data.reserveCapacity(Int(http.expectedContentLength))
+                        }
+                        for try await byte in bytes {
+                            if Task.isCancelled || data.count >= WeftImageContent.maxBytes { return }
+                            data.append(byte)
+                        }
+                        guard !Task.isCancelled, let content = WeftImageContent(data: data) else { return }
+                        remote = (src, content)
+                    } catch {
+                        return
+                    }
                 }
         }
     }

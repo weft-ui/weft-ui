@@ -30,9 +30,12 @@ public sealed class WeftProgress : WeftPaintedElement
     }
 
     protected override FrameworkElement Control => bar;
-    public double Value { set => bar.Value = value; }
+    public double Value { set => bar.Value = SanitizeProgress(value); }
     public WeftColor Color { set => bar.Foreground = foreground.Set(value, Theme, Appearance); }
     internal override void ReapplyColors() => foreground.Reapply(Theme, Appearance);
+
+    internal static double SanitizeProgress(double value) =>
+        double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
 }
 
 /// <summary><c>Divider</c>: a one-DIP <see cref="Rectangle"/> with a theme-aware stroke.</summary>

@@ -106,10 +106,14 @@ async function handle(payload: string) {
     send({ id: null, error: { code: -32700, message: "invalid JSON" } });
     return;
   }
-  if (!isObject(request) || typeof request.method !== "string" || request.id === undefined) {
-    send({ id: request?.id ?? null, error: { code: -32600, message: "not a request" } });
+  if (!isObject(request) || typeof request.method !== "string") {
+    const id = isObject(request) && (typeof request.id === "string" || typeof request.id === "number" || request.id === null)
+      ? request.id
+      : null;
+    send({ id, error: { code: -32600, message: "not a request" } });
     return;
   }
+  if (request.id === undefined) return;
   try {
     send({ id: request.id, result: await dispatch(request) });
   } catch (error) {
@@ -119,12 +123,14 @@ async function handle(payload: string) {
 }
 
 let buffer = Buffer.alloc(0);
+let inFlight = 0;
+let ending = false;
 process.stdin.on("data", (chunk: Buffer) => {
   buffer = Buffer.concat([buffer, chunk]);
   for (;;) {
     const headerEnd = buffer.indexOf("\r\n\r\n");
     if (headerEnd === -1) return;
-    const length = /^Content-Length: *(\d+) *$/im.exec(buffer.subarray(0, headerEnd).toString("ascii"))?.[1];
+    const length = /^Content-Length: *(\d+) *\r?$/im.exec(buffer.subarray(0, headerEnd).toString("ascii"))?.[1];
     if (length === undefined) {
       console.error("weft content mapper: message without Content-Length");
       process.exit(1);
@@ -134,8 +140,15 @@ process.stdin.on("data", (chunk: Buffer) => {
     if (buffer.length < end) return;
     const payload = buffer.subarray(start, end).toString("utf8");
     buffer = buffer.subarray(end);
-    void handle(payload);
+    inFlight++;
+    void handle(payload).finally(() => {
+      inFlight--;
+      if (ending && inFlight === 0) process.exit(0);
+    });
   }
 });
 // TypeScript closes stdin to shut the mapper down.
-process.stdin.on("end", () => process.exit(0));
+process.stdin.on("end", () => {
+  ending = true;
+  if (inFlight === 0) process.exit(0);
+});

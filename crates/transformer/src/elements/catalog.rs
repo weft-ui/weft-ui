@@ -241,13 +241,19 @@ pub(crate) const CSS_PROPS: &[Css<'static>] = &[
     },
     Css {
         properties: &["align-items"],
-        unit: CssUnit::Keyword(&[("start", "flex-start"), ("end", "flex-end")]),
+        unit: CssUnit::Keyword(&[
+            ("start", "flex-start"),
+            ("center", "center"),
+            ("end", "flex-end"),
+            ("stretch", "stretch"),
+        ]),
         target: CssTarget::Node,
     },
     Css {
         properties: &["justify-content"],
         unit: CssUnit::Keyword(&[
             ("start", "flex-start"),
+            ("center", "center"),
             ("end", "flex-end"),
             ("spaceBetween", "space-between"),
             ("spaceAround", "space-around"),
@@ -283,7 +289,11 @@ pub(crate) const CSS_PROPS: &[Css<'static>] = &[
     },
     Css {
         properties: &["text-decoration-line"],
-        unit: CssUnit::Keyword(&[("lineThrough", "line-through")]),
+        unit: CssUnit::Keyword(&[
+            ("none", "none"),
+            ("underline", "underline"),
+            ("lineThrough", "line-through"),
+        ]),
         target: CssTarget::Node,
     },
     Css {
@@ -293,7 +303,7 @@ pub(crate) const CSS_PROPS: &[Css<'static>] = &[
     },
     Css {
         properties: &["text-align"],
-        unit: CssUnit::Keyword(&[]),
+        unit: CssUnit::Keyword(&[("start", "start"), ("center", "center"), ("end", "end")]),
         target: CssTarget::Node,
     },
     Css {
@@ -308,7 +318,7 @@ pub(crate) const CSS_PROPS: &[Css<'static>] = &[
     },
     Css {
         properties: &["object-fit"],
-        unit: CssUnit::Keyword(&[]),
+        unit: CssUnit::Keyword(&[("cover", "cover"), ("contain", "contain"), ("fill", "fill")]),
         target: CssTarget::Node,
     },
     Css {

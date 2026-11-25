@@ -10,19 +10,33 @@
         { "include": "#comments" },
         { "include": "#strings" },
         {
-          "match": "\\b(model|event|component)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "match": "\\b(model|event|component|style)\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
             "1": { "name": "storage.type.weft" },
             "2": { "name": "entity.name.type.weft" }
           }
         },
         {
-          "match": "\\b(state)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "match": "\\b(type)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?==)",
+          "captures": {
+            "1": { "name": "storage.type.weft" },
+            "2": { "name": "entity.name.type.weft" }
+          }
+        },
+        {
+          "match": "\\b(theme)\\s*(?=\\{)",
+          "captures": {
+            "1": { "name": "storage.type.weft" }
+          }
+        },
+        {
+          "match": "\\b(state|let)\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
             "1": { "name": "storage.type.weft" },
             "2": { "name": "variable.other.weft" }
           }
         },
+        { "match": "@[A-Za-z_][A-Za-z0-9_]*", "name": "constant.other.color.weft" },
         { "match": "\\bimport\\b", "name": "keyword.control.import.weft" },
         { "match": "\\b(if|else|for|in|key)\\b", "name": "keyword.control.weft" },
         { "match": "\\b(true|false|null)\\b", "name": "constant.language.weft" },
@@ -31,6 +45,10 @@
           "name": "constant.numeric.weft"
         },
         { "match": "\\b[A-Z][A-Za-z0-9_]*\\b", "name": "entity.name.type.weft" },
+        {
+          "match": "\\b([a-z_][A-Za-z0-9_]*)\\s*(?=:(?!:))",
+          "captures": { "1": { "name": "entity.name.tag.slot.weft" } }
+        },
         {
           "match": "\\b([a-z_][A-Za-z0-9_]*)\\s*(?==(?!=))",
           "captures": { "1": { "name": "variable.parameter.weft" } }
