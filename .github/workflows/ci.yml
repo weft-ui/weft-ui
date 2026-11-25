@@ -149,7 +149,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: taiki-e/install-action@v2
         with:
-          tool: tree-sitter
+          tool: tree-sitter-cli
       - run: cd packages/tree-sitter && tree-sitter test
       - run: packages/tree-sitter/test/fixtures.sh
 

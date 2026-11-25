@@ -36,6 +36,6 @@
     "shot:web": "node --experimental-strip-types scripts/shot/web.ts",
     "shot:wechat": "node --experimental-strip-types scripts/shot/wechat.ts",
     "shot:windows": "node --experimental-strip-types scripts/shot/windows.ts",
-    "typecheck": "tsc --runExternalCode"
+    "typecheck": "node --experimental-strip-types scripts/catalog.ts && tsc -p . --runExternalCode"
   }
 }

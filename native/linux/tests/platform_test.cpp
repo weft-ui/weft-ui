@@ -3,6 +3,7 @@
 #include "weft/protocol.hpp"
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <cassert>
 #include <cstdlib>
@@ -87,10 +88,10 @@ int main() {
   auto [get_ok, get_val] = run_call(weft::protocol::kStorageModule, weft::protocol::kStorageGet, R"(["k"])");
   assert(get_ok && get_val == R"("v1")");
 
-  // Point XDG_DATA_HOME at an existing regular file so saving storage.json fails and must roll back.
-  g_autofree gchar *blocker = g_build_filename(tmp_dir, "blocker", nullptr);
-  assert(g_file_set_contents(blocker, "x", 1, nullptr));
-  g_setenv("XDG_DATA_HOME", blocker, TRUE);
+  // Replace storage.json with a directory so g_file_set_contents fails (EISDIR) and must roll back.
+  g_autofree gchar *storage_file = g_build_filename(tmp_dir, "weft-platform-test", "storage.json", nullptr);
+  assert(g_unlink(storage_file) == 0);
+  assert(g_mkdir_with_parents(storage_file, 0700) == 0);
 
   auto [bad_set_ok, _err] = run_call(weft::protocol::kStorageModule, weft::protocol::kStorageSet, R"(["k","v2"])");
   assert(!bad_set_ok);
