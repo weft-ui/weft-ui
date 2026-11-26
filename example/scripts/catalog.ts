@@ -1,8 +1,11 @@
 import { writeFileSync } from "node:fs";
-import { pages } from "./pages.ts";
+import { pages, platforms } from "./pages.ts";
+
+const platform = platforms.find((name) => name === process.argv[2]);
+if (!platform) throw new Error(`Usage: node scripts/catalog.ts <${platforms.join("|")}>`);
 
 const fields = new Set<string>();
-for (const { id, props } of pages) {
+for (const { id, props } of pages()) {
   if (props === undefined) continue;
   if (!props || typeof props !== "object" || Array.isArray(props)) {
     throw new Error(`${id}.props must be an object`);
@@ -17,7 +20,7 @@ for (const { id, props } of pages) {
   }
 }
 
-const catalog = pages.map(({ id, component, props }) => {
+const catalog = pages(platform).map(({ id, component, props }) => {
   const file = id.split(/[-_]/).map((word) => word[0]!.toUpperCase() + word.slice(1)).join("");
   const args = id === "safearea" ? "model.safeArea" : Object.keys(props ?? {}).map((name) => `model.${name}`).join(", ");
   return { id: JSON.stringify(id), label: JSON.stringify(`page:${id}`), file, name: component ?? file, args };

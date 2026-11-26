@@ -15,6 +15,7 @@ use weft_ui_transformer::{AppOutput, compile_app};
 struct Fixture {
     name: &'static str,
     source: &'static str,
+    natives: &'static [Platform],
     /// Platforms whose logic or layout differ because they ignore a member used in this fixture.
     diverges: &'static [Platform],
 }
@@ -50,64 +51,75 @@ const ALL_NATIVES: &[Platform] = &[
 const TODO_LIST: Fixture = Fixture {
     name: "TodoList",
     source: include_str!("fixtures/TodoList.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 const GALLERY: Fixture = Fixture {
     name: "Gallery",
     source: include_str!("fixtures/Gallery.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 const LANGUAGE: Fixture = Fixture {
     name: "Language",
     source: include_str!("fixtures/Language.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const THEME: Fixture = Fixture {
     name: "Theme",
     source: include_str!("fixtures/Theme.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const LAYOUT: Fixture = Fixture {
     name: "Layout",
     source: include_str!("fixtures/Layout.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const APPEARANCE: Fixture = Fixture {
     name: "Appearance",
     source: include_str!("fixtures/Appearance.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const TYPOGRAPHY: Fixture = Fixture {
     name: "Typography",
     source: include_str!("fixtures/Typography.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const CONTROLS: Fixture = Fixture {
     name: "Controls",
     source: include_str!("fixtures/Controls.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const INPUTS: Fixture = Fixture {
     name: "Inputs",
     source: include_str!("fixtures/Inputs.weft"),
+    natives: ALL_NATIVES,
     diverges: &[Platform::Macos, Platform::Windows, Platform::Linux],
 };
 
 const TAP: Fixture = Fixture {
     name: "Tap",
     source: include_str!("fixtures/Tap.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
 const ASSETS: Fixture = Fixture {
     name: "Assets",
     source: include_str!("fixtures/Assets.weft"),
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 
@@ -423,8 +435,8 @@ fn check_native(fixture: &Fixture, wechat: &BTreeMap<String, String>, layout: &s
     let dts = format!("{name}.d.ts");
     let shared_apple = [Platform::Ios, Platform::Macos]
         .iter()
-        .all(|platform| !fixture.diverges.contains(platform));
-    for &platform in ALL_NATIVES {
+        .all(|platform| fixture.natives.contains(platform) && !fixture.diverges.contains(platform));
+    for &platform in fixture.natives {
         let view = match platform {
             Platform::Ios if shared_apple => continue,
             Platform::Ios | Platform::Macos => "Generated.swift",

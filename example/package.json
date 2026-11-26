@@ -22,13 +22,13 @@
     "vite": "^8.3.8"
   },
   "scripts": {
-    "build:android": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=android vite build",
-    "build:ios": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=ios vite build",
-    "build:linux": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=linux vite build",
-    "build:macos": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=macos vite build",
-    "build:web": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=web vite build",
-    "build:wechat": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=wechat vite build",
-    "build:windows": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=windows vite build",
+    "build:android": "node --experimental-strip-types scripts/catalog.ts android && WEFT_PLATFORM=android vite build",
+    "build:ios": "node --experimental-strip-types scripts/catalog.ts ios && WEFT_PLATFORM=ios vite build",
+    "build:linux": "node --experimental-strip-types scripts/catalog.ts linux && WEFT_PLATFORM=linux vite build",
+    "build:macos": "node --experimental-strip-types scripts/catalog.ts macos && WEFT_PLATFORM=macos vite build",
+    "build:web": "node --experimental-strip-types scripts/catalog.ts web && WEFT_PLATFORM=web vite build",
+    "build:wechat": "node --experimental-strip-types scripts/catalog.ts wechat && WEFT_PLATFORM=wechat vite build",
+    "build:windows": "node --experimental-strip-types scripts/catalog.ts windows && WEFT_PLATFORM=windows vite build",
     "shot:android": "node --experimental-strip-types scripts/shot/android.ts",
     "shot:ios": "node --experimental-strip-types scripts/shot/ios.ts",
     "shot:linux": "node --experimental-strip-types scripts/shot/linux.ts",
@@ -41,6 +41,6 @@
     "test:linux": "ctest --test-dir apps/linux/build --output-on-failure",
     "test:macos": "xcodebuild test -project apps/macos/App.xcodeproj -scheme App -destination platform=macOS -derivedDataPath apps/macos/build",
     "test:windows": "dotnet test apps/windows/UITests",
-    "typecheck": "node --experimental-strip-types scripts/catalog.ts && tsc -p . --runExternalCode"
+    "typecheck": "node --experimental-strip-types scripts/catalog.ts web && tsc -p . --runExternalCode"
   }
 }
