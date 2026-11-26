@@ -41,6 +41,19 @@ class NavigationTest {
     }
 
     @Test
+    fun modalChangesReplaceWithoutLosingUnderlyingPages() {
+        val base = root.copy(stack = listOf(9))
+        val sheet = base.copy(modal = 13, style = ModalStyle.SHEET)
+        val fullScreen = base.copy(modal = 15, style = ModalStyle.FULLSCREEN)
+        assertEquals(NavigationChange.REPLACE, sheet.changeFrom(base))
+        assertEquals(NavigationChange.REPLACE, fullScreen.changeFrom(sheet))
+        assertEquals(NavigationChange.REPLACE, base.changeFrom(sheet))
+        assertEquals(listOf(4, 9, 13), sheet.pages())
+        assertEquals(listOf(4, 9, 15), fullScreen.pages())
+        assertEquals("{\"tab\":0,\"stack\":[9],\"modal\":0}", fullScreen.back()!!.signal())
+    }
+
+    @Test
     fun backDismissesModalBeforePoppingStack() {
         val state = root.copy(stack = listOf(9), modal = 13, style = 1)
         val next = state.back()!!

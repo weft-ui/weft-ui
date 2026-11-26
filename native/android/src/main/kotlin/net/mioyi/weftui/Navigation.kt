@@ -1,10 +1,15 @@
 package net.mioyi.weftui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
@@ -12,17 +17,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 
@@ -54,6 +71,9 @@ internal data class NavigationState(
     }
 }
 
+private val LocalModalBar = staticCompositionLocalOf { false }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun WeftNavigationHost(session: WeftSession, state: NavigationState, tabs: List<WeftTab>) {
     val ids = listOf(state.tabs[state.tab]) + state.stack
@@ -110,6 +130,28 @@ internal fun WeftNavigationHost(session: WeftSession, state: NavigationState, ta
             }
         },
     )
+    val modal = state.modal.takeIf { it != 0 }?.let(session::page)
+    if (modal != null) {
+        val content: @Composable () -> Unit = {
+            CompositionLocalProvider(LocalModalBar provides true) {
+                Column {
+                    modal.NavigationBar { session.back() }
+                    modal.Content()
+                }
+            }
+        }
+        if (state.style == ModalStyle.FULLSCREEN) {
+            Dialog(onDismissRequest = { session.back() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+                var visible by remember(modal.id) { mutableStateOf(false) }
+                LaunchedEffect(modal.id) { visible = true }
+                AnimatedVisibility(visible = visible, enter = slideInVertically { it }, exit = slideOutVertically { it }) {
+                    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) { content() }
+                }
+            }
+        } else {
+            ModalBottomSheet(onDismissRequest = { session.back() }) { content() }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,8 +161,9 @@ fun WeftNavigationBar(title: String, hidden: Boolean, onBack: (() -> Unit)?, act
         TopAppBar(
             title = { Text(title) },
             navigationIcon = {
-                if (onBack != null) IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back" }) {
-                    Text("←")
+                val modal = LocalModalBar.current
+                if (onBack != null) IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = if (modal) "Close" else "Back" }) {
+                    Text(if (modal) "×" else "←")
                 }
             },
             actions = actions,
@@ -130,7 +173,11 @@ fun WeftNavigationBar(title: String, hidden: Boolean, onBack: (() -> Unit)?, act
 
 @Composable
 fun WeftBarButton(title: String, icon: String?, enabled: Boolean, onClick: () -> Unit) {
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.semantics { contentDescription = title }) {
-        if (icon.isNullOrEmpty()) Text(title) else WeftImage(icon, Modifier.size(24.dp))
+    if (icon.isNullOrEmpty()) {
+        TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.semantics { contentDescription = title }) { Text(title) }
+    } else {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.semantics { contentDescription = title }) {
+            WeftImage(icon, Modifier.size(24.dp))
+        }
     }
 }
