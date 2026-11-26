@@ -450,9 +450,9 @@ export default function weft(options: WeftOptions = {}): Plugin {
             pages.unshift(first);
             const existingBar = manifest.tabBar as Record<string, unknown> | undefined;
             manifest.tabBar = { color: "#808080", selectedColor: "#007aff", backgroundColor: "#ffffff", ...existingBar, list };
-          } else if (manifest.tabBar && typeof manifest.tabBar === "object") {
-            delete (manifest.tabBar as Record<string, unknown>).list;
-            if (!Object.keys(manifest.tabBar).length) delete manifest.tabBar;
+          } else {
+            // A tab bar without a list is invalid in WeChat, and its styling is meaningless without tabs.
+            delete manifest.tabBar;
           }
           const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
           manifest.pages = [...pages, ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
@@ -468,12 +468,11 @@ export default function weft(options: WeftOptions = {}): Plugin {
           const manifestPath = join(project, "app.json");
           const manifest = (existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : {}) as Record<string, unknown>;
           const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
-          if (existing.some((page) => page.startsWith("weft/pages/"))) {
+          if (existing.some((page) => page.startsWith("weft/pages/")) || manifest.tabBar || manifest.subPackages) {
+            // The previous build was an app: drop its pages, tab bar and sub-packages.
             manifest.pages = ["weft/index", ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
-            if (manifest.tabBar && typeof manifest.tabBar === "object") {
-              delete (manifest.tabBar as Record<string, unknown>).list;
-              if (!Object.keys(manifest.tabBar).length) delete manifest.tabBar;
-            }
+            delete manifest.tabBar;
+            delete manifest.subPackages;
             writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
           }
         }

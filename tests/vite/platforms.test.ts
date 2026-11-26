@@ -541,6 +541,56 @@ test("WeChat emits two sub-packages, imports main templates and places assets by
   expect(await readFile(join(project, "weft/pages/home/index.wxss"), "utf8")).not.toContain(encodedFont);
 });
 
+test("WeChat removes the tab bar and sub-packages when the program stops using them", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Text("home") }
+page Settings() { Text("settings") }
+page Gallery() { Text("gallery") }
+app Notes { tabs {
+  Home(title = "Home", icon = "asset:home")
+  Settings(title = "Settings", icon = "asset:home")
+} }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Settings, Gallery, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Settings: () => new Settings({}), Gallery: () => new Gallery({}) }));
+`);
+  await mkdir(join(root, "assets/images"), { recursive: true });
+  await cp(fileURLToPath(new URL("./fixtures/assets/assets/images/logo.png", import.meta.url)), join(root, "assets/images/home.png"));
+  const project = join(root, "apps/wechat");
+  await build("wechat", { wechat: { subPackages: { gallery: ["Gallery"] } } });
+  const manifestPath = join(project, "app.json");
+  expect(JSON.parse(await readFile(manifestPath, "utf8"))).toMatchObject({ tabBar: { list: expect.any(Array) }, subPackages: [{ root: "gallery" }] });
+
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Text("home") }
+page Gallery() { Text("gallery") }
+app Notes { start = Home }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Gallery, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Gallery: () => new Gallery({}) }));
+`);
+  await build("wechat");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  expect(manifest.pages).toEqual(["weft/pages/home/index", "weft/pages/gallery/index"]);
+  expect(manifest).not.toHaveProperty("tabBar");
+  expect(manifest).not.toHaveProperty("subPackages");
+  expect(existsSync(join(project, "gallery/weft"))).toBe(false);
+
+  await writeFile(join(root, "src/App.weft"), `component Root() { Text("root") }`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Root } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Root({}));
+`);
+  await writeFile(manifestPath, JSON.stringify({ pages: ["weft/index"], tabBar: { color: "#123456" }, subPackages: [{ root: "gallery", pages: [] }] }));
+  await build("wechat");
+  expect(JSON.parse(await readFile(manifestPath, "utf8"))).toEqual({ pages: ["weft/index"] });
+});
+
 test("WeChat keeps potentially dynamic image assets in the main package", async () => {
   await writeFile(join(root, "src/App.weft"), `
 page Home() { Text("Home") }
