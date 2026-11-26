@@ -18,7 +18,8 @@ internal enum NavigationTransition { None, Push, Pop }
 /// <summary>The complete navigation state received from the logic layer.</summary>
 internal sealed record NavigationState(uint Tab, uint[] Tabs, uint[] Stack, uint Modal, uint Style)
 {
-    internal uint Current => Modal != 0 ? Modal : Stack.Length != 0 ? Stack[^1] : Tabs[(int)Tab];
+    internal uint Underlying => Stack.Length != 0 ? Stack[^1] : Tabs[(int)Tab];
+    internal uint Current => Modal != 0 ? Modal : Underlying;
 
     internal HashSet<uint> Pages()
     {
@@ -61,6 +62,9 @@ internal sealed class WeftNavigationHost
     private readonly WeftTab[]? tabs;
     private readonly NavigationView? tabView;
     private readonly Grid tabPages = new();
+    private readonly Grid overlay = new() { Visibility = Visibility.Collapsed };
+    private readonly Border scrim = new() { Background = new SolidColorBrush(Windows.UI.Color.FromArgb(128, 0, 0, 0)) };
+    private readonly Border card = new();
     private bool selecting;
     private NavigationState? state;
     private Storyboard? animation;
@@ -84,6 +88,19 @@ internal sealed class WeftNavigationHost
             tabView.Loaded += (_, _) => UpdateIcons();
             container.Children.Add(tabView);
         }
+        scrim.PointerPressed += (_, args) =>
+        {
+            if (state is { Modal: not 0, Style: 0 }) { Back(); args.Handled = true; }
+        };
+        card.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource ApplicationPageBackgroundThemeBrush}" />
+            </Style>
+            """);
+        overlay.Children.Add(scrim);
+        overlay.Children.Add(card);
+        Canvas.SetZIndex(overlay, 2);
+        container.Children.Add(overlay);
         container.SetValue(WeftLayout.GrowProperty, 1.0);
         container.SetValue(WeftLayout.FillProperty, true);
         root.Children.Add(container);
@@ -106,24 +123,34 @@ internal sealed class WeftNavigationHost
             {
                 var page = new PageView(session, session.Page(id), Back);
                 pages.Add(id, page);
-                if (tabView is not null && Array.IndexOf(next.Tabs, id) >= 0) tabPages.Children.Add(page.View);
+                if (id == next.Modal) card.Child = page.View;
+                else if (tabView is not null && Array.IndexOf(next.Tabs, id) >= 0) tabPages.Children.Add(page.View);
                 else container.Children.Add(page.View);
             }
         }
         state = next;
+        var sheet = next.Style == 0;
+        overlay.Visibility = next.Modal == 0 ? Visibility.Collapsed : Visibility.Visible;
+        scrim.Visibility = sheet ? Visibility.Visible : Visibility.Collapsed;
+        card.HorizontalAlignment = HorizontalAlignment.Stretch;
+        card.VerticalAlignment = VerticalAlignment.Stretch;
+        card.MaxWidth = sheet ? 600 : double.PositiveInfinity;
+        card.MaxHeight = sheet ? 700 : double.PositiveInfinity;
+        card.Margin = sheet ? new Thickness(24) : new Thickness(0);
+        card.CornerRadius = sheet ? new CornerRadius(12) : new CornerRadius(0);
         if (tabView is not null)
         {
             selecting = true;
             tabView.SelectedItem = tabView.MenuItems[(int)next.Tab];
             selecting = false;
-            tabView.Visibility = next.Stack.Length == 0 && next.Modal == 0 ? Visibility.Visible : Visibility.Collapsed;
+            tabView.Visibility = next.Stack.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
             UpdateIcons();
             transition = NavigationTransition.None;
         }
         foreach (var (id, page) in pages)
         {
-            page.SetBack(id == next.Current && (next.Modal != 0 || next.Stack.Length != 0), next.Modal != 0);
-            page.View.Visibility = id == next.Current ? Visibility.Visible : Visibility.Collapsed;
+            page.SetBack(id == next.Current && (next.Modal != 0 || next.Stack.Length != 0), id == next.Modal);
+            page.View.Visibility = id == next.Current || id == next.Underlying ? Visibility.Visible : Visibility.Collapsed;
         }
         if (transition != NavigationTransition.None && previous != 0 && previous != next.Current && pages.TryGetValue(previous, out var outgoing))
         {
@@ -211,7 +238,8 @@ internal sealed class WeftNavigationHost
         foreach (var id in removed)
         {
             var page = pages[id];
-            if (!tabPages.Children.Remove(page.View)) container.Children.Remove(page.View);
+            if (card.Child == page.View) card.Child = null;
+            else if (!tabPages.Children.Remove(page.View)) container.Children.Remove(page.View);
             page.Detach();
             pages.Remove(id);
             session.DestroyPage(id);
@@ -282,6 +310,7 @@ internal sealed class WeftNavigationHost
         {
             back.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             back.Content = modal ? "×" : new SymbolIcon(Symbol.Back);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(back, modal ? "Close" : "Back");
         }
 
         internal void Detach() => mount.Points[0].Mount([]);
