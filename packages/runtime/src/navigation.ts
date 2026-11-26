@@ -4,7 +4,9 @@ export type { PageClass, Route } from "./route.js";
 type ParamsArg<P> = {} extends P ? [params?: P] : [params: P];
 export interface NavigationPage { readonly params: Readonly<Record<string, RouteValue>>; $emit(name: string, payload: object): void }
 export interface NavigationEntry { page: NavigationPage; type: PageClass; id: number }
-export type NavigationOperation = "push" | "replace" | "pop" | "root" | "tab" | "host" | "correct";
+export type ModalStyle = "sheet" | "fullScreen";
+export interface NavigationModal { entry: NavigationEntry; style: ModalStyle }
+export type NavigationOperation = "push" | "replace" | "pop" | "root" | "tab" | "present" | "dismiss" | "host" | "correct";
 export interface NavigationHost {
   beforePush?(depth: number): void;
   create(page: NavigationPage): number;
@@ -31,6 +33,8 @@ export class NavigationController {
   readonly badges: (string | null)[];
   tab = 0;
   private stack: NavigationEntry[] = [];
+  modal: NavigationModal | null = null;
+  private get currentEntry(): NavigationEntry | undefined { return this.modal?.entry ?? this.entries.at(-1); }
   private coldRoot = false;
   private listeners = new Set<() => void>();
   private foreground = true;
@@ -38,7 +42,7 @@ export class NavigationController {
   setForeground(foreground: boolean): void {
     if (this.foreground === foreground) return;
     this.foreground = foreground;
-    this.entries.at(-1)?.page.$emit(foreground ? "Show" : "Hide", {});
+    this.currentEntry?.page.$emit(foreground ? "Show" : "Hide", {});
   }
   constructor(readonly factories: PageFactories, readonly config: ApplicationConfig, readonly host: NavigationHost) {
     for (const page of config.pages) if (typeof factories[page.$route.name] !== "function") throw new Error(`weft: missing factory for page ${page.$route.name}`);
@@ -64,22 +68,37 @@ export class NavigationController {
     this.host.update(this.entries, "host");
     if (this.foreground) this.entries.at(-1)?.page.$emit("Show", {});
   }
-  private change(tab: number, stack: NavigationEntry[], operation: NavigationOperation, old = this.entries): void {
-    const previous = old.at(-1);
-    this.tab = tab; this.stack = stack;
-    const entries = this.entries; const next = entries.at(-1);
+  private change(tab: number, stack: NavigationEntry[], operation: NavigationOperation, old = this.entries, modal: NavigationModal | null = this.modal): void {
+    const oldModal = this.modal;
+    const previous = oldModal?.entry ?? old.at(-1);
+    this.tab = tab; this.stack = stack; this.modal = modal;
+    const entries = this.entries; const next = this.currentEntry;
     this.host.update(entries, operation);
     if (this.foreground && previous !== next) { previous?.page.$emit("Hide", {}); next?.page.$emit("Show", {}); }
     for (const entry of old) if (!entries.includes(entry) && !this.tabs.includes(entry)) this.host.destroy(entry.page);
+    if (oldModal && oldModal !== modal) this.host.destroy(oldModal.entry.page);
     for (const listener of this.listeners) listener();
   }
-  push(type: PageClass, params: Record<string, RouteValue> = {}): void { this.host.beforePush?.(this.entries.length); this.change(this.tab, [...this.stack, this.make(type, params)], "push"); }
+  push(type: PageClass, params: Record<string, RouteValue> = {}): void {
+    if (this.modal) throw new Error("weft: cannot push while a modal page is presented");
+    this.host.beforePush?.(this.entries.length); this.change(this.tab, [...this.stack, this.make(type, params)], "push");
+  }
   replace(type: PageClass, params: Record<string, RouteValue> = {}): void {
+    if (this.modal) throw new Error("weft: cannot push while a modal page is presented");
     if (!this.stack.length) throw new Error("weft: cannot replace the root page");
     this.change(this.tab, [...this.stack.slice(0, -1), this.make(type, params)], "replace");
   }
-  pop(count = 1): void { if (count < 1 || !Number.isInteger(count)) throw new RangeError("weft: pop count must be a positive integer"); const length = Math.max(0, this.stack.length - count); if (length !== this.stack.length) this.change(this.tab, this.stack.slice(0, length), "pop"); }
-  popToRoot(): void { if (this.stack.length) this.change(this.tab, [], "root"); }
+  present(type: PageClass, params: Record<string, RouteValue> = {}, style: ModalStyle = "sheet"): void {
+    if (this.modal) throw new Error("weft: a modal page is already presented");
+    this.change(this.tab, this.stack, "present", this.entries, { entry: this.make(type, params), style });
+  }
+  dismiss(host = false): void { if (this.modal) this.change(this.tab, this.stack, host ? "host" : "dismiss", this.entries, null); }
+  pop(count = 1): void {
+    if (count < 1 || !Number.isInteger(count)) throw new RangeError("weft: pop count must be a positive integer");
+    const length = Math.max(0, this.stack.length - count + (this.modal ? 1 : 0));
+    if (this.modal || length !== this.stack.length) this.change(this.tab, this.stack.slice(0, length), "pop", this.entries, null);
+  }
+  popToRoot(): void { if (this.modal || this.stack.length) this.change(this.tab, [], "root", this.entries, null); }
   private tabIndex(type: PageClass): number {
     const index = this.config.tabs?.findIndex(tab => tab.page === type) ?? -1;
     if (index < 0) throw new Error(`weft: ${type.$route.name} is not a tab`);
@@ -89,12 +108,12 @@ export class NavigationController {
   selectTab(index: number, host = false): void {
     const tab = this.config.tabs?.[index];
     if (!tab) return;
-    if (index === this.tab && !this.stack.length && !this.coldRoot) return;
+    if (index === this.tab && !this.stack.length && !this.coldRoot && !this.modal) return;
     const old = this.entries;
     if (this.coldRoot) { this.tabs[this.tab] = null; this.coldRoot = false; }
     const created = !this.tabs[index];
     if (created) this.tabs[index] = this.make(tab.page);
-    this.change(index, [], host ? (created ? "correct" : "host") : "tab", old);
+    this.change(index, [], host ? (created ? "correct" : "host") : "tab", old, null);
   }
   setBadge(type: PageClass, text: string | null): void {
     const index = this.tabIndex(type);
@@ -104,11 +123,15 @@ export class NavigationController {
   signal(json: string): void {
     try {
       const state = JSON.parse(json) as { tab?: unknown; stack?: unknown; modal?: unknown };
-      if (typeof state.tab === "number" && Number.isInteger(state.tab) && state.tab >= 0 && state.tab < this.tabs.length && state.modal === 0 && Array.isArray(state.stack)) {
-        if ((state.tab !== this.tab || this.coldRoot) && this.config.tabs && state.stack.length === 0) { this.selectTab(state.tab, true); return; }
+      if (typeof state.tab === "number" && Number.isInteger(state.tab) && state.tab >= 0 && state.tab < this.tabs.length && Array.isArray(state.stack)) {
+        if ((state.tab !== this.tab || this.coldRoot) && this.config.tabs && state.stack.length === 0 && state.modal === 0) { this.selectTab(state.tab, true); return; }
         if (state.tab === this.tab && state.stack.length <= this.stack.length && state.stack.every((id, i) => id === this.stack[i]?.id)) {
-          if (state.stack.length !== this.stack.length) this.change(this.tab, this.stack.slice(0, state.stack.length), "host");
-          return;
+          const sameModal = state.modal === (this.modal?.entry.id ?? 0);
+          const dismissed = !!this.modal && state.modal === 0;
+          if ((sameModal && (!this.modal || state.stack.length === this.stack.length)) || dismissed) {
+            if (dismissed || state.stack.length !== this.stack.length) this.change(this.tab, this.stack.slice(0, state.stack.length), "host", this.entries, dismissed ? null : this.modal);
+            return;
+          }
         }
       }
     } catch { /* invalid host payload */ }
@@ -128,16 +151,22 @@ export class NavigationController {
       const existing = tab === this.tab ? this.stack[i] : undefined;
       return existing && routeURL(existing.type, existing.page.params) === urls[i + 1] ? existing : this.make(match!.page, match!.params);
     });
-    this.change(tab, stack, operation, old);
+    this.change(tab, stack, operation, old, null);
     if (existingRoot && existingRoot !== root && !old.includes(existingRoot)) this.host.destroy(existingRoot.page);
   }
   onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-  dispose(): void { const entries = this.entries; if (this.foreground) entries.at(-1)?.page.$emit("Hide", {}); for (const entry of [...this.tabs, ...this.stack]) if (entry) this.host.destroy(entry.page); this.tabs.fill(null); this.stack = []; deactivate(this); }
+  dispose(): void { if (this.foreground) this.currentEntry?.page.$emit("Hide", {}); for (const entry of [...this.tabs, ...this.stack, this.modal?.entry]) if (entry) this.host.destroy(entry.page); this.tabs.fill(null); this.stack = []; this.modal = null; deactivate(this); }
 }
 
 export const navigation = {
   get stack(): readonly Route[] { return current().entries.map(({ page, type }) => ({ page: type.$route.name, params: page.params })); },
   get tab(): string | null { const controller = current(); return controller.config.tabs?.[controller.tab]?.page.$route.name ?? null; },
+  get modal(): Route | null { const modal = current().modal; return modal ? { page: modal.entry.type.$route.name, params: modal.entry.page.params } : null; },
+  present<P>(page: PageClass<P>, ...rest: [...ParamsArg<P>, options?: { style?: ModalStyle }]): void {
+    const [params, options] = rest as unknown as [P?, { style?: ModalStyle }?];
+    current().present(page, (params ?? {}) as Record<string, RouteValue>, options?.style);
+  },
+  dismiss(): void { current().dismiss(); },
   switchTab(page: PageClass<{}>): void { current().switchTab(page); },
   setBadge(page: PageClass<{}>, text: string | null): void { current().setBadge(page, text); },
   push<P>(page: PageClass<P>, ...params: ParamsArg<P>): void { current().push(page, (params[0] ?? {}) as Record<string, RouteValue>); },

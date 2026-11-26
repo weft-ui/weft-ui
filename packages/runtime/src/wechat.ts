@@ -43,6 +43,9 @@ export interface TemplateKeys {
   n?: string;
   /** Static title or data key of the page's dynamic navigation title. */
   bar?: { title?: string; key?: string };
+  /** Static or dynamic visibility of the modal navigation bar. */
+  barHidden?: boolean;
+  barHiddenKey?: string;
   /** WXML template of slot content, stored in its data as `t`. */
   t?: string;
   /** Branch index of an `if` branch template. */
@@ -129,6 +132,9 @@ export class WechatSink implements Sink {
   #tab = 0;
   #rootPage: string | undefined;
   #nextNavigation = 0;
+  #modal = 0;
+  #modalStyle: "sheet" | "fullScreen" = "sheet";
+  #modalViews = new Map<number, { view: View; page: View }>();
 
   constructor(view: View, layout: Layout, assets?: AssetVariants) {
     this.#view = view;
@@ -308,6 +314,11 @@ export class WechatSink implements Sink {
       const root = this.#scopes.get(this.#pages[0]);
       if (root) this.#destroy(root);
     }
+    if (this.#modal) {
+      const modal = this.#scopes.get(this.#modal);
+      this.#modal = 0;
+      if (modal) this.#destroy(modal);
+    }
     this.#tab = index;
     this.#rootPage = name;
     this.#pages = wasTab && this.#tabs[index] ? [this.#tabs[index]!] : [];
@@ -345,7 +356,26 @@ export class WechatSink implements Sink {
     if (scope) view.setData({ t: scope.keys.n, r: scope.o });
   }
 
+  /** Associates the modal component and its page-container owner with a stack position. */
+  bindModal(view: View, page?: View, index = this.#pages.length - 1): void {
+    view.$sink = this;
+    this.#modalViews.set(index, { view, page: page ?? view });
+    this.#renderModal(index);
+  }
+
+  /** Adopts a swipe, mask tap, or close button dismissal from the host. */
+  dismissed(): void {
+    if (!this.#modal) return;
+    const id = this.#modal;
+    this.#modal = 0;
+    this.#renderModal(this.#pages.length - 1);
+    this.#session?.signal("navigation", JSON.stringify({ tab: this.#tab, stack: this.#pages.slice(1), modal: 0 }));
+    const scope = this.#scopes.get(id);
+    if (scope) this.#destroy(scope);
+  }
+
   unloadPage(index: number, view?: View): void {
+    this.#modalViews.delete(index);
     if (!view || this.#views.get(index) === view) this.#views.delete(index);
     if (this.#hostNavigating > 0) {
       this.#hostNavigating--;
@@ -391,7 +421,7 @@ export class WechatSink implements Sink {
     }
   }
 
-  nav(tab: number, tabs: readonly number[], stack: readonly number[], _modal: number, _style: "sheet" | "fullScreen"): void {
+  nav(tab: number, tabs: readonly number[], stack: readonly number[], modal: number, style: "sheet" | "fullScreen"): void {
     const initial = this.#pages.length === 0;
     const next = [tabs[tab], ...stack].filter((id) => id !== 0);
     const kept = new Set([...tabs, ...stack]);
@@ -401,7 +431,14 @@ export class WechatSink implements Sink {
       const scope = this.#scopes.get(id);
       if (scope) this.#destroy(scope);
     }
+    if (this.#modal && this.#modal !== modal) {
+      const old = this.#scopes.get(this.#modal);
+      if (old) this.#destroy(old);
+    }
+    this.#modal = modal;
+    this.#modalStyle = style;
     this.#pages = next;
+    if (modal) this.#scope(modal).seg = "r";
     for (const id of next) this.#scope(id).seg = "r";
     if (!this.#views.size) this.#views.set(0, this.#view);
     if (initial && next.length) this.showPage(0);
@@ -428,7 +465,19 @@ export class WechatSink implements Sink {
         const scope = this.#scopes.get(this.#pages[index]);
         if (scope) view.setData({ t: scope.keys.n, r: scope.o });
       }
+      this.#renderModal(this.#pages.length - 1);
     } else if (data.size > 0) this.#view.setData(uncovered(data));
+  }
+
+  #renderModal(index: number): void {
+    const binding = this.#modalViews.get(index);
+    if (!binding) return;
+    const scope = this.#scopes.get(this.#modal);
+    const bar = scope?.keys.bar;
+    const title = bar?.key === undefined ? bar?.title : scope?.o[bar.key];
+    binding.view.setData({ t: scope?.keys.n ?? "", r: scope?.o ?? null });
+    const hidden = scope?.keys.barHiddenKey ? scope.o[scope.keys.barHiddenKey] : scope?.keys.barHidden;
+    binding.page.setData({ m: !!scope, ms: this.#modalStyle === "sheet" ? 0 : 1, mc: this.#modalStyle === "sheet" ? "max-height:90vh" : "height:100vh", mt: typeof title === "string" ? title : "", mh: !!hidden });
   }
 
   close(): void {
@@ -532,12 +581,13 @@ export class WechatSink implements Sink {
       top = top.up;
       path = `${top.seg}.${path}`;
     }
-    return top === this.#root || this.#pages.includes(top.id) ? path : null;
+    return top === this.#root || this.#pages.includes(top.id) || top.id === this.#modal ? path : null;
   }
 
   #viewFor(scope: Scope): View {
     let top = scope;
     while (top.up) top = top.up;
+    if (top.id === this.#modal) return this.#modalViews.get(this.#pages.length - 1)?.view ?? this.#view;
     const index = this.#pages.indexOf(top.id);
     return this.#views.get(index) ?? this.#view;
   }
@@ -565,6 +615,9 @@ export class WechatSink implements Sink {
     this.#tab = 0;
     this.#rootPage = undefined;
     this.#views.clear();
+    this.#modalViews.clear();
+    this.#modal = 0;
+    this.#modalStyle = "sheet";
     this.#routeCount = 0;
     this.#hostNavigating = 0;
   }

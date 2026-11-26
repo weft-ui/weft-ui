@@ -72,6 +72,9 @@ test.each(fixtures)("%s renders alike on every platform and matches its golden o
       "home show", "home hide", "detail 1 show", "detail 1 hide", "home show",
       "home hide", "detail 1 show", "detail 1 hide", "detail 2 show", "detail 2 hide", "home show",
       "home hide", "settings show", "settings hide", "home show", "home hide", "detail 1 show", "detail 1 hide", "settings show",
+      "settings hide", "home show", "home hide", "modal show",
+      "weft: cannot push while a modal page is presented", "modal hide", "home show",
+      "home hide", "modal show", "modal hide", "home show",
     ]);
     for (const driver of drivers) driver.app.unmount();
   } finally {

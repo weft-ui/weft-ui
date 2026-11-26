@@ -130,6 +130,11 @@ export class Renderer extends OpWriter implements Sink {
     this.#session!.signal("navigation", JSON.stringify({ tab: next.tab, stack: next.stack, modal: next.modal }));
   }
 
+  /** Simulates a host dismiss gesture without popping an underlying page. */
+  dismiss(): void {
+    if (this.#nav?.modal) this.back();
+  }
+
   /** Simulates selecting a tab in the host. */
   selectTab(index: number): void {
     const nav = this.#nav;

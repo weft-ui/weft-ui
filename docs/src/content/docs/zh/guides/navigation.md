@@ -85,6 +85,14 @@ app Notes {
 
 使用 `navigation.switchTab(Settings)` 切换 Tab 并清空推入的页面栈。`navigation.tab` 返回当前 Tab 的页面名，没有 Tab 时为 `null`。`navigation.setBadge(Settings, "3")` 显示角标，传入 `""` 显示红点，传入 `null` 移除角标。macOS 的 Tab 显示在工具栏的分段选择器中，不显示图标；角标显示在 Tab 标题中。Linux 的 GTK 只能显示圆点，文字角标也显示为圆点。推入的页面会盖住 Tab 栏。Web 切换 Tab 时回到根历史条目，再将它替换为所选 Tab 的 URL。
 
+## 模态页面
+
+用 `navigation.present(Detail, { id: "42" })` 在当前导航栈上方呈现页面。默认样式为 `sheet`；全屏页面可用 `navigation.present(Detail, { id: "42" }, { style: "fullScreen" })`。模态页面与其他页面一样需要工厂。`navigation.modal` 返回其路由，没有模态页面时为 `null`；`navigation.dismiss()` 关闭模态页面，没有打开时不做任何操作。
+
+同一时间只能呈现一个模态页面。模态打开时调用 `push` 或 `replace` 会抛错；多步骤流程可以在模态页内切换内容。返回时先关闭模态，在 `pop(count)` 中计为一页；`popToRoot()` 和 `switchTab()` 也会关闭它。下方页面仍保留在栈中，模态关闭后重新成为当前页。
+
+Web 上可用 Escape、浏览器后退、关闭按钮或（对 sheet）点击遮罩关闭模态。打开时焦点限制在对话框内。微信小程序使用带独立标题行的页面容器；sheet 还可以下滑关闭。
+
 ## 标题、显示状态与返回
 
 `NavBar` 可以省略；使用时必须是页面的第一个顶层节点，且每个页面最多一个。`title` 可以动态变化。`hidden = true` 隐藏标题栏，但不禁用返回手势或按键。没有 `NavBar` 时宿主显示空标题。`BarButton` 只能放在标题栏内，必须提供无障碍名称 `label`；没有 `icon` 时显示标签文字。图标使用 `asset:` 资源。

@@ -85,6 +85,14 @@ Each tab needs a literal title and an `asset:` icon. `activeIcon` defaults to `i
 
 Use `navigation.switchTab(Settings)` to select a tab and clear the pushed stack. `navigation.tab` gives the selected page name, or `null` without tabs. `navigation.setBadge(Settings, "3")` displays a badge; pass `""` for a dot or `null` to remove it. On macOS, tabs appear in the toolbar's segmented picker without icons; badges appear in the tab title. On Linux, GTK displays all badges, including text badges, as dots. Pushed pages cover the tab bar. On the Web, switching tabs returns to the root history entry and replaces it with the selected tab's URL.
 
+## Modal pages
+
+Present a page over the current navigation stack with `navigation.present(Detail, { id: "42" })`. The default style is `sheet`; use `navigation.present(Detail, { id: "42" }, { style: "fullScreen" })` for a full-screen page. The page needs a factory just like any other page. `navigation.modal` exposes its route, or `null` when none is open; `navigation.dismiss()` closes it and does nothing if no modal is open.
+
+Only one modal can be presented at a time. While it is open, `push` and `replace` throw; use conditional content inside the modal for multi-step flows. Back closes the modal first, counting it as one page for `pop(count)`; `popToRoot()` and `switchTab()` close it as well. The underlying page remains in the stack and becomes current again when the modal closes.
+
+On the web, Escape, browser Back, the close button, and (for a sheet) the backdrop dismiss the modal. Focus stays inside the dialog while it is open. On WeChat, the modal is a page container with its own title row; a sheet can also be dismissed by swiping down.
+
 ## Titles, visibility, and back
 
 `NavBar` is optional, but if present must be the first top-level node of the page and appear only once. `title` can be dynamic. `hidden = true` hides the bar without disabling back gestures or keys. Without a `NavBar`, the host displays an empty title. A `BarButton` belongs inside the bar and requires a `label` for accessibility; without an `icon`, the label is displayed as text. An icon is an `asset:` resource.

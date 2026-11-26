@@ -37,6 +37,8 @@ export type AppClass<A extends AppLike> = new (model: A["model"]) => A;
 export interface Actions {
   /** Simulates the platform back action. */
   back(): void;
+  /** Simulates a host dismissal of the presented modal. */
+  dismiss(): void;
   /** Simulates selecting a tab by index. */
   tab(index: number): void;
   /** Fires the named event, or the element's first event, without a payload. */
@@ -189,6 +191,7 @@ export function headless<A extends AppLike>(script: Script<A>, built: Built<A>):
     log,
     tree: () => reduce(renderer.tree().flatMap((e) => e.type === "Page" ? e.children : [e]), classify),
     back: () => renderer.back(),
+    dismiss: () => renderer.dismiss(),
     tab: (index) => renderer.selectTab(index),
     click: (type, index, event) => renderer.click(find(type, index), event),
     focus: (type, index, value) => renderer.focus(find(type, index), value),
@@ -290,6 +293,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
   const root = navigation?.root ?? loadView(built.out);
   const view = () => navigation?.current() ?? root;
   const { app, log } = start(script, built.App, root, built.exports);
+  navigation?.bindRootModal();
   const find = (type: string, index: number) => {
     const found: [WxElement | string, string][] = [];
     reduce(view().render(), wxClassify, found);
@@ -300,6 +304,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
     app,
     log,
     back: () => navigation?.back(),
+    dismiss: () => navigation?.dismiss(),
     tab: (index) => navigation?.tab(index),
     dispose: () => navigation?.dispose(),
     tree: () => reduce(view().render(), wxClassify),
@@ -363,7 +368,8 @@ export function web<A extends AppLike>(script: Script<A>): Driver<A> {
   const { app, log } = start(script, script.App, target, script.exports);
   let back: Promise<void> | undefined;
   const roots = () => {
-    const page = [...target.children].find((element) => element.classList.contains("w-page") && !(element as HTMLElement).hidden);
+    const page = target.querySelector(".w-modal > .w-page") ??
+      [...target.children].find((element) => element.classList.contains("w-page") && !(element as HTMLElement).hidden);
     return page ? [...page.children].filter((element) => !element.classList.contains("w-navbar")) : [...target.children];
   };
   const find = (type: string, index: number) => {
@@ -380,6 +386,10 @@ export function web<A extends AppLike>(script: Script<A>): Driver<A> {
       back = pending.promise;
       window.addEventListener("popstate", () => pending.resolve(), { once: true });
       window.history.back();
+    },
+    dismiss: () => {
+      const overlay = target.querySelector<HTMLElement>(".w-modal");
+      if (overlay) overlay.click();
     },
     tab: (index) => {
       const button = target.querySelectorAll<HTMLElement>('.w-tabbar [role="tab"]')[index];

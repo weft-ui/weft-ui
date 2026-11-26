@@ -1,10 +1,16 @@
 event Open()
 event Replace()
 event Root()
+event Present()
+event PresentFullScreen()
+event PushInModal()
+event Dismiss()
 
 page Home() {
     NavBar(title = "Home")
     Button(onClick = { Open() }) { Text("Open") }
+    Button(onClick = { Present() }) { Text("Present") }
+    Button(onClick = { PresentFullScreen() }) { Text("Present full screen") }
 }
 
 page Detail(id: String, from: String = "feed") path "/notes/{id}" {
@@ -21,6 +27,15 @@ page Detail(id: String, from: String = "feed") path "/notes/{id}" {
 page Settings() {
     NavBar(title = "Settings")
     Text("Settings")
+}
+
+page Modal() {
+    NavBar(title = "Modal")
+    Column {
+        Text("Modal")
+        Button(onClick = { PushInModal() }) { Text("Push") }
+        Button(onClick = { Dismiss() }) { Text("Dismiss") }
+    }
 }
 
 app Notes {

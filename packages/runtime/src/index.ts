@@ -473,16 +473,20 @@ export class Application {
       destroy: (value) => { const page = value as Page<Record<string, never>>; page.unmount(); page.$navigation = null; this.mountedPages.delete(value); },
       update: (entries, operation) => {
         const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: routeURL(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
-        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), operation === "correct" ? "host" : operation, tabs, this.controller.tab, this.controller.badges);
-        entries.forEach(({ page }, i) => {
+        const modal = this.controller.modal;
+        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), operation === "correct" ? "host" : operation, tabs, this.controller.tab, this.controller.badges, modal ? { key: modal.entry.page, style: modal.style } : undefined);
+        const displayed = modal ? [...entries, modal.entry] : entries;
+        displayed.forEach(({ page }, i) => {
           if (!this.mountedPages.has(page)) { (page as Page<Record<string, never>>).$mountPage(sections[i]!); this.mountedPages.add(page); }
-          decorate(sections[i]!, i > 0, () => this.controller.pop());
+          const isModal = !!modal && i === entries.length;
+          decorate(sections[i]!, isModal || i > 0, () => isModal ? this.controller.dismiss() : this.controller.pop(), isModal);
         });
       },
       badge: () => {
         const entries = this.controller.entries;
         const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: routeURL(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
-        this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), "host", tabs, this.controller.tab, this.controller.badges);
+        const modal = this.controller.modal;
+        this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), "host", tabs, this.controller.tab, this.controller.badges, modal ? { key: modal.entry.page, style: modal.style } : undefined);
       },
     });
   }
@@ -493,7 +497,7 @@ export class Application {
     const window = doc.defaultView;
     if (!window) throw new Error("weft: application target requires a window");
     this.document = doc;
-    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls), index => this.controller.selectTab(index));
+    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls), index => this.controller.selectTab(index), host => this.controller.dismiss(host));
     activate(this.controller);
     doc.addEventListener("visibilitychange", this.visibility);
     this.visibility();

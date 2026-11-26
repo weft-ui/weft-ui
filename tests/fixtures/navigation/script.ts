@@ -12,19 +12,32 @@ export const script: Script<FixtureApp> = {
   exports: classes,
   model: () => ({ Settings: classes.Settings }),
   create(exports, log) {
-    const { Notes, Home, Settings, Detail } = exports as unknown as typeof classes;
+    const { Notes, Home, Settings, Detail, Modal } = exports as unknown as typeof classes;
     const app = new Notes({
       Home: () => {
         const page = new Home({});
         page.onShow(() => log("home show"));
         page.onHide(() => log("home hide"));
         page.onOpen(() => navigation.push(Detail, { id: "1" }));
+        page.onPresent(() => navigation.present(Modal, {}));
+        page.onPresentFullScreen(() => navigation.present(Modal, {}, { style: "fullScreen" }));
         return page;
       },
       Settings: () => {
         const page = new Settings({});
         page.onShow(() => log("settings show"));
         page.onHide(() => log("settings hide"));
+        return page;
+      },
+      Modal: () => {
+        const page = new Modal({});
+        page.onShow(() => log("modal show"));
+        page.onHide(() => log("modal hide"));
+        page.onPushInModal(() => {
+          try { navigation.push(Detail, { id: "1" }); }
+          catch (error) { log(error instanceof Error ? error.message : String(error)); }
+        });
+        page.onDismiss(() => navigation.dismiss());
         return page;
       },
       Detail: (params: { id: string; from?: string }) => {
@@ -52,5 +65,12 @@ export const script: Script<FixtureApp> = {
     { name: "push before tab", run: (ui) => ui.click("Button", 0) },
     { name: "switch clears stack", run: (_ui, model) => navigation.switchTab(model.Settings) },
     { name: "clear badge", run: (_ui, model) => navigation.setBadge(model.Settings, null) },
+    { name: "home for modal", run: (ui) => ui.tab(0) },
+    { name: "present sheet", run: (ui) => ui.click("Button", 1) },
+    { name: "push while modal", run: (ui) => ui.click("Button", 0) },
+    { name: "dismiss from app", run: (ui) => ui.click("Button", 1) },
+    { name: "present full screen", run: (ui) => ui.click("Button", 2) },
+    { name: "dismiss from host", run: (ui) => ui.dismiss() },
+    { name: "dismiss with no modal", run: (ui) => ui.dismiss() },
   ],
 };

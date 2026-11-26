@@ -196,6 +196,11 @@ class Renderer {
     return "{\"tab\":" + std::to_string(index) + ",\"stack\":[],\"modal\":0}";
   }
 
+  /// Apply a host modal dismissal without popping an underlying page.
+  std::optional<std::string> dismiss() {
+    return nav_ && nav_->modal ? back() : std::nullopt;
+  }
+
   /// The `index`-th element of `type` in document order, as (scope, node).
   std::pair<uint32_t, uint32_t> find(const std::string &type, uint32_t index) const {
     std::vector<std::pair<uint32_t, uint32_t>> found;
@@ -577,6 +582,8 @@ struct Host {
     } else if (call.method == "tab") {
       auto signal = renderer.tab(args["index"].u32());
       weft_runtime_signal(rt, "navigation", signal.data(), signal.size());
+    } else if (call.method == "dismiss") {
+      if (auto signal = renderer.dismiss()) weft_runtime_signal(rt, "navigation", signal->data(), signal->size());
     } else if (call.method == "done") {
       done = true;
     } else if (call.method == "fail") {

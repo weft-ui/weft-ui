@@ -107,6 +107,17 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
             } else if let Some(prop) = props.iter().find(|prop| prop.name == "title") {
                 fields.push(format!("bar: {{ title: {} }}", prop.value));
             }
+            if let Some(slot) = template
+                .values
+                .iter()
+                .find(|slot| slot.node as usize == local && slot.prop == "hidden")
+            {
+                let (ir_props, (_, source)) = props_of(slot.node);
+                let key = value_key(source, index_of(ir_props, "hidden"));
+                fields.push(format!("barHiddenKey: \"{key}\""));
+            } else if let Some(prop) = props.iter().find(|prop| prop.name == "hidden") {
+                fields.push(format!("barHidden: {}", prop.value));
+            }
             break;
         }
     }

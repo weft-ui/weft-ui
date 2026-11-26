@@ -131,6 +131,7 @@ export function run(app: WeftApp): void {
   };
   type HostPage = {
     selectComponent(id: string): View;
+    setData(data: Record<string, unknown>): void;
     $weftIndex: number;
     $weftQuery: Record<string, string>;
     $weftView?: View;
@@ -167,15 +168,22 @@ export function run(app: WeftApp): void {
             app.mount(component as never);
           }
           sink?.bindPage(this.$weftIndex, component);
+          sink?.bindModal(this.selectComponent("#modal"), this, this.$weftIndex);
           sink?.showPage(this.$weftIndex);
         },
         onShow(this: HostPage) {
           const isTab = application.$config?.tabs?.some(tab => tab.page.$route.name === name) ?? false;
           if (isTab) {
             sink?.selectTab(name);
-            if (this.$weftView) sink?.bindPage(0, this.$weftView);
+            if (this.$weftView) {
+              sink?.bindPage(0, this.$weftView);
+              sink?.bindModal(this.selectComponent("#modal"), this, 0);
+            }
           }
           if (this.$weftView) sink?.showPage(this.$weftIndex);
+        },
+        $dismissed() {
+          sink?.dismissed();
         },
         onUnload(this: HostPage) {
           sink?.unloadPage(this.$weftIndex, this.$weftView);

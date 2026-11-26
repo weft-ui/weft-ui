@@ -15,8 +15,8 @@ test("cold page launch decodes route parameters and shows its dynamic title", as
   try {
     await compile({ entries: [join(import.meta.dirname, "../fixtures/navigation/Navigation.weft")], outDir: out });
     // The generated module does not exist until compile() has completed.
-    const { Notes, Home, Settings, Detail } = await import(pathToFileURL(join(out, "Navigation.js")).href);
-    const app = new Notes({ Home: () => new Home({}), Settings: () => new Settings({}), Detail: (params: object) => new Detail(params) });
+    const { Notes, Home, Settings, Detail, Modal } = await import(pathToFileURL(join(out, "Navigation.js")).href);
+    const app = new Notes({ Home: () => new Home({}), Settings: () => new Settings({}), Detail: (params: object) => new Detail(params), Modal: () => new Modal({}) });
     const registered: { app?: { weft: { page(name: string): Record<string, (this: object, ...args: never[]) => void> } } } = {};
     let title = "";
     globals.App = (options: NonNullable<typeof registered.app>) => { registered.app = options; };
@@ -26,7 +26,7 @@ test("cold page launch decodes route parameters and shows its dynamic title", as
     run(app);
     const component = loadView(out);
     const page = registered.app!.weft.page("Detail");
-    const instance = { selectComponent: () => component };
+    const instance = { selectComponent: () => component, setData: () => {} };
     pages.push(instance);
     page.onLoad!.call(instance, { id: "a/b", from: "search & more" } as never);
     page.onReady!.call(instance);
@@ -38,11 +38,11 @@ test("cold page launch decodes route parameters and shows its dynamic title", as
     expect(title).toBe("Note a/b");
     app.unmount();
 
-    const homeApp = new Notes({ Home: () => new Home({}), Settings: () => new Settings({}), Detail: (params: object) => new Detail(params) });
+    const homeApp = new Notes({ Home: () => new Home({}), Settings: () => new Settings({}), Detail: (params: object) => new Detail(params), Modal: () => new Modal({}) });
     run(homeApp);
     const home = registered.app!.weft.page("Home");
     const homeView = loadView(out);
-    const homeInstance = { selectComponent: () => homeView };
+    const homeInstance = { selectComponent: () => homeView, setData: () => {} };
     pages[0] = homeInstance;
     home.onLoad!.call(homeInstance, {} as never);
     home.onReady!.call(homeInstance);

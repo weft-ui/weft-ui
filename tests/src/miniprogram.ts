@@ -259,9 +259,11 @@ export function loadView(dir: string): TestView {
 }
 
 /** A multi-page stand-in for an unbundled navigation fixture. */
-export function loadNavigationView(dir: string, tabs: readonly string[] = []): { root: TestView; current(): TestView; back(): void; tab(index: number): void; dispose(): void } {
+export function loadNavigationView(dir: string, tabs: readonly string[] = []): { root: TestView; bindRootModal(): void; current(): TestView; back(): void; dismiss(): void; tab(index: number): void; dispose(): void } {
   const stack = [loadView(dir)];
   const root = stack[0]!;
+  const modals = [loadView(dir)];
+  const modal = () => modals[modals.length - 1]!;
   const sink = () => (root as TestView & { $sink: WechatSink }).$sink;
   sink().configureTabs(tabs);
   const globals = globalThis as typeof globalThis & { wx?: object };
@@ -270,6 +272,7 @@ export function loadNavigationView(dir: string, tabs: readonly string[] = []): {
     const index = stack.length - 1;
     sink().unloadPage(index);
     stack.pop()!.detach();
+    modals.pop()!.detach();
   };
   const tab = (index: number) => {
     const name = tabs[index];
@@ -279,9 +282,17 @@ export function loadNavigationView(dir: string, tabs: readonly string[] = []): {
     sink().bindPage(0, root);
     sink().showPage(0);
   };
+  const open = () => {
+    const next = loadView(dir);
+    stack.push(next);
+    modals.push(loadView(dir));
+    const index = stack.length - 1;
+    sink().bindPage(index, next);
+    sink().bindModal(modal(), undefined, index);
+  };
   const wx = {
-    navigateTo: () => { const next = loadView(dir); stack.push(next); sink().bindPage(stack.length - 1, next); },
-    redirectTo: () => { remove(); const next = loadView(dir); stack.push(next); sink().bindPage(stack.length - 1, next); },
+    navigateTo: open,
+    redirectTo: () => { remove(); open(); },
     navigateBack: ({ delta }: { delta: number }) => { for (let i = 0; i < delta && stack.length > 1; i++) remove(); sink().showPage(stack.length - 1); },
     switchTab: ({ url }: { url: string }) => {
       const index = tabs.findIndex((name) => url.includes(`/${name.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`)}/`));
@@ -293,10 +304,12 @@ export function loadNavigationView(dir: string, tabs: readonly string[] = []): {
   globals.wx = wx;
   return {
     root,
-    current: () => stack[stack.length - 1]!,
-    back: () => { if (stack.length > 1) remove(); },
+    bindRootModal: () => sink().bindModal(modals[0]!, undefined, 0),
+    current: () => modal().data.r ? modal() : stack[stack.length - 1]!,
+    back: () => { if (modal().data.r) sink().dismissed(); else if (stack.length > 1) remove(); },
+    dismiss: () => { if (modal().data.r) sink().dismissed(); },
     tab,
-    dispose: () => { if (previous === undefined) delete globals.wx; else globals.wx = previous; },
+    dispose: () => { for (const view of modals) view.detach(); if (previous === undefined) delete globals.wx; else globals.wx = previous; },
   };
 }
 

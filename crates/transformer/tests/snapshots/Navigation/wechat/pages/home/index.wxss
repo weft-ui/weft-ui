@@ -1,3 +1,5 @@
 @import "../../view.wxss";
 page{height:100%;overflow:hidden}
+.w-modal-bar{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px}
+.w-modal-close{margin:0;font-size:24px;background:transparent}
 .w-safe{padding-bottom:env(safe-area-inset-bottom)}

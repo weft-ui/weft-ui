@@ -518,7 +518,7 @@ export class Application extends App {
   private readonly controller: NavigationController;
   private unsubscribe: (() => void) | null = null;
   private initialURL: string | null = null;
-  private pendingNavigation: { entries: readonly NavigationEntry[]; mode: NavigationOperation; tab: number; tabs: readonly number[] } | null = null;
+  private pendingNavigation: { entries: readonly NavigationEntry[]; mode: NavigationOperation; tab: number; tabs: readonly number[]; modal: number; style: "sheet" | "fullScreen" } | null = null;
   private initialized = false;
 
   constructor(factories: PageFactories, config: ApplicationConfig, hash = "") {
@@ -536,7 +536,7 @@ export class Application extends App {
       update: (entries, mode) => {
         this.$root = (entries[0]!.page as Page<Record<string, never>>).$root;
         if (mode === "host" && this.initialized && !this.pendingNavigation) return;
-        this.pendingNavigation = { entries, mode, tab: this.controller.tab, tabs: this.controller.tabs.map(entry => entry?.id ?? 0) };
+        this.pendingNavigation = { entries, mode, tab: this.controller.tab, tabs: this.controller.tabs.map(entry => entry?.id ?? 0), modal: this.controller.modal?.entry.id ?? 0, style: this.controller.modal?.style ?? "sheet" };
         this.initialized = true;
         schedule();
       },
@@ -550,8 +550,8 @@ export class Application extends App {
       this.pendingNavigation = null;
       const sink = this.$sink!;
       if (!sink.nav) throw new Error("weft: sink does not support navigation");
-      sink.routes?.(pending.entries.map(({ page, type }) => ({ page: type.$route.name, url: routeURL(type, page.params) })), pending.mode === "correct" ? "host" : pending.mode);
-      sink.nav(pending.tab, pending.tabs, pending.entries.slice(1).map(entry => entry.id), 0, "sheet");
+      sink.routes?.(pending.entries.map(({ page, type }) => ({ page: type.$route.name, url: routeURL(type, page.params) })), pending.mode === "correct" || pending.mode === "present" || pending.mode === "dismiss" ? "host" : pending.mode);
+      sink.nav(pending.tab, pending.tabs, pending.entries.slice(1).map(entry => entry.id), pending.modal, pending.style);
     }
     super.$commit();
   }
