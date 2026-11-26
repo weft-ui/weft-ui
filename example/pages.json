@@ -37,5 +37,11 @@
     }
   },
   { "id": "settings", "title": "Journal settings", "dark": true },
-  { "id": "empty", "title": "Empty saved notes" }
+  { "id": "empty", "title": "Empty saved notes" },
+  {
+    "id": "overlays",
+    "title": "Overlays",
+    "pending": ["ios", "macos", "android", "windows", "linux"],
+    "props": { "overlayResult": ["No overlay opened yet."] }
+  }
 ]

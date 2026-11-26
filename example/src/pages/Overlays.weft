@@ -1,0 +1,20 @@
+event OverlayAlert
+event OverlayConfirm
+event OverlayActionSheet
+event OverlayToast
+
+component Overlays(overlayResult: String[]) {
+    Scroll(indicators = false) {
+        Column(fill = true, padding = 20, gap = 14) {
+            Text("Overlays", size = 28, weight = "bold")
+            Text("Open an overlay and see its result below.", size = 14)
+            Button(onClick = OverlayAlert) { Text("Alert") }
+            Button(onClick = OverlayConfirm) { Text("Confirm") }
+            Button(onClick = OverlayActionSheet) { Text("Action sheet") }
+            Button(onClick = OverlayToast) { Text("Toast") }
+            for (result in overlayResult; key = result) {
+                Text(result, size = 16)
+            }
+        }
+    }
+}

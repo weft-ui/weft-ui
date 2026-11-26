@@ -12,6 +12,11 @@ internal static class WeftProtocol
     internal const string StorageGet = "get";
     internal const string StorageSet = "set";
     internal const string StorageRemove = "remove";
+    internal const string UiModule = "ui";
+    internal const string UiAlert = "alert";
+    internal const string UiConfirm = "confirm";
+    internal const string UiActionSheet = "actionSheet";
+    internal const string UiToast = "toast";
 }
 
 internal enum OpCode : byte

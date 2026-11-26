@@ -39,6 +39,7 @@ export type NativePlatform = (typeof NATIVE_PLATFORMS)[number];
 export const PLATFORM_MODULES = {
   fetch: ["request"],
   storage: ["get", "set", "remove"],
+  ui: ["alert", "confirm", "actionSheet", "toast"],
 } as const;
 
 export type PlatformModule = keyof typeof PLATFORM_MODULES;

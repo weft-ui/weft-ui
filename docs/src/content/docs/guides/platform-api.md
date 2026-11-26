@@ -112,11 +112,28 @@ app.onClick(async (model) => {
 
 To forget the saved flag, use `await storage.remove("clicked")`. That removes the persistent value; it doesn't change the current model.
 
+## Show dialogs, action sheets, and toasts with `ui`
+
+```ts
+import { ui } from "@weft-ui/platform";
+
+await ui.alert({ title: "Saved", message: "Your changes are saved." });
+const confirmed = await ui.confirm({ message: "Delete this item?", destructive: true });
+const selected = await ui.actionSheet({ title: "Choose an action", options: ["Edit", "Delete"], destructiveIndex: 1 });
+ui.toast("Saved", { icon: "success", duration: "short" });
+```
+
+`alert` accepts optional `title`, `message`, and `confirmText` and resolves with no value. `confirm` also accepts `cancelText` and `destructive`, and resolves to a boolean. Button labels default to `OK` and `Cancel`. `actionSheet` accepts an optional `title`, required `options`, an optional zero-based `destructiveIndex`, and optional `cancelText`; it resolves to the selected zero-based index or `null` on dismissal. It rejects immediately with `RangeError` unless there are 1–6 options. WeChat cannot color an individual action sheet option, so `destructiveIndex` has no visual effect there.
+
+Only one dialog or action sheet is shown at a time; later calls queue in FIFO order. System dismissal (such as Back, Escape, or tapping the backdrop) resolves `confirm` to `false` and `actionSheet` to `null`. Toasts do not queue: a new toast replaces the previous one. Toast icons are `none`, `success`, or `error`; duration is `short` (1.5 seconds, the default) or `long` (3 seconds).
+
+Native shells that have not implemented `ui` report `isSupported("ui")` as false. On an unsupported host, dialog and action sheet calls reject with `PlatformError`, while `toast` throws it synchronously.
+
 ## Check the host and its capabilities
 
 Use `platform.os` and `platform.version` to identify the current host. `os` is one of `web`, `wechat`, `ios`, `macos`, `android`, `windows`, or `linux`. `version` is a host-specific string, not the Weft UI package version. Don't assume a common format across platforms. For example, on Web it is the full user agent string; on native targets it is empty if the kernel isn't present or the shell supplies no version.
 
-`isSupported(api: "fetch" | "storage"): boolean` checks whether the current host exposes a capability without performing a request or a storage operation. Use it to choose a fallback. A `true` result does not guarantee an individual operation will succeed.
+`isSupported(api: "fetch" | "storage" | "ui"): boolean` checks whether the current host exposes a capability without performing an operation. Use it to choose a fallback. A `true` result does not guarantee an individual operation will succeed.
 
 | Target | `fetch` | `storage` | `platform.version` |
 | --- | --- | --- | --- |
@@ -152,7 +169,7 @@ const stop = platform.onChange(reportEnvironment);
 
 ## Handle unavailable APIs with `PlatformError`
 
-`fetch` and the three `storage` methods reject with `PlatformError` when their capability is unavailable. `PlatformError` extends `Error`; its constructor takes `(api, os)`, where `api` is `"fetch"` or `"storage"` and `os` is a platform name from the list above. The error has `name` set to `"PlatformError"`, a read-only `api` field, and a `message` such as `fetch is not supported on web`. There is no separate `code` or `os` field. For error handling, use `instanceof PlatformError` and `error.api` rather than matching the message.
+`fetch` and the three `storage` methods reject with `PlatformError` when their capability is unavailable. `PlatformError` extends `Error`; its constructor takes `(api, os)`, where `api` is `"fetch"`, `"storage"`, or `"ui"` and `os` is a platform name from the list above. The error has `name` set to `"PlatformError"`, a read-only `api` field, and a `message` such as `fetch is not supported on web`. There is no separate `code` or `os` field. For error handling, use `instanceof PlatformError` and `error.api` rather than matching the message.
 
 Network, storage, and JSON parsing failures can still reject with other errors. `PlatformError` only signals an unavailable capability.
 

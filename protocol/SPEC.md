@@ -246,6 +246,7 @@ For an `Input` or `TextArea` with `maxLength`, the host truncates a user edit to
 | --------- | ------------------------ | --------- | ------ |
 | `fetch`   | `request`                | Frame: `u32 header length (little-endian) \| header (UTF-8 JSON) \| body`. The header is `{"url", "method", "headers"}`. | Same frame format, with a `{"status"}` header followed by the response body. |
 | `storage` | `get` / `set` / `remove` | JSON array: `[key]` or `[key, value]`. | `get`: a JSON string or `null`; otherwise empty. |
+| `ui` | `alert` / `confirm` / `actionSheet` / `toast` | UTF-8 JSON object containing the corresponding UI options; `toast` uses `{"message", "icon", "duration"}`. | `alert` and `toast`: empty; `confirm`: JSON `true` or `false`; `actionSheet`: JSON selected index or `null`. `toast` completes immediately after it is shown. |
 
 If `supports(api)` is false, `@weft-ui/platform` throws `PlatformError` without making the call.
 

@@ -2,6 +2,7 @@ import type { PlatformModule } from "@weft-ui/runtime/protocol";
 import { view } from "@weft-ui/runtime/wechat";
 import { Environment, type EnvironmentData } from "./environment.ts";
 import { PlatformError } from "./error.ts";
+import { createUI } from "./ui.ts";
 import type { App as WeftApp, ColorScheme, RequestInit, Response } from "./index.d.ts";
 
 export { PlatformError } from "./error.ts";
@@ -12,6 +13,9 @@ interface Failure {
 }
 
 interface Wx {
+  showModal(options: { title?: string; content?: string; showCancel: boolean; confirmText: string; cancelText?: string; confirmColor?: string; success(result: { confirm: boolean }): void; fail(error: Failure): void }): void;
+  showActionSheet(options: { alertText?: string; itemList: string[]; success(result: { tapIndex: number }): void; fail(error: Failure): void }): void;
+  showToast(options: { title: string; icon: "none" | "success" | "error"; duration: number }): void;
   request(options: {
     url: string;
     method?: string;
@@ -179,6 +183,31 @@ export const storage = {
   },
 };
 
+export const ui = createUI({
+  alert(options) {
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    if (!isSupported("ui")) return Promise.reject(new PlatformError("ui", "wechat"));
+    wx.showModal({ title: options.title, content: options.message, showCancel: false, confirmText: options.confirmText ?? "OK", success: () => resolve(), fail: (error) => reject(new Error(error.errMsg)) });
+    return promise;
+  },
+  confirm(options) {
+    const { promise, resolve, reject } = Promise.withResolvers<boolean>();
+    if (!isSupported("ui")) return Promise.reject(new PlatformError("ui", "wechat"));
+    wx.showModal({ title: options.title, content: options.message, showCancel: true, confirmText: options.confirmText ?? "OK", cancelText: options.cancelText ?? "Cancel", confirmColor: options.destructive ? "#d22" : undefined, success: (result) => resolve(result.confirm), fail: (error) => error.errMsg.includes("cancel") ? resolve(false) : reject(new Error(error.errMsg)) });
+    return promise;
+  },
+  actionSheet(options) {
+    const { promise, resolve, reject } = Promise.withResolvers<number | null>();
+    if (!isSupported("ui")) return Promise.reject(new PlatformError("ui", "wechat"));
+    wx.showActionSheet({ alertText: options.title, itemList: [...options.options], success: (result) => resolve(result.tapIndex), fail: (error) => error.errMsg.includes("cancel") ? resolve(null) : reject(new Error(error.errMsg)) });
+    return promise;
+  },
+  toast(message, options) {
+    if (!isSupported("ui")) throw new PlatformError("ui", "wechat");
+    wx.showToast({ title: message, icon: options.icon ?? "none", duration: options.duration === "long" ? 3000 : 1500 });
+  },
+});
+
 function readEnvironment(): EnvironmentData {
   const { windowWidth, windowHeight, pixelRatio, screenTop, safeArea } = wx.getWindowInfo();
   return {
@@ -210,6 +239,7 @@ export const platform = /* @__PURE__ */ new WechatPlatform(readEnvironment, obse
 /** Checks whether all host functions for the requested capability exist. */
 export function isSupported(api: PlatformModule): boolean {
   if (typeof wx === "undefined") return false;
+  if (api === "ui") return typeof wx.showModal === "function" && typeof wx.showActionSheet === "function" && typeof wx.showToast === "function";
   return api === "fetch"
     ? typeof wx.request === "function"
     : typeof wx.getStorage === "function"

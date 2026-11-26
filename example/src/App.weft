@@ -15,8 +15,9 @@ import "./pages/Profile.weft"
 import "./pages/Form.weft"
 import "./pages/Settings.weft"
 import "./pages/Empty.weft"
+import "./pages/Overlays.weft"
 
-model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], fieldRegions: String[] }
+model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], fieldRegions: String[], overlayResult: String[] }
 
 component Showcase(model: ShowcaseModel) {
     state page = ""
@@ -40,6 +41,7 @@ component Showcase(model: ShowcaseModel) {
                 Button(onClick = { page = "form" }) { Text("page:form") }
                 Button(onClick = { page = "settings" }) { Text("page:settings") }
                 Button(onClick = { page = "empty" }) { Text("page:empty") }
+                Button(onClick = { page = "overlays" }) { Text("page:overlays") }
             }
         }
     }
@@ -59,4 +61,5 @@ component Showcase(model: ShowcaseModel) {
     if (page == "form") { Form(model.fieldRegions) }
     if (page == "settings") { Settings() }
     if (page == "empty") { Empty() }
+    if (page == "overlays") { Overlays(model.overlayResult) }
 }

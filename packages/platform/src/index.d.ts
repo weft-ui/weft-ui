@@ -60,6 +60,14 @@ export const storage: {
   remove(key: string): Promise<void>;
 };
 
+/** Queued dialogs and action sheets, plus independently replacing toast messages. */
+export const ui: {
+  alert(options: { title?: string; message?: string; confirmText?: string }): Promise<void>;
+  confirm(options: { title?: string; message?: string; confirmText?: string; cancelText?: string; destructive?: boolean }): Promise<boolean>;
+  actionSheet(options: { title?: string; options: readonly string[]; destructiveIndex?: number; cancelText?: string }): Promise<number | null>;
+  toast(message: string, options?: { icon?: "none" | "success" | "error"; duration?: "short" | "long" }): void;
+};
+
 /** Window content size in logical pixels and its physical pixel density. */
 export interface Screen { readonly width: number; readonly height: number; readonly scale: number }
 

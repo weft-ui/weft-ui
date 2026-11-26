@@ -39,5 +39,10 @@ inline constexpr std::string_view kStorageModule = "storage";
 inline constexpr std::string_view kStorageGet = "get";
 inline constexpr std::string_view kStorageSet = "set";
 inline constexpr std::string_view kStorageRemove = "remove";
+inline constexpr std::string_view kUiModule = "ui";
+inline constexpr std::string_view kUiAlert = "alert";
+inline constexpr std::string_view kUiConfirm = "confirm";
+inline constexpr std::string_view kUiActionSheet = "actionSheet";
+inline constexpr std::string_view kUiToast = "toast";
 
 }  // namespace weft::protocol

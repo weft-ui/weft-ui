@@ -11,6 +11,11 @@ internal object WeftProtocol {
     const val STORAGE_GET = "get"
     const val STORAGE_SET = "set"
     const val STORAGE_REMOVE = "remove"
+    const val UI_MODULE = "ui"
+    const val UI_ALERT = "alert"
+    const val UI_CONFIRM = "confirm"
+    const val UI_ACTIONSHEET = "actionSheet"
+    const val UI_TOAST = "toast"
 }
 
 internal object OpCode {

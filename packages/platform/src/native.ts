@@ -10,6 +10,7 @@ import type { PlatformModule } from "@weft-ui/runtime/protocol";
 import { Environment, type EnvironmentData } from "./environment.ts";
 import { PlatformError } from "./error.ts";
 import { frame, unframe } from "./frame.ts";
+import { createUI } from "./ui.ts";
 import type { App, RequestInit, Response } from "./index.d.ts";
 
 export { PlatformError } from "./error.ts";
@@ -58,6 +59,22 @@ export const storage = {
     await store("remove", [key]);
   },
 };
+
+async function callUI(method: string, options: object): Promise<unknown> {
+  if (!isSupported("ui")) throw new PlatformError("ui", os);
+  const result = await kernel().call("ui", method, JSON.stringify(options));
+  return result.byteLength === 0 ? undefined : JSON.parse(decoder.decode(result));
+}
+
+export const ui = createUI({
+  async alert(options) { await callUI("alert", options); },
+  async confirm(options) { return await callUI("confirm", options) as boolean; },
+  async actionSheet(options) { return await callUI("actionSheet", options) as number | null; },
+  toast(message, options) {
+    if (!isSupported("ui")) throw new PlatformError("ui", os);
+    void callUI("toast", { message, ...options }).catch((error: unknown) => console.error(error));
+  },
+});
 
 class NativePlatform extends Environment {
   readonly os = os;

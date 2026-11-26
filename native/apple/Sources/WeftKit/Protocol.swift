@@ -9,6 +9,11 @@ enum WeftProtocol {
     static let storageGet = "get"
     static let storageSet = "set"
     static let storageRemove = "remove"
+    static let uiModule = "ui"
+    static let uiAlert = "alert"
+    static let uiConfirm = "confirm"
+    static let uiActionSheet = "actionSheet"
+    static let uiToast = "toast"
 }
 
 enum OpCode: UInt8 {

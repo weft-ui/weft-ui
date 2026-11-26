@@ -13,5 +13,5 @@
     { "name": "windows", "native": true },
     { "name": "linux", "native": true }
   ],
-  "platformModules": { "fetch": ["request"], "storage": ["get", "set", "remove"] }
+  "platformModules": { "fetch": ["request"], "storage": ["get", "set", "remove"], "ui": ["alert", "confirm", "actionSheet", "toast"] }
 }

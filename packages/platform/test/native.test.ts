@@ -121,6 +121,26 @@ test("APIs the shell does not implement reject with PlatformError", async () => 
   await expect(native.storage.get("k")).rejects.toBeInstanceOf(native.PlatformError);
 });
 
+test("ui rejects when unsupported and forwards JSON when supported", async () => {
+  installKernel([], () => "");
+  expect(native.isSupported("ui")).toBe(false);
+  await expect(native.ui.alert({})).rejects.toBeInstanceOf(native.PlatformError);
+  await expect(native.ui.confirm({})).rejects.toBeInstanceOf(native.PlatformError);
+  await expect(native.ui.actionSheet({ options: ["A"] })).rejects.toBeInstanceOf(native.PlatformError);
+  expect(() => native.ui.toast("message")).toThrow(native.PlatformError);
+  const { calls } = installKernel(["ui"], ({ method }) => method === "confirm" ? "true" : method === "actionSheet" ? "0" : "");
+  await native.ui.alert({ title: "Hello" });
+  expect(await native.ui.confirm({ message: "Sure?" })).toBe(true);
+  expect(await native.ui.actionSheet({ options: ["A"] })).toBe(0);
+  native.ui.toast("Done", { duration: "long" });
+  expect(calls.map(({ module, method, args }) => [module, method, JSON.parse(new TextDecoder().decode(args))])).toEqual([
+    ["ui", "alert", { title: "Hello" }],
+    ["ui", "confirm", { message: "Sure?" }],
+    ["ui", "actionSheet", { options: ["A"] }],
+    ["ui", "toast", { message: "Done", duration: "long" }],
+  ]);
+});
+
 test("platform reports the OS version of the shell, run mounts through the kernel", () => {
   const { kernel } = installKernel([], () => "");
   expect(native.platform).toMatchObject({ os: "ios", version: "17.4" });

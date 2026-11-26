@@ -112,11 +112,28 @@ app.onClick(async (model) => {
 
 要清除保存的状态，调用 `await storage.remove("clicked")`。这只删除持久化数据，不改变当前模型。
 
+## 用 `ui` 显示对话框、操作表和提示
+
+```ts
+import { ui } from "@weft-ui/platform";
+
+await ui.alert({ title: "已保存", message: "更改已保存。" });
+const confirmed = await ui.confirm({ message: "删除此项？", destructive: true });
+const selected = await ui.actionSheet({ title: "选择操作", options: ["编辑", "删除"], destructiveIndex: 1 });
+ui.toast("已保存", { icon: "success", duration: "short" });
+```
+
+`alert` 接受可选的 `title`、`message` 和 `confirmText`，兑现时没有返回值。`confirm` 还接受 `cancelText` 和 `destructive`，返回布尔值。按钮文字默认为 `OK` 和 `Cancel`。`actionSheet` 接受可选的 `title`、必填的 `options`、可选的从零开始的 `destructiveIndex` 和可选的 `cancelText`；返回选中项的下标，取消时返回 `null`。选项必须为 1–6 项，否则立即以 `RangeError` 拒绝。微信小程序无法单独为操作表选项着色，因此 `destructiveIndex` 在该平台没有视觉效果。
+
+同一时刻最多显示一个对话框或操作表，后续调用按先进先出排队。通过系统方式关闭（如返回键、Esc、点击遮罩）时，`confirm` 返回 `false`，`actionSheet` 返回 `null`。Toast 不排队，新的会替换旧的。Toast 的 `icon` 可为 `none`、`success` 或 `error`；`duration` 可为 `short`（默认，1.5 秒）或 `long`（3 秒）。
+
+尚未实现 `ui` 的原生平台壳会让 `isSupported("ui")` 返回 false。宿主不支持时，对话框和操作表调用以 `PlatformError` 拒绝，`toast` 则同步抛出该错误。
+
 ## 查看宿主和可用能力
 
 用 `platform.os` 和 `platform.version` 查看当前宿主。`os` 的取值为 `web`、`wechat`、`ios`、`macos`、`android`、`windows` 或 `linux`。`version` 是宿主报告的字符串，不是 Weft UI 的包版本，也没有跨平台的统一格式。比如，在 Web 上它是完整的用户代理字符串；在原生目标上，如果没有内核或平台壳没有提供版本，它就是空字符串。
 
-`isSupported(api: "fetch" | "storage"): boolean` 检查当前宿主是否提供该能力，不会实际发请求或读写存储。可以据此选择备用方案。返回 `true` 不代表某次调用一定成功。
+`isSupported(api: "fetch" | "storage" | "ui"): boolean` 检查当前宿主是否提供该能力，不会实际执行操作。可以据此选择备用方案。返回 `true` 不代表某次调用一定成功。
 
 | 目标 | `fetch` | `storage` | `platform.version` |
 | --- | --- | --- | --- |
@@ -152,7 +169,7 @@ const stop = platform.onChange(reportEnvironment);
 
 ## 用 `PlatformError` 处理不可用的 API
 
-如果宿主不提供所需能力，`fetch` 和 `storage` 的三个方法都会以 `PlatformError` 拒绝 Promise。`PlatformError` 继承自 `Error`。构造函数接收 `(api, os)`，其中 `api` 为 `"fetch"` 或 `"storage"`，`os` 为上面列出的平台名称。错误对象的 `name` 固定为 `"PlatformError"`，有只读的 `api` 字段以及 `message`，例如 `fetch is not supported on web`。错误对象没有单独的 `code` 或 `os` 字段。判断错误时，用 `instanceof PlatformError` 和 `error.api`，不要匹配错误消息。
+如果宿主不提供所需能力，`fetch` 和 `storage` 的三个方法都会以 `PlatformError` 拒绝 Promise。`PlatformError` 继承自 `Error`。构造函数接收 `(api, os)`，其中 `api` 为 `"fetch"`、`"storage"` 或 `"ui"`，`os` 为上面列出的平台名称。错误对象的 `name` 固定为 `"PlatformError"`，有只读的 `api` 字段以及 `message`，例如 `fetch is not supported on web`。错误对象没有单独的 `code` 或 `os` 字段。判断错误时，用 `instanceof PlatformError` 和 `error.api`，不要匹配错误消息。
 
 网络、存储操作和 JSON 解析失败仍可能以其他错误拒绝 Promise。`PlatformError` 只表示宿主没有提供相应能力。
 

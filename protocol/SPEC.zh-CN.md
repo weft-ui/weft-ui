@@ -246,6 +246,7 @@ WXML 只渲染 `{{key}}`，`setData` 的路径就是块数据树中的路径（`
 | --------- | ---------------------------- | ------------------------------------------------------------ | ------------------------------------------ |
 | `fetch`   | `request`                    | 帧：`u32 头长度（小端） \| 头（UTF-8 JSON）\| 请求体`，头是 `{"url", "method", "headers"}` | 同样的帧，头是 `{"status"}`，之后是响应体 |
 | `storage` | `get` / `set` / `remove`     | JSON 数组：`[key]` 或 `[key, value]`                         | `get`：JSON 字符串或 `null`；其余为空      |
+| `ui` | `alert` / `confirm` / `actionSheet` / `toast` | UTF-8 JSON 对象，字段为对应 UI 选项；`toast` 使用 `{"message", "icon", "duration"}` | `alert` 和 `toast`：空；`confirm`：JSON `true` 或 `false`；`actionSheet`：JSON 选中项下标或 `null`。`toast` 显示后立即完成。 |
 
 `@weft-ui/platform` 在 `supports(api)` 为假时直接抛 `PlatformError`，不发起调用。
 
