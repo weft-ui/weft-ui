@@ -7,7 +7,7 @@ import WeftKit
 @MainActor private let session = WeftSession(
     bytecode: Bundle.module.url(forResource: "bundle", withExtension: "hbc"),
     resources: Bundle.module,
-    layoutHash: 0x0cb287c33f80ecd6,
+    layoutHash: 0x69aea4cbb1f5516a,
     safeArea: true,
     make: makeScope
 )
@@ -26,6 +26,7 @@ public struct WeftAppView: View {
     switch template {
     case 0: S0(id: id, session: session)
     case 1: S1(id: id, session: session)
+    case 2: S2(id: id, session: session)
     default: nil
     }
 }
@@ -54,9 +55,33 @@ private struct V0: View {
     }
 }
 
-// MARK: - 1 Detail
+// MARK: - 1 Settings
 
 @Observable private final class S1: WeftScope {
+
+    override var view: AnyView { AnyView(V1(s: self)) }
+}
+
+private struct V1: View {
+    let s: S1
+
+    var body: some View {
+        Group {
+            weftLeaf {
+                weftText(spans: [.init(value: "Settings")])
+            }
+        }
+        .navigationTitle("Settings")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(false ? .hidden : .visible, for: .navigationBar)
+        #endif
+    }
+}
+
+// MARK: - 2 Detail
+
+@Observable private final class S2: WeftScope {
     /// NavBar.title
     var v0: String = ""
     /// Text.value
@@ -70,11 +95,11 @@ private struct V0: View {
         }
     }
 
-    override var view: AnyView { AnyView(V1(s: self)) }
+    override var view: AnyView { AnyView(V2(s: self)) }
 }
 
-private struct V1: View {
-    let s: S1
+private struct V2: View {
+    let s: S2
 
     var body: some View {
         Group {

@@ -27,7 +27,7 @@ test.each(["splice", "bind"] as const)("headless rejects %s before applying the 
 });
 
 test("headless navigation renders the current page and reports host back", () => {
-  const renderer = render({ hash: "test", templates: [{
+  const renderer = render({ hash: "test", app: { start: 0 }, templates: [{
     label: "page", kind: "page", roots: [0, 1],
     nodes: [
       { element: "NavBar", props: { title: "Note" }, children: [] },
@@ -50,7 +50,7 @@ test("headless navigation renders the current page and reports host back", () =>
 });
 
 test("headless navigation rejects non-page and duplicate scope references", () => {
-  const renderer = render({ hash: "test", templates: [
+  const renderer = render({ hash: "test", app: { start: 1 }, templates: [
     { label: "component", kind: "component", roots: [], nodes: [], values: [], events: [], points: [] },
     { label: "page", kind: "page", roots: [], nodes: [], values: [], events: [], points: [] },
   ] });
@@ -60,6 +60,30 @@ test("headless navigation rejects non-page and duplicate scope references", () =
   renderer.create(2, 1);
   renderer.nav(0, [2], [2], 0, "sheet");
   expect(() => renderer.commit()).toThrow("appears twice in navigation");
+});
+
+test("headless validates tab roots and reports tab selection", () => {
+  const renderer = render({
+    hash: "tabs",
+    app: { tabs: [
+      { page: 0, title: "Home", icon: "asset:home", activeIcon: "asset:home" },
+      { page: 1, title: "Settings", icon: "asset:settings", activeIcon: "asset:settings" },
+    ] },
+    templates: [
+      { label: "Home", kind: "page", roots: [], nodes: [], values: [], events: [], points: [] },
+      { label: "Settings", kind: "page", roots: [], nodes: [], values: [], events: [], points: [] },
+    ],
+  });
+  const signal = vi.fn();
+  renderer.open({ hash: "tabs", dispatch: () => true, window: () => {}, signal, detach: () => {} });
+  renderer.create(1, 0);
+  renderer.create(2, 1);
+  renderer.nav(0, [1, 2], [], 0, "sheet");
+  renderer.commit();
+  renderer.selectTab(1);
+  expect(signal).toHaveBeenCalledWith("navigation", JSON.stringify({ tab: 1, stack: [], modal: 0 }));
+  renderer.nav(0, [2, 1], [], 0, "sheet");
+  expect(() => renderer.commit()).toThrow("navigation tabs do not match the app layout");
 });
 
 test("remote sessions report and ignore lazy window requests before lazy points exist", () => {

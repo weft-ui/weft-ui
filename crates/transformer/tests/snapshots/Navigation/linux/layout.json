@@ -1,6 +1,21 @@
 {
-  "hash": "0cb287c33f80ecd6",
-  "app": {"start": 0},
+  "hash": "69aea4cbb1f5516a",
+  "app": {
+    "tabs": [
+      {
+        "page": 0,
+        "title": "Home",
+        "icon": "asset:tab_home",
+        "activeIcon": "asset:tab_home"
+      },
+      {
+        "page": 1,
+        "title": "Settings",
+        "icon": "asset:tab_settings",
+        "activeIcon": "asset:tab_settings"
+      }
+    ]
+  },
   "safeArea": true,
   "templates": [
     {
@@ -10,6 +25,18 @@
       "nodes": [
         {"element": "NavBar", "props": {"title": "Home"}, "children": []},
         {"element": "Text", "props": {"value": "Home"}, "children": []}
+      ],
+      "values": [],
+      "events": [],
+      "points": []
+    },
+    {
+      "label": "Settings",
+      "kind": "page",
+      "roots": [0, 1],
+      "nodes": [
+        {"element": "NavBar", "props": {"title": "Settings"}, "children": []},
+        {"element": "Text", "props": {"value": "Settings"}, "children": []}
       ],
       "values": [],
       "events": [],

@@ -37,6 +37,8 @@ export type AppClass<A extends AppLike> = new (model: A["model"]) => A;
 export interface Actions {
   /** Simulates the platform back action. */
   back(): void;
+  /** Simulates selecting a tab by index. */
+  tab(index: number): void;
   /** Fires the named event, or the element's first event, without a payload. */
   click(type: string, index: number, event?: string): void;
   /** Gives or takes away user focus. */
@@ -187,6 +189,7 @@ export function headless<A extends AppLike>(script: Script<A>, built: Built<A>):
     log,
     tree: () => reduce(renderer.tree().flatMap((e) => e.type === "Page" ? e.children : [e]), classify),
     back: () => renderer.back(),
+    tab: (index) => renderer.selectTab(index),
     click: (type, index, event) => renderer.click(find(type, index), event),
     focus: (type, index, value) => renderer.focus(find(type, index), value),
     edit: (type, index, value) => {
@@ -281,7 +284,9 @@ function wxClassify(e: WxElement | string): Classified<WxElement | string> | nul
 
 /** The mini program view component, rendered by the WXML interpreter. */
 export async function wechat<A extends AppLike>(script: Script<A>, built: Built<A>): Promise<Driver<A>> {
-  const navigation = script.create ? loadNavigationView(built.out) : null;
+  const layout = JSON.parse(built.layout) as { app?: { tabs?: { page: number }[] }; templates: { label: string }[] };
+  const tabs = layout.app?.tabs?.map((tab) => layout.templates[tab.page]!.label) ?? [];
+  const navigation = script.create ? loadNavigationView(built.out, tabs) : null;
   const root = navigation?.root ?? loadView(built.out);
   const view = () => navigation?.current() ?? root;
   const { app, log } = start(script, built.App, root, built.exports);
@@ -295,6 +300,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
     app,
     log,
     back: () => navigation?.back(),
+    tab: (index) => navigation?.tab(index),
     dispose: () => navigation?.dispose(),
     tree: () => reduce(view().render(), wxClassify),
     click: (type, index, event) => {
@@ -374,6 +380,11 @@ export function web<A extends AppLike>(script: Script<A>): Driver<A> {
       back = pending.promise;
       window.addEventListener("popstate", () => pending.resolve(), { once: true });
       window.history.back();
+    },
+    tab: (index) => {
+      const button = target.querySelectorAll<HTMLElement>('.w-tabbar [role="tab"]')[index];
+      if (!button) throw new RangeError(`weft: invalid tab index ${index}`);
+      button.click();
     },
     tree: () => reduce(roots(), domClassify),
     click: (type, index, name) => {

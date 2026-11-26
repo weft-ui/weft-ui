@@ -1,12 +1,12 @@
 # mount
 create 1 0  # Home
-nav 0 [1] [] 0
+nav 0 [1 0] [] 0
 
 # push detail
 create 2 1  # Detail
 set 2 0 "Note 1"  # NavBar.title
 set 2 1 "Detail 1"  # Text.value
-nav 0 [1] [2] 0
+nav 0 [1 0] [2] 0
 
 # back
 (no ops)
@@ -15,13 +15,35 @@ nav 0 [1] [2] 0
 create 3 1  # Detail
 set 3 0 "Note 1"  # NavBar.title
 set 3 1 "Detail 1"  # Text.value
-nav 0 [1] [3] 0
+nav 0 [1 0] [3] 0
 
 # replace detail
 create 4 1  # Detail
 set 4 0 "Note 2"  # NavBar.title
 set 4 1 "Detail 2"  # Text.value
-nav 0 [1] [4] 0
+nav 0 [1 0] [4] 0
 
 # pop to root
-nav 0 [1] [] 0
+nav 0 [1 0] [] 0
+
+# badge
+(no ops)
+
+# select settings
+create 5 2  # Settings
+nav 1 [1 5] [] 0
+
+# select home
+(no ops)
+
+# push before tab
+create 6 1  # Detail
+set 6 0 "Note 1"  # NavBar.title
+set 6 1 "Detail 1"  # Text.value
+nav 0 [1 5] [6] 0
+
+# switch clears stack
+nav 1 [1 5] [] 0
+
+# clear badge
+(no ops)

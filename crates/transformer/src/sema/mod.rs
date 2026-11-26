@@ -672,10 +672,8 @@ fn check_app(
             ));
         }
     }
-    let start = cx
-        .decls
-        .get(&app.start.name)
-        .and_then(|decl| match decl.kind {
+    let resolve_page = |name: &ast::Ident, role: &str, diags: &mut Vec<Diagnostic>| {
+        let page = cx.decls.get(&name.name).and_then(|decl| match decl.kind {
             DeclKind::Component(id)
                 if cx.components[id.index()].page.is_some() && closure.contains(&decl.file) =>
             {
@@ -683,24 +681,126 @@ fn check_app(
             }
             _ => None,
         });
-    let Some(start) = start else {
-        diags.push(Diagnostic::error(
-            app.start.span,
-            format!(
-                "start page `{}` must be a page in the app import closure",
-                app.start.name
-            ),
-        ));
-        return None;
+        if let Some(id) = page {
+            if cx.components[id.index()].params.iter().any(|param| matches!(&param.kind, ParamKind::Value(ty) if !matches!(ty, Type::Model(_) | Type::Optional(_))) && param.default.is_none()) {
+                diags.push(Diagnostic::error(name.span, format!("{role} page `{}` must not have required route parameters", name.name)));
+            }
+        } else {
+            diags.push(Diagnostic::error(
+                name.span,
+                format!(
+                    "{role} page `{}` must be a page in the app import closure",
+                    name.name
+                ),
+            ));
+        }
+        page
     };
-    let page = &cx.components[start.index()];
-    if page.params.iter().any(|param| matches!(&param.kind, ParamKind::Value(ty) if !matches!(ty, Type::Model(_) | Type::Optional(_))) && param.default.is_none()) {
-        diags.push(Diagnostic::error(app.start.span, format!("start page `{}` must not have required route parameters", app.start.name)));
-    }
+    let (start, tabs) = match &app.entry {
+        ast::AppEntry::Start(name) => (resolve_page(name, "start", diags)?, None),
+        ast::AppEntry::Tabs(items) => {
+            if !(2..=5).contains(&items.len()) {
+                diags.push(Diagnostic::error(app.span, "an app has 2 to 5 tabs"));
+            }
+            let mut seen_pages = HashSet::new();
+            let mut tabs = Vec::new();
+            for item in items {
+                if !seen_pages.insert(&item.page.name) {
+                    diags.push(Diagnostic::error(
+                        item.page.span,
+                        format!("duplicate tab page `{}`", item.page.name),
+                    ));
+                }
+                let page = resolve_page(&item.page, "tab", diags);
+                let mut title = None;
+                let mut icon = None;
+                let mut active_icon = None;
+                let mut seen_args = HashSet::new();
+                for arg in &item.args {
+                    let Some(name) = &arg.name else {
+                        diags.push(Diagnostic::error(arg.span, "tab arguments must be named"));
+                        continue;
+                    };
+                    if !seen_args.insert(name.name.as_str()) {
+                        diags.push(Diagnostic::error(
+                            name.span,
+                            format!("duplicate tab argument `{}`", name.name),
+                        ));
+                        continue;
+                    }
+                    let target = match name.name.as_str() {
+                        "title" => &mut title,
+                        "icon" => &mut icon,
+                        "activeIcon" => &mut active_icon,
+                        _ => {
+                            diags.push(Diagnostic::error(
+                                name.span,
+                                format!("unknown tab argument `{}`", name.name),
+                            ));
+                            continue;
+                        }
+                    };
+                    let value = match &arg.value.kind {
+                        ast::ExprKind::Str(parts)
+                            if parts
+                                .iter()
+                                .all(|part| matches!(part, ast::StrPart::Lit(_))) =>
+                        {
+                            Some(
+                                parts
+                                    .iter()
+                                    .filter_map(|part| match part {
+                                        ast::StrPart::Lit(s) => Some(s.as_str()),
+                                        _ => None,
+                                    })
+                                    .collect::<String>(),
+                            )
+                        }
+                        _ => None,
+                    };
+                    if let Some(value) = value {
+                        if name.name != "title"
+                            && !value
+                                .strip_prefix("asset:")
+                                .is_some_and(|name| !name.is_empty())
+                        {
+                            diags.push(Diagnostic::error(
+                                arg.value.span,
+                                format!("tab `{}` must be an asset:<name> string", name.name),
+                            ));
+                        }
+                        *target = Some(value);
+                    } else {
+                        diags.push(Diagnostic::error(
+                            arg.value.span,
+                            format!("tab `{}` must be a string literal", name.name),
+                        ));
+                    }
+                }
+                if !seen_args.contains("title") {
+                    diags.push(Diagnostic::error(item.page.span, "tab requires `title`"));
+                }
+                if !seen_args.contains("icon") {
+                    diags.push(Diagnostic::error(item.page.span, "tab requires `icon`"));
+                }
+                if let (Some(page), Some(title), Some(icon)) = (page, title, icon) {
+                    let active_icon = active_icon.unwrap_or_else(|| icon.clone());
+                    tabs.push(crate::ir::Tab {
+                        page,
+                        title,
+                        icon,
+                        active_icon,
+                    });
+                }
+            }
+            (tabs.first()?.page, Some(tabs))
+        }
+    };
     Some(Application {
         name: app.name.name.clone(),
         span: app.span,
         start,
+        tabs,
     })
 }
 

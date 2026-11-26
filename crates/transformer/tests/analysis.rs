@@ -146,6 +146,91 @@ fn apps_validate_start_pages_and_page_roots() {
 }
 
 #[test]
+fn tabs_validate_arguments_and_emit_layout() {
+    use weft_ui_transformer::view::ViewLayout;
+    let source = r#"app A { tabs { Home(title = "Home", icon = "asset:home") Search(title = "Search", icon = "asset:search", activeIcon = "asset:search-on") } } page Home() {} page Search() {}"#;
+    let compilation = compile(&[("main.weft", source)]);
+    assert!(
+        compilation.diagnostics.is_empty(),
+        "{:?}",
+        compilation.diagnostics
+    );
+    let program = compilation.program.expect("valid tabs");
+    let tabs = program.app.as_ref().unwrap().tabs.as_ref().unwrap();
+    assert_eq!(tabs[0].active_icon, "asset:home");
+    assert_eq!(tabs[1].active_icon, "asset:search-on");
+    let layout = ViewLayout::new(&program).to_json();
+    assert!(layout.contains("\"tabs\""), "{layout}");
+    assert!(layout.contains("\"page\": 0"), "{layout}");
+    assert!(layout.contains("\"page\": 1"), "{layout}");
+    assert!(!layout.contains("\"start\""), "{layout}");
+    assert!(
+        layout.contains("\"activeIcon\": \"asset:search-on\""),
+        "{layout}"
+    );
+    let cases = [
+        (
+            r#"Home(title = "H", icon = "asset:h")"#,
+            "an app has 2 to 5 tabs",
+        ),
+        (
+            r#"Home(title = "H", icon = "asset:h") Search(title = "S", icon = "asset:s") Home(title = "H", icon = "asset:h") Search(title = "S", icon = "asset:s") Home(title = "H", icon = "asset:h") Search(title = "S", icon = "asset:s")"#,
+            "an app has 2 to 5 tabs",
+        ),
+        (
+            r#"Home(title = "${x}", icon = "asset:h") Search(title = "S", icon = "asset:s")"#,
+            "must be a string literal",
+        ),
+        (
+            r#"Home(title = "H", icon = "asset:h") Home(title = "H", icon = "asset:h")"#,
+            "duplicate tab page",
+        ),
+        (
+            r#"Home(title = "H") Search(title = "S", icon = "asset:s")"#,
+            "tab requires `icon`",
+        ),
+        (
+            r#"Home(title = 1, icon = "bad") Search(title = "S", icon = "asset:s")"#,
+            "must be a string literal",
+        ),
+        (
+            r#"Home(title = "H", icon = "bad") Search(title = "S", icon = "asset:s")"#,
+            "must be an asset:<name> string",
+        ),
+        (
+            r#"Home(title = "H", icon = "asset:h", extra = "x") Search(title = "S", icon = "asset:s")"#,
+            "unknown tab argument",
+        ),
+        (
+            r#"Home(title = "H", icon = "asset:h", title = "again") Search(title = "S", icon = "asset:s")"#,
+            "duplicate tab argument",
+        ),
+        (
+            r#"Home("H", icon = "asset:h") Search(title = "S", icon = "asset:s")"#,
+            "tab arguments must be named",
+        ),
+        (
+            r#"Home(title = "H", icon = "asset:h") Missing(title = "S", icon = "asset:s")"#,
+            "tab page `Missing` must be a page",
+        ),
+    ];
+    for (tabs, expected) in cases {
+        let source = format!("app A {{ tabs {{ {tabs} }} }} page Home() {{}} page Search() {{}}");
+        let found = diagnostics(&[("main.weft", &source)]);
+        assert!(
+            found.iter().any(|d| d.contains(expected)),
+            "{source}: {found:?}"
+        );
+    }
+    let source = r#"app A { tabs { Home(title = "H", icon = "asset:h") Search(title = "S", icon = "asset:s") } } page Home(id: String) {} page Search() {}"#;
+    assert!(
+        diagnostics(&[("main.weft", source)])
+            .iter()
+            .any(|d| d.contains("tab page `Home` must not have required route parameters"))
+    );
+}
+
+#[test]
 fn app_layout_and_platform_support() {
     use weft_ui_transformer::{compile_app, transform::Platform};
     let mut loader = MemoryLoader::new();

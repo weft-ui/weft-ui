@@ -66,7 +66,7 @@ impl ViewLayout {
             })
             .collect();
         let mut layout = ViewLayout {
-            app: program.app.as_ref().map(|app| TemplateId(app.start.0)),
+            app: program.app.clone(),
             safe_area: options.safe_area,
             theme: program.theme.as_ref().map(|theme| theme.colors.clone()),
             templates,

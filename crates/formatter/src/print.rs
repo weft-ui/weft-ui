@@ -292,13 +292,25 @@ impl<'src> Printer<'src, '_> {
                 self.token(TokenKind::Ident)?;
                 self.doc.text(" ");
                 self.ident(&app.name)?;
-                self.constant_entries(std::slice::from_ref(&app.start), |printer, start| {
-                    printer.token(TokenKind::Ident)?;
-                    printer.operator_gap();
-                    printer.token(TokenKind::Eq)?;
-                    printer.operator_gap();
-                    printer.ident(start)
-                })
+                self.constant_entries(
+                    std::slice::from_ref(&app.entry),
+                    |printer, entry| match entry {
+                        weft_ui_ast::AppEntry::Start(start) => {
+                            printer.token(TokenKind::Ident)?;
+                            printer.operator_gap();
+                            printer.token(TokenKind::Eq)?;
+                            printer.operator_gap();
+                            printer.ident(start)
+                        }
+                        weft_ui_ast::AppEntry::Tabs(tabs) => {
+                            printer.token(TokenKind::Ident)?;
+                            printer.constant_entries(tabs, |printer, tab| {
+                                printer.ident(&tab.page)?;
+                                printer.comma_group(&tab.args, Self::arg)
+                            })
+                        }
+                    },
+                )
             }
             Item::TypeAlias(alias) => {
                 self.token(TokenKind::Ident)?;

@@ -16,7 +16,7 @@ import { tick } from "@weft-ui/runtime/remote";
 import type { Actions, AppLike, Script } from "../harness.ts";
 
 interface Action {
-  method: "click" | "edit" | "back";
+  method: "click" | "edit" | "back" | "tab";
   type?: string;
   index?: number;
   event?: string;
@@ -38,6 +38,7 @@ async function play<A extends AppLike>(script: Script<A>): Promise<void> {
     const actions: Action[] = [];
     const ui: Actions = {
       back: () => void actions.push({ method: "back" }),
+      tab: (index) => void actions.push({ method: "tab", index }),
       click: (type, index, event) => void actions.push({ method: "click", type, index, event }),
       focus: (type, index, value) => void actions.push({ method: "click", type, index, event: "onFocusChange", value }),
       edit: (type, index, value) => void actions.push({ method: "edit", type, index, value }),

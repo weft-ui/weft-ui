@@ -16,6 +16,7 @@ import type { Session, Sink, Value } from "./remote.ts";
 export interface Layout {
   hash: string;
   templates: TemplateLayout[];
+  app?: { start: number } | { tabs: { page: number; title: string; icon: string; activeIcon: string }[] };
 }
 
 export interface TemplateLayout {
@@ -127,6 +128,16 @@ export class Renderer extends OpWriter implements Sink {
     else next.stack.pop();
     this.#setNav(next);
     this.#session!.signal("navigation", JSON.stringify({ tab: next.tab, stack: next.stack, modal: next.modal }));
+  }
+
+  /** Simulates selecting a tab in the host. */
+  selectTab(index: number): void {
+    const nav = this.#nav;
+    if (!nav || !Number.isInteger(index) || index < 0 || index >= nav.tabs.length) {
+      throw new RangeError(`weft: invalid tab index ${index}`);
+    }
+    if (nav.tabs[index]) this.#setNav({ ...nav, tab: index, stack: [], modal: 0 });
+    this.#session!.signal("navigation", JSON.stringify({ tab: index, stack: [], modal: 0 }));
   }
 
   /** Rendered elements of `type`, in document order. */
@@ -254,6 +265,11 @@ export class Renderer extends OpWriter implements Sink {
         throw new Error(`weft protocol: scope ${id} is not an available page`);
       }
       retained.add(id);
+    }
+    const app = this.layout.app;
+    const expected = app && ("tabs" in app ? app.tabs.map((tab) => tab.page) : [app.start]);
+    if (!expected || next.tabs.length !== expected.length || next.tabs.some((id, index) => id !== 0 && this.layout.templates[expected[index]!] !== this.#scope(id).template)) {
+      throw new Error("weft protocol: navigation tabs do not match the app layout");
     }
     for (const id of previous) if (!retained.has(id)) this.#destroy(this.#scope(id));
     for (const id of retained) this.#scope(id).mounted = true;

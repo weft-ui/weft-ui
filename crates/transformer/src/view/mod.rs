@@ -40,7 +40,7 @@ impl TemplateId {
 /// Block templates of a whole app.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ViewLayout {
-    app: Option<TemplateId>,
+    app: Option<crate::ir::Application>,
     safe_area: bool,
     theme: Option<Vec<(String, Color, Color)>>,
     templates: Vec<Template>,

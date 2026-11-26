@@ -2,11 +2,11 @@
 
 use weft_ui_ast::span::offset;
 use weft_ui_ast::{
-    AppDecl, Arg, Assign, AssignOp, BinaryOp, Block, CallStmt, ComponentDecl, Diagnostic,
+    AppDecl, AppEntry, Arg, Assign, AssignOp, BinaryOp, Block, CallStmt, ComponentDecl, Diagnostic,
     ElementNode, EventDecl, Expr, ExprKind, Field, File, FileId, ForNode, Ident, IfBranch, IfNode,
     Import, Item, Lambda, LambdaStmt, LetDecl, ModelDecl, Node, NodeKind, Page, Param, SlotFill,
-    Span, StateDecl, StrPart, StyleDecl, StyleEntry, ThemeDecl, ThemeEntry, ThemeValue, TypeAlias,
-    TypeExpr, TypeExprKind, UnaryOp,
+    Span, StateDecl, StrPart, StyleDecl, StyleEntry, TabItem, ThemeDecl, ThemeEntry, ThemeValue,
+    TypeAlias, TypeExpr, TypeExprKind, UnaryOp,
 };
 
 use crate::lexer::{lex, scan_interpolation};
@@ -375,16 +375,36 @@ impl<'src> Parser<'src> {
         let span = self.bump().span;
         let name = self.ident("app name")?;
         self.expect(TokenKind::LBrace)?;
-        let keyword = self.ident("`start`")?;
-        if keyword.name != "start" {
-            self.error(keyword.span, "expected `start`");
-        }
-        self.expect(TokenKind::Eq)?;
-        let start = self.ident("start page")?;
+        let keyword = self.ident("`start` or `tabs`")?;
+        let entry = match keyword.name.as_str() {
+            "start" => {
+                self.expect(TokenKind::Eq)?;
+                AppEntry::Start(self.ident("start page")?)
+            }
+            "tabs" => {
+                self.expect(TokenKind::LBrace)?;
+                let mut tabs = Vec::new();
+                while !self.at(TokenKind::RBrace)
+                    && !self.at(TokenKind::Eof)
+                    && !self.at_item_start()
+                {
+                    let page = self.ident("tab page")?;
+                    self.expect(TokenKind::LParen)?;
+                    let args = self.comma_list(TokenKind::RParen, |p| Some(p.arg()));
+                    tabs.push(TabItem { page, args });
+                }
+                self.expect(TokenKind::RBrace)?;
+                AppEntry::Tabs(tabs)
+            }
+            _ => {
+                self.error(keyword.span, "expected `start` or `tabs`");
+                return None;
+            }
+        };
         self.expect(TokenKind::RBrace)?;
         Some(AppDecl {
             name,
-            start,
+            entry,
             span: self.span_from(span),
         })
     }

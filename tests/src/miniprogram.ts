@@ -259,10 +259,11 @@ export function loadView(dir: string): TestView {
 }
 
 /** A multi-page stand-in for an unbundled navigation fixture. */
-export function loadNavigationView(dir: string): { root: TestView; current(): TestView; back(): void; dispose(): void } {
+export function loadNavigationView(dir: string, tabs: readonly string[] = []): { root: TestView; current(): TestView; back(): void; tab(index: number): void; dispose(): void } {
   const stack = [loadView(dir)];
   const root = stack[0]!;
   const sink = () => (root as TestView & { $sink: WechatSink }).$sink;
+  sink().configureTabs(tabs);
   const globals = globalThis as typeof globalThis & { wx?: object };
   const previous = globals.wx;
   const remove = () => {
@@ -270,10 +271,23 @@ export function loadNavigationView(dir: string): { root: TestView; current(): Te
     sink().unloadPage(index);
     stack.pop()!.detach();
   };
+  const tab = (index: number) => {
+    const name = tabs[index];
+    if (!name) throw new RangeError(`weft: invalid tab index ${index}`);
+    while (stack.length > 1) remove();
+    sink().selectTab(name);
+    sink().bindPage(0, root);
+    sink().showPage(0);
+  };
   const wx = {
     navigateTo: () => { const next = loadView(dir); stack.push(next); sink().bindPage(stack.length - 1, next); },
     redirectTo: () => { remove(); const next = loadView(dir); stack.push(next); sink().bindPage(stack.length - 1, next); },
     navigateBack: ({ delta }: { delta: number }) => { for (let i = 0; i < delta && stack.length > 1; i++) remove(); sink().showPage(stack.length - 1); },
+    switchTab: ({ url }: { url: string }) => {
+      const index = tabs.findIndex((name) => url.includes(`/${name.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`)}/`));
+      if (index >= 0) queueMicrotask(() => tab(index));
+    },
+    setTabBarBadge: () => {}, removeTabBarBadge: () => {}, showTabBarRedDot: () => {}, hideTabBarRedDot: () => {},
     setNavigationBarTitle: () => {},
   };
   globals.wx = wx;
@@ -281,6 +295,7 @@ export function loadNavigationView(dir: string): { root: TestView; current(): Te
     root,
     current: () => stack[stack.length - 1]!,
     back: () => { if (stack.length > 1) remove(); },
+    tab,
     dispose: () => { if (previous === undefined) delete globals.wx; else globals.wx = previous; },
   };
 }

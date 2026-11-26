@@ -71,6 +71,7 @@ test.each(fixtures)("%s renders alike on every platform and matches its golden o
     if (name === "navigation") expect(renderer.log).toEqual([
       "home show", "home hide", "detail 1 show", "detail 1 hide", "home show",
       "home hide", "detail 1 show", "detail 1 hide", "detail 2 show", "detail 2 hide", "home show",
+      "home hide", "settings show", "settings hide", "home show", "home hide", "detail 1 show", "detail 1 hide", "settings show",
     ]);
     for (const driver of drivers) driver.app.unmount();
   } finally {

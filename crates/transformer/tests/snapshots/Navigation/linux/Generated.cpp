@@ -10,7 +10,7 @@ using namespace std::literals;
 namespace {
 
 /// Hash of the layout; the kernel refuses bundles compiled with another layout.
-constexpr uint64_t kLayoutHash = 0x0cb287c33f80ecd6ull;
+constexpr uint64_t kLayoutHash = 0x69aea4cbb1f5516aull;
 constexpr bool safe_area = true;
 
 // 0 Home
@@ -28,11 +28,26 @@ class S0 final : public weft::Scope {
   }
 };
 
-// 1 Detail
+// 1 Settings
 
 class S1 final : public weft::Scope {
  public:
   S1(uint32_t id, weft::Session &session) : Scope(id, session) {
+    init_page();
+    auto &n0 = make<weft::NavBar>();
+    n0.set_title("Settings"sv);
+    set_page_bar(n0);
+    auto &n1 = make<weft::Text>();
+    n1.set_value("Settings"sv);
+    roots().add(n1);
+  }
+};
+
+// 2 Detail
+
+class S2 final : public weft::Scope {
+ public:
+  S2(uint32_t id, weft::Session &session) : Scope(id, session) {
     init_page();
     n0_ = &make<weft::NavBar>();
     set_page_bar(*n0_);
@@ -62,6 +77,7 @@ std::unique_ptr<weft::Scope> make_scope(uint32_t tpl, uint32_t id, weft::Session
   switch (tpl) {
     case 0: return std::make_unique<S0>(id, session);
     case 1: return std::make_unique<S1>(id, session);
+    case 2: return std::make_unique<S2>(id, session);
     default: return nullptr;
   }
 }

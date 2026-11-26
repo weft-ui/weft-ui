@@ -1,3 +1,4 @@
 <template name="Home"><view class="w-navbar{{wParent}}" style="display:none" data-title="Home"></view><text class="w-text{{wParent}}">Home</text></template>
+<template name="Settings"><view class="w-navbar{{wParent}}" style="display:none" data-title="Settings"></view><text class="w-text{{wParent}}">Settings</text></template>
 <template name="Detail"><view class="w-navbar{{wParent}}" style="display:none" data-title="{{n1_0}}"></view><text class="w-text{{wParent}}">{{n2_0}}</text></template>
 <block wx:if="{{t}}"><template is="{{t}}" data="{{...r, wParent: ''}}"/></block>

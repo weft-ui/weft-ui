@@ -10,7 +10,7 @@ namespace Weft.Generated;
 public static class WeftApp
 {
     /// <summary>Hash of the layout; the kernel refuses bundles compiled with another layout.</summary>
-    public const ulong LayoutHash = 0x0cb287c33f80ecd6UL;
+    public const ulong LayoutHash = 0x69aea4cbb1f5516aUL;
     public const bool SafeArea = true;
 
     /// <summary>Starts the app's bundle in the kernel and returns its root view.</summary>
@@ -21,6 +21,7 @@ public static class WeftApp
     {
         0 => new S0(id, session),
         1 => new S1(id, session),
+        2 => new S2(id, session),
         _ => null,
     };
 }
@@ -40,16 +41,31 @@ file sealed class S0 : WeftScope
     }
 }
 
-// 1 Detail
+// 1 Settings
 
 file sealed class S1 : WeftScope
+{
+    public S1(uint id, WeftSession session) : base(id, session)
+    {
+        var n0 = new WeftNavigationBar();
+        n0.Title = "Settings";
+        NavigationBar = n0.Element;
+        var n1 = new WeftText();
+        n1.Value = "Settings";
+        Roots.Add(n1.Element);
+    }
+}
+
+// 2 Detail
+
+file sealed class S2 : WeftScope
 {
     // NavBar.title
     private readonly WeftNavigationBar n0;
     // Text.value
     private readonly WeftText n2;
 
-    public S1(uint id, WeftSession session) : base(id, session)
+    public S2(uint id, WeftSession session) : base(id, session)
     {
         n0 = new WeftNavigationBar();
         NavigationBar = n0.Element;

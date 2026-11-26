@@ -294,6 +294,120 @@ run(new Notes({
   } finally { await server.close(); }
 }, 15_000);
 
+test("Web tabs replace the root history entry and retain their pages", async () => {
+  await mkdir(join(root, "res/icons"), { recursive: true });
+  for (const name of ["home", "home_on", "settings", "settings_on"]) {
+    await writeFile(join(root, `res/icons/${name}.svg`), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  }
+  await writeFile(join(root, "src/App.weft"), `
+event Open
+event SelectSettings
+page Home() { Button(onClick = Open) { Text("Open detail") } }
+page Settings() { Text("Settings page") }
+page Detail() { Button(onClick = SelectSettings) { Text("Switch to settings") } }
+app Notes { tabs {
+  Home(title = "Home", icon = "asset:home", activeIcon = "asset:home_on")
+  Settings(title = "Settings", icon = "asset:settings", activeIcon = "asset:settings_on")
+} }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Settings, Detail, Notes } from "./App.weft";
+import { navigation, run } from "@weft-ui/platform";
+run(new Notes({
+  Home: () => { const page = new Home({}); page.onOpen(() => navigation.push(Detail)); return page; },
+  Settings: () => new Settings({}),
+  Detail: () => { const page = new Detail({}); page.onSelectSettings(() => navigation.switchTab(Settings)); return page; },
+}));
+navigation.setBadge(Settings, "3");
+`);
+  await build("web", { assets: "res" });
+  const server = await preview({ root, configFile: false, logLevel: "silent", build: { outDir: "apps/web" }, preview: { host: "127.0.0.1", port: 0 } });
+  try {
+    const address = server.httpServer.address();
+    if (!address || typeof address === "string") throw new Error("preview server has no TCP address");
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.goto(`http://127.0.0.1:${address.port}/`);
+      const tabs = page.getByRole("tablist");
+      const home = tabs.getByRole("tab", { name: "Home" });
+      const settings = tabs.getByRole("tab", { name: "Settings 3" });
+      expect(await home.getAttribute("aria-selected")).toBe("true");
+      expect(await home.locator("img").getAttribute("src")).toContain("home_on");
+      const length = await page.evaluate(() => history.length);
+      await settings.click();
+      await page.waitForURL("**/settings");
+      expect(await page.evaluate(() => history.length)).toBe(length);
+      expect(await settings.getAttribute("aria-selected")).toBe("true");
+      await home.click();
+      await page.getByText("Open detail").click();
+      await page.waitForURL("**/detail");
+      expect(await tabs.isHidden()).toBe(true);
+      await page.getByText("Switch to settings").click();
+      await page.waitForURL("**/settings");
+      await page.getByText("Settings page").waitFor();
+      await home.click();
+      await page.getByText("Open detail").click();
+      await page.goBack();
+      await page.waitForURL("**/home");
+      await page.getByText("Open detail").waitFor();
+    } finally { await browser.close(); }
+  } finally { await server.close(); }
+}, 15_000);
+
+test("WeChat emits tab bar images and preserves user tab bar settings", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Text("home") }
+page Settings() { Text("settings") }
+app Notes { tabs {
+  Home(title = "Home", icon = "asset:home", activeIcon = "asset:home_on")
+  Settings(title = "Settings", icon = "asset:settings")
+} }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Settings, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Settings: () => new Settings({}) }));
+`);
+  const images = join(root, "assets/images");
+  await mkdir(images, { recursive: true });
+  for (const name of ["home.png", "home_on.jpg", "settings.jpeg"]) await writeFile(join(images, name), name);
+  const project = join(root, "apps/wechat");
+  await mkdir(project, { recursive: true });
+  await writeFile(join(project, "app.json"), JSON.stringify({ pages: ["custom/page"], tabBar: { color: "#123456", borderStyle: "white" } }));
+  await build("wechat");
+  const manifest = JSON.parse(await readFile(join(project, "app.json"), "utf8"));
+  expect(manifest.pages[0]).toBe("weft/pages/home/index");
+  expect(manifest.tabBar.color).toBe("#123456");
+  expect(manifest.tabBar.borderStyle).toBe("white");
+  expect(manifest.tabBar.list).toEqual([
+    { pagePath: "weft/pages/home/index", text: "Home", iconPath: "weft/assets/tab/home.png", selectedIconPath: "weft/assets/tab/home_on.jpg" },
+    { pagePath: "weft/pages/settings/index", text: "Settings", iconPath: "weft/assets/tab/settings.jpeg", selectedIconPath: "weft/assets/tab/settings.jpeg" },
+  ]);
+  for (const name of ["home.png", "home_on.jpg", "settings.jpeg"]) {
+    expect(await readFile(join(project, "weft/assets/tab", name), "utf8")).toBe(name);
+  }
+});
+
+test("WeChat rejects SVG tab icons", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Text("home") }
+page Settings() { Text("settings") }
+app Notes { tabs {
+  Home(title = "Home", icon = "asset:home")
+  Settings(title = "Settings", icon = "asset:home")
+} }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Settings, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Settings: () => new Settings({}) }));
+`);
+  await mkdir(join(root, "assets/icons"), { recursive: true });
+  await writeFile(join(root, "assets/icons/home.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  await expect(build("wechat")).rejects.toThrow("weft: tab icon `home` must be a PNG or JPEG image on wechat");
+});
+
 test("WeChat app builds one generated page per route and preserves user app settings", async () => {
   await writeFile(join(root, "src/App.weft"), `
 page Home() { NavBar(title = "Home") Text("home") }

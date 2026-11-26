@@ -30,6 +30,10 @@ type ParamsArg<P> = {} extends P ? [params?: P] : [params: P];
 /** Stack navigation for a mounted application. */
 export const navigation: {
   readonly stack: readonly Route[];
+  readonly tab: string | null;
+  switchTab(page: PageClass<{}>): void;
+  /** `null` removes the badge; an empty string shows a dot. */
+  setBadge(page: PageClass<{}>, text: string | null): void;
   push<P>(page: PageClass<P>, ...params: ParamsArg<P>): void;
   replace<P>(page: PageClass<P>, ...params: ParamsArg<P>): void;
   pop(count?: number): void;

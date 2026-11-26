@@ -146,8 +146,22 @@ pub struct ComponentDecl {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppDecl {
     pub name: Ident,
-    pub start: Ident,
+    pub entry: AppEntry,
     pub span: Span,
+}
+
+/// The initial page or the application's tab pages.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AppEntry {
+    Start(Ident),
+    Tabs(Vec<TabItem>),
+}
+
+/// A page and its tab metadata arguments.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TabItem {
+    pub page: Ident,
+    pub args: Vec<Arg>,
 }
 
 /// A page shares its body and parameters with a component and may declare a route path.

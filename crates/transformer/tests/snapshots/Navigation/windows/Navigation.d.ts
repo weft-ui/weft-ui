@@ -13,6 +13,16 @@ export declare class Home extends $Page<HomeParams> {
   onHide(handler: (model: undefined) => void): () => void;
 }
 
+export interface SettingsParams {
+}
+export declare class Settings extends $Page<SettingsParams> {
+  constructor(params: SettingsParams);
+  get model(): undefined;
+  readonly params: Readonly<SettingsParams>;
+  onShow(handler: (model: undefined) => void): () => void;
+  onHide(handler: (model: undefined) => void): () => void;
+}
+
 export interface DetailParams {
   id: string;
 }
@@ -27,6 +37,7 @@ export declare class Detail extends $Page<DetailParams> {
 export declare class Notes extends $Application {
   constructor(pages: {
     Home: () => Home;
+    Settings: () => Settings;
     Detail: (params: DetailParams) => Detail;
   });
 }

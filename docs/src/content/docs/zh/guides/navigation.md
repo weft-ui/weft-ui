@@ -68,6 +68,23 @@ run(new Notes({
 
 请在应用挂载后调用导航接口。没有 `app` 声明的程序不能使用这些接口。
 
+## Tab
+
+可以用两个到五个不同的 Tab 页面代替 `start`；这些页面不能有必填路由参数：
+
+```weft
+app Notes {
+    tabs {
+        Home(title = "首页", icon = "asset:tab_home")
+        Settings(title = "设置", icon = "asset:tab_settings", activeIcon = "asset:tab_settings_active")
+    }
+}
+```
+
+每项都需要字面量标题和 `asset:` 图标；省略 `activeIcon` 时使用 `icon`。微信小程序的 Tab 图标必须是 PNG 或 JPEG。与上面的示例一样，为所有页面提供工厂：Tab 根页面首次选中时创建，之后保留。
+
+使用 `navigation.switchTab(Settings)` 切换 Tab 并清空推入的页面栈。`navigation.tab` 返回当前 Tab 的页面名，没有 Tab 时为 `null`。`navigation.setBadge(Settings, "3")` 显示角标，传入 `""` 显示红点，传入 `null` 移除角标。推入的页面会盖住 Tab 栏。Web 切换 Tab 时回到根历史条目，再将它替换为所选 Tab 的 URL。
+
 ## 标题、显示状态与返回
 
 `NavBar` 可以省略；使用时必须是页面的第一个顶层节点，且每个页面最多一个。`title` 可以动态变化。`hidden = true` 隐藏标题栏，但不禁用返回手势或按键。没有 `NavBar` 时宿主显示空标题。`BarButton` 只能放在标题栏内，必须提供无障碍名称 `label`；没有 `icon` 时显示标签文字。图标使用 `asset:` 资源。

@@ -28,6 +28,11 @@ declare const wx: {
   navigateTo(options: { url: string }): void;
   redirectTo(options: { url: string }): void;
   navigateBack(options: { delta: number }): void;
+  switchTab(options: { url: string }): void;
+  setTabBarBadge(options: { index: number; text: string }): void;
+  removeTabBarBadge(options: { index: number }): void;
+  showTabBarRedDot(options: { index: number }): void;
+  hideTabBarRedDot(options: { index: number }): void;
 };
 
 /** Data keys of one layout template (see `crates/transformer/src/wechat/table.rs`). */
@@ -117,6 +122,10 @@ export class WechatSink implements Sink {
   #routeCount = 0;
   #hostNavigating = 0;
   #pageTypes: readonly PageClass[] = [];
+  #tabNames: readonly string[] = [];
+  #tabs: readonly number[] = [];
+  #tab = 0;
+  #rootPage: string | undefined;
   #nextNavigation = 0;
 
   constructor(view: View, layout: Layout, assets?: AssetVariants) {
@@ -279,6 +288,44 @@ export class WechatSink implements Sink {
     this.#pageTypes = pages;
   }
 
+  /** Records the tab page names in tab-bar order. */
+  configureTabs(names: readonly string[]): void {
+    this.#tabNames = names;
+  }
+
+  /** Adopts a user-selected tab before its view is bound. */
+  selectTab(name: string): void {
+    const index = this.#tabNames.indexOf(name);
+    if (index < 0 || (index === this.#tab && this.#rootPage === name && this.#pages.length <= 1)) return;
+    for (const id of this.#pages.slice(1)) {
+      const scope = this.#scopes.get(id);
+      if (scope) this.#destroy(scope);
+    }
+    const wasTab = this.#rootPage === this.#tabNames[this.#tab];
+    if (!wasTab) {
+      const root = this.#scopes.get(this.#pages[0]);
+      if (root) this.#destroy(root);
+    }
+    this.#tab = index;
+    this.#rootPage = name;
+    this.#pages = wasTab && this.#tabs[index] ? [this.#tabs[index]!] : [];
+    this.#routeCount = 1;
+    this.#session?.signal("navigation", JSON.stringify({ tab: index, stack: [], modal: 0 }));
+  }
+
+  badge(index: number, text: string | null): void {
+    if (text === null) {
+      wx.removeTabBarBadge({ index });
+      wx.hideTabBarRedDot({ index });
+    } else if (text === "") {
+      wx.removeTabBarBadge({ index });
+      wx.showTabBarRedDot({ index });
+    } else {
+      wx.hideTabBarRedDot({ index });
+      wx.setTabBarBadge({ index, text });
+    }
+  }
+
   /** Refreshes the native title when the platform shows a page. */
   showPage(index: number): void {
     const scope = this.#scopes.get(this.#pages[index]);
@@ -306,7 +353,7 @@ export class WechatSink implements Sink {
       const removed = this.#pages.slice(index);
       this.#pages = this.#pages.slice(0, index);
       this.#routeCount = this.#pages.length;
-      this.#session?.signal("navigation", JSON.stringify({ tab: 0, stack: this.#pages.slice(1), modal: 0 }));
+      this.#session?.signal("navigation", JSON.stringify({ tab: this.#tab, stack: this.#pages.slice(1), modal: 0 }));
       for (const id of removed) {
         const scope = this.#scopes.get(id);
         if (scope) this.#destroy(scope);
@@ -314,11 +361,16 @@ export class WechatSink implements Sink {
     }
   }
 
-  routes(routes: readonly { page: string; url: string }[], operation: "push" | "replace" | "pop" | "root" | "host"): void {
+  routes(routes: readonly { page: string; url: string }[], operation: "push" | "replace" | "pop" | "root" | "host" | "tab"): void {
     const previous = this.#routeCount;
     this.#routeCount = routes.length;
+    this.#rootPage = routes[0]?.page;
     if (!previous || operation === "host") return;
-    if (operation === "push" || operation === "replace") {
+    if (operation === "tab") {
+      const slug = routes[0]!.page.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+      this.#hostNavigating += Math.max(0, previous - 1);
+      wx.switchTab({ url: `/weft/pages/${slug}/index` });
+    } else if (operation === "push" || operation === "replace") {
       const route = routes[routes.length - 1];
       const slug = route.page.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
       const match = matchRoute(this.#pageTypes, route.url);
@@ -335,10 +387,12 @@ export class WechatSink implements Sink {
     }
   }
 
-  nav(_tab: number, tabs: readonly number[], stack: readonly number[], _modal: number, _style: "sheet" | "fullScreen"): void {
+  nav(tab: number, tabs: readonly number[], stack: readonly number[], _modal: number, _style: "sheet" | "fullScreen"): void {
     const initial = this.#pages.length === 0;
-    const next = [tabs[0], ...stack].filter((id) => id !== 0);
-    const kept = new Set(next);
+    const next = [tabs[tab], ...stack].filter((id) => id !== 0);
+    const kept = new Set([...tabs, ...stack]);
+    this.#tab = tab;
+    this.#tabs = tabs;
     for (const id of this.#pages) if (!kept.has(id)) {
       const scope = this.#scopes.get(id);
       if (scope) this.#destroy(scope);
@@ -503,6 +557,9 @@ export class WechatSink implements Sink {
     this.#created = [];
     this.#pending = [];
     this.#pages = [];
+    this.#tabs = [];
+    this.#tab = 0;
+    this.#rootPage = undefined;
     this.#views.clear();
     this.#routeCount = 0;
     this.#hostNavigating = 0;

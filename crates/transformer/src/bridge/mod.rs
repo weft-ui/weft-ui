@@ -384,14 +384,30 @@ fn code(program: &Program, links: &Links<'_>, runtime: &str) -> String {
             .filter(|component| component.page.is_some())
             .map(|component| js::binding(&component.name))
             .collect();
-        let start = js::binding(&program.component(app.start).name);
+        let entry = if let Some(tabs) = &app.tabs {
+            let tabs: Vec<_> = tabs
+                .iter()
+                .map(|tab| {
+                    format!(
+                        "{{ page: {}, title: {}, icon: {}, activeIcon: {} }}",
+                        js::binding(&program.component(tab.page).name),
+                        js::string(&tab.title),
+                        js::string(&tab.icon),
+                        js::string(&tab.active_icon)
+                    )
+                })
+                .collect();
+            format!("tabs: [{}]", tabs.join(", "))
+        } else {
+            format!("start: {}", js::binding(&program.component(app.start).name))
+        };
         let hash = match links.mode {
             Mode::Dom(..) => "undefined".to_owned(),
             Mode::Remote(layout) => format!("\"{:016x}\"", layout.hash()),
         };
         let name = js::binding(&app.name);
         let export = if name == app.name { "export " } else { "" };
-        out.line(format!("{export}class {name} extends $.Application {{ constructor(pages) {{ super(pages, {{ start: {start}, pages: [{}] }}, {hash}); }} }}", pages.join(", ")));
+        out.line(format!("{export}class {name} extends $.Application {{ constructor(pages) {{ super(pages, {{ {entry}, pages: [{}] }}, {hash}); }} }}", pages.join(", ")));
         if name != app.name {
             out.line(format!("export {{ {name} as {} }};", app.name));
         }

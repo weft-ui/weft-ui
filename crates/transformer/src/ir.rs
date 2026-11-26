@@ -68,6 +68,17 @@ pub struct Application {
     pub name: String,
     pub span: Span,
     pub start: ComponentId,
+    /// Tab metadata, absent for a single start page.
+    pub tabs: Option<Vec<Tab>>,
+}
+
+/// A tab's page and display metadata.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tab {
+    pub page: ComponentId,
+    pub title: String,
+    pub icon: String,
+    pub active_icon: String,
 }
 
 /// Resolved color tokens in declaration order. Numeric tokens are folded in the IR.

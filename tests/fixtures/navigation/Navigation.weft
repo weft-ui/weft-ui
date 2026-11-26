@@ -18,4 +18,14 @@ page Detail(id: String, from: String = "feed") path "/notes/{id}" {
     }
 }
 
-app Notes { start = Home }
+page Settings() {
+    NavBar(title = "Settings")
+    Text("Settings")
+}
+
+app Notes {
+    tabs {
+        Home(title = "Home", icon = "asset:tab_home")
+        Settings(title = "Settings", icon = "asset:tab_settings")
+    }
+}

@@ -15,7 +15,7 @@ This document defines the normative grammar of the `.weft` language. The parser 
   - `theme` followed by `{` begins a top-level theme declaration; `dark` introduces its second color only in a theme entry;
   - `state` (followed by an identifier) begins a state declaration only in a component body;
   - `let` (followed by an identifier) begins a local declaration at the start of a component body or block;
-  - `path` introduces a page's optional path after its parameter list; `start` names the entry page inside an `app`;
+  - `path` introduces a page's optional path after its parameter list; `start` names the entry page and `tabs` introduces tab pages inside an `app`;
   - `key` appears only in a `for` header.
 - Integers: `[0-9]+`, within the range of `i64`. Floating-point numbers: `[0-9]+ "." [0-9]+ ([eE] [+-]? [0-9]+)?` or `[0-9]+ [eE] [+-]? [0-9]+`.
 - Strings: `"..."`, with escapes `\n` `\r` `\t` `\0` `\\` `\"` `\$` `\u{XXXX}`.
@@ -30,7 +30,9 @@ EBNF notation: `X?` means optional, `X*` means zero or more occurrences, `X+` me
 File        = Import* Item* EOF ;
 Import      = "import" STRING ;               (* no interpolation *)
 Item        = Model | Event | Component | Page | App | TypeAlias | Style | Theme ;
-App         = "app" IDENT "{" "start" "=" IDENT "}" ;
+App         = "app" IDENT "{" AppEntry "}" ;
+AppEntry    = "start" "=" IDENT | "tabs" "{" TabItem+ "}" ;
+TabItem     = IDENT "(" ArgList? ")" ;
 TypeAlias   = "type" IDENT "=" Type ;
 Style       = "style" IDENT "{" ( StyleEntry ","? )* "}" ;
 StyleEntry  = IDENT "=" ConstValue ;
@@ -134,6 +136,7 @@ Every AST node carries a source span (file and byte offsets). Diagnostics are lo
 ### Applications
 
 - A compilation unit has at most one `app`. Its `start` must name a page without required route parameters. The application contains all pages in the transitive import closure of the file declaring it; pages outside that closure are errors.
+- Alternatively, `tabs` lists 2–5 distinct pages without required route parameters. Each item requires named string literal arguments `title` and `icon`, and may specify `activeIcon`; icons must use `asset:<name>`. An omitted `activeIcon` defaults to `icon`.
 - An application is mounted with its generated application class and a factory for every page. Factories create page instances and register their handlers. Pages cannot be mounted directly. Programs without an `app` continue to mount a root component.
 - A `NavBar` can appear at most once, as the first top-level node of a page, never inside `if` or `for`. `BarButton` may only appear inside `NavBar`; it requires an accessible `label`.
 

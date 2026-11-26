@@ -68,6 +68,23 @@ A page with a model takes the model first and its route parameters second. The g
 
 Call navigation after the app is mounted. The same functions cannot be used by a program with no `app` declaration.
 
+## Tabs
+
+Instead of `start`, declare two to five distinct tab pages without required route parameters:
+
+```weft
+app Notes {
+    tabs {
+        Home(title = "Home", icon = "asset:tab_home")
+        Settings(title = "Settings", icon = "asset:tab_settings", activeIcon = "asset:tab_settings_active")
+    }
+}
+```
+
+Each tab needs a literal title and an `asset:` icon. `activeIcon` defaults to `icon`. On WeChat, tab icons must be PNG or JPEG. Supply factories for all pages as above: a tab root is created when first selected and retained thereafter.
+
+Use `navigation.switchTab(Settings)` to select a tab and clear the pushed stack. `navigation.tab` gives the selected page name, or `null` without tabs. `navigation.setBadge(Settings, "3")` displays a badge; pass `""` for a dot or `null` to remove it. Pushed pages cover the tab bar. On the Web, switching tabs returns to the root history entry and replaces it with the selected tab's URL.
+
 ## Titles, visibility, and back
 
 `NavBar` is optional, but if present must be the first top-level node of the page and appear only once. `title` can be dynamic. `hidden = true` hides the bar without disabling back gestures or keys. Without a `NavBar`, the host displays an empty title. A `BarButton` belongs inside the bar and requires a `label` for accessibility; without an `icon`, the label is displayed as text. An icon is an `asset:` resource.

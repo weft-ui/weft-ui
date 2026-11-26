@@ -29,9 +29,30 @@ impl ViewLayout {
             out.key("hash");
             out.string(&format!("{hash:016x}"));
         }
-        if let Some(start) = self.app {
+        if let Some(app) = &self.app {
             out.key("app");
-            out.inline(&format!("{{\"start\": {}}}", start.0));
+            if let Some(tabs) = &app.tabs {
+                out.open('{');
+                out.key("tabs");
+                out.open('[');
+                for tab in tabs {
+                    out.item();
+                    out.open('{');
+                    out.key("page");
+                    out.inline(&tab.page.0.to_string());
+                    out.key("title");
+                    out.string(&tab.title);
+                    out.key("icon");
+                    out.string(&tab.icon);
+                    out.key("activeIcon");
+                    out.string(&tab.active_icon);
+                    out.close('}');
+                }
+                out.close(']');
+                out.close('}');
+            } else {
+                out.inline(&format!("{{\"start\": {}}}", app.start.0));
+            }
         }
         out.key("safeArea");
         out.inline(if self.safe_area { "true" } else { "false" });

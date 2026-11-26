@@ -1,10 +1,20 @@
 event Action()
 
-app Notes { start = Home }
+app Notes {
+    tabs {
+        Home(title = "Home", icon = "asset:tab_home")
+        Settings(title = "Settings", icon = "asset:tab_settings")
+    }
+}
 
 page Home() {
     NavBar(title = "Home")
     Text("Home")
+}
+
+page Settings() {
+    NavBar(title = "Settings")
+    Text("Settings")
 }
 
 page Detail(id: String) {

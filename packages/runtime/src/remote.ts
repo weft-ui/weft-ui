@@ -59,8 +59,9 @@ export interface Ops {
   /** Mounts a component instance or slot content once; scope `0` point `0` is the root. */
   attach(scope: number, point: number, child: number): void;
   nav?(tab: number, tabs: readonly number[], stack: readonly number[], modal: number, style: "sheet" | "fullScreen"): void;
-  routes?(routes: readonly { page: string; url: string }[], mode: "push" | "replace" | "pop" | "root" | "host"): void;
+  routes?(routes: readonly { page: string; url: string }[], mode: "push" | "replace" | "pop" | "root" | "tab" | "host"): void;
   beforePush?(depth: number): void;
+  badge?(index: number, text: string | null): void;
 }
 
 /** What a sink receives from the app it renders. */
@@ -517,7 +518,8 @@ export class Application extends App {
   private readonly controller: NavigationController;
   private unsubscribe: (() => void) | null = null;
   private initialURL: string | null = null;
-  private pendingNavigation: { entries: readonly NavigationEntry[]; mode: NavigationOperation } | null = null;
+  private pendingNavigation: { entries: readonly NavigationEntry[]; mode: NavigationOperation; tab: number; tabs: readonly number[] } | null = null;
+  private initialized = false;
 
   constructor(factories: PageFactories, config: ApplicationConfig, hash = "") {
     super(() => { throw new Error("weft: application has no component root"); }, [], hash);
@@ -532,11 +534,13 @@ export class Application extends App {
       },
       destroy: (value) => { const page = value as Page<Record<string, never>>; page.$root?.destroy(); page.$root = null; page.$sink = null; page.$owner = null; },
       update: (entries, mode) => {
-        if (mode === "host" && this.$root) return;
-        this.pendingNavigation = { entries, mode };
         this.$root = (entries[0]!.page as Page<Record<string, never>>).$root;
+        if (mode === "host" && this.initialized && !this.pendingNavigation) return;
+        this.pendingNavigation = { entries, mode, tab: this.controller.tab, tabs: this.controller.tabs.map(entry => entry?.id ?? 0) };
+        this.initialized = true;
         schedule();
       },
+      badge: (index, text) => this.$sink?.badge?.(index, text),
     });
   }
 
@@ -547,7 +551,7 @@ export class Application extends App {
       const sink = this.$sink!;
       if (!sink.nav) throw new Error("weft: sink does not support navigation");
       sink.routes?.(pending.entries.map(({ page, type }) => ({ page: type.$route.name, url: routeURL(type, page.params) })), pending.mode === "correct" ? "host" : pending.mode);
-      sink.nav(0, [pending.entries[0]!.id], pending.entries.slice(1).map(entry => entry.id), 0, "sheet");
+      sink.nav(pending.tab, pending.tabs, pending.entries.slice(1).map(entry => entry.id), 0, "sheet");
     }
     super.$commit();
   }
@@ -587,7 +591,7 @@ export class Application extends App {
   override $detach(): boolean {
     if (!this.$sink) return false;
     this.unsubscribe?.(); this.unsubscribe = null;
-    this.controller.dispose(); this.pendingNavigation = null; this.$root = null; mounted.delete(this); this.$sink = null;
+    this.controller.dispose(); this.pendingNavigation = null; this.initialized = false; this.$root = null; mounted.delete(this); this.$sink = null;
     return true;
   }
 }

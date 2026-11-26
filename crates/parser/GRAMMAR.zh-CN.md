@@ -15,7 +15,7 @@
   - `theme`（后跟 `{`）开启顶层主题声明；`dark` 只在主题条目中引出第二个颜色；
   - `state`（后跟标识符）只在组件体内开启状态声明；
   - `let`（后跟标识符）在组件体或块的开头开启局部声明；
-  - `path` 只在页面参数表之后引出可选路径；`start` 只在 `app` 内指定入口页面；
+  - `path` 只在页面参数表之后引出可选路径；`start` 和 `tabs` 只在 `app` 内分别指定入口页面和标签页；
   - `key` 只在 `for` 头部出现。
 - 整数：`[0-9]+`，范围为 `i64`。浮点：`[0-9]+ "." [0-9]+ ([eE] [+-]? [0-9]+)?` 或 `[0-9]+ [eE] [+-]? [0-9]+`。
 - 字符串：`"..."`，转义 `\n` `\r` `\t` `\0` `\\` `\"` `\$` `\u{XXXX}`。
@@ -30,7 +30,9 @@ EBNF 记法：`X?` 可选，`X*` 零或多次，`X+` 一或多次，`"tok"` 为 
 File        = Import* Item* EOF ;
 Import      = "import" STRING ;               (* 不允许插值 *)
 Item        = Model | Event | Component | Page | App | TypeAlias | Style | Theme ;
-App         = "app" IDENT "{" "start" "=" IDENT "}" ;
+App         = "app" IDENT "{" AppEntry "}" ;
+AppEntry    = "start" "=" IDENT | "tabs" "{" TabItem+ "}" ;
+TabItem     = IDENT "(" ArgList? ")" ;
 TypeAlias   = "type" IDENT "=" Type ;
 Style       = "style" IDENT "{" ( StyleEntry ","? )* "}" ;
 StyleEntry  = IDENT "=" ConstValue ;
@@ -134,6 +136,7 @@ Call        = IDENT "(" ArgList? ")" ;
 ### 应用
 
 - 一个编译单元最多声明一个 `app`。`start` 必须指向没有必填路由参数的页面。应用包含声明 `app` 的文件的传递导入闭包内的全部页面；闭包外的页面会报错。
+- 也可以用 `tabs` 指定 2–5 个互不重复且没有必填路由参数的页面。每项必须提供字符串字面量命名参数 `title`、`icon`，可选 `activeIcon`；图标必须采用 `asset:<name>`，省略 `activeIcon` 时使用 `icon`。
 - 使用生成的应用类和每个页面对应的工厂挂载应用。工厂创建页面实例并注册处理器。页面不能直接挂载；没有 `app` 的程序仍以组件为根挂载。
 - `NavBar` 每个页面最多一个，必须是页面的第一个顶层节点，不能放在 `if` 或 `for` 内。`BarButton` 只能放在 `NavBar` 中，必须提供作为无障碍名称的 `label`。
 

@@ -472,11 +472,17 @@ export class Application {
       create: value => { (value as Page<Record<string, never>>).$navigation = this.controller; return 0; },
       destroy: (value) => { const page = value as Page<Record<string, never>>; page.unmount(); page.$navigation = null; this.mountedPages.delete(value); },
       update: (entries, operation) => {
-        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), operation === "correct" ? "host" : operation);
+        const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: routeURL(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
+        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), operation === "correct" ? "host" : operation, tabs, this.controller.tab, this.controller.badges);
         entries.forEach(({ page }, i) => {
           if (!this.mountedPages.has(page)) { (page as Page<Record<string, never>>).$mountPage(sections[i]!); this.mountedPages.add(page); }
           decorate(sections[i]!, i > 0, () => this.controller.pop());
         });
+      },
+      badge: () => {
+        const entries = this.controller.entries;
+        const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: routeURL(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
+        this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), "host", tabs, this.controller.tab, this.controller.badges);
       },
     });
   }
@@ -487,14 +493,16 @@ export class Application {
     const window = doc.defaultView;
     if (!window) throw new Error("weft: application target requires a window");
     this.document = doc;
-    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls));
+    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls), index => this.controller.selectTab(index));
     activate(this.controller);
     doc.addEventListener("visibilitychange", this.visibility);
     this.visibility();
     const url = window.location.pathname + window.location.search;
     const route = matchRoute(this.$config.pages, url);
     try {
-      this.controller.start(route ? (route.page === this.$config.start ? [url] : [routeURL(this.$config.start, {}), url]) : []);
+      const start = this.$config.start ?? this.$config.tabs![0]!.page;
+      const isTab = this.$config.tabs?.some(tab => tab.page === route?.page);
+      this.controller.start(route ? (route.page === start || isTab ? [url] : [routeURL(start, {}), url]) : []);
     } catch (error) { this.unmount(); throw error; }
   }
   unmount(): void { if (!this.host) return; this.document?.removeEventListener("visibilitychange", this.visibility); this.document = null; this.controller.dispose(); this.host.dispose(); this.host = null; }

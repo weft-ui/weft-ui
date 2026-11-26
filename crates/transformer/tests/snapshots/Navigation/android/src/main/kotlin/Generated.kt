@@ -15,13 +15,14 @@ import net.mioyi.weftui.*
 /** Root view of the app: starts the kernel with the bundle and renders the root component. */
 @Composable
 fun WeftApp() {
-    WeftRoot(layoutHash = 0x0cb287c33f80ecd6uL, safeArea = true, make = ::makeScope)
+    WeftRoot(layoutHash = 0x69aea4cbb1f5516auL, safeArea = true, make = ::makeScope)
 }
 
 /** Scope of a `create` op. */
 private fun makeScope(template: Int, id: Int, session: WeftSession): WeftScope? = when (template) {
     0 -> S0(id, session)
     1 -> S1(id, session)
+    2 -> S2(id, session)
     else -> null
 }
 
@@ -46,9 +47,30 @@ private fun Bar0(s: S0, onBack: (() -> Unit)?) {
     }
 }
 
-// 1 Detail
+// 1 Settings
 
 private class S1(id: Int, session: WeftSession) : WeftScope(id, session) {
+    override val isPage: Boolean get() = true
+    @Composable
+    override fun NavigationBar(onBack: (() -> Unit)?) = Bar1(this, onBack)
+    @Composable
+    override fun Content() = V1(this)
+}
+
+@Composable
+private fun V1(s: S1) {
+    WeftText("Settings")
+}
+
+@Composable
+private fun Bar1(s: S1, onBack: (() -> Unit)?) {
+    WeftNavigationBar(title = "Settings", hidden = false, onBack = onBack) {
+    }
+}
+
+// 2 Detail
+
+private class S2(id: Int, session: WeftSession) : WeftScope(id, session) {
     /** NavBar.title */
     var v0 by mutableStateOf("")
     /** Text.value */
@@ -63,18 +85,18 @@ private class S1(id: Int, session: WeftSession) : WeftScope(id, session) {
 
     override val isPage: Boolean get() = true
     @Composable
-    override fun NavigationBar(onBack: (() -> Unit)?) = Bar1(this, onBack)
+    override fun NavigationBar(onBack: (() -> Unit)?) = Bar2(this, onBack)
     @Composable
-    override fun Content() = V1(this)
+    override fun Content() = V2(this)
 }
 
 @Composable
-private fun V1(s: S1) {
+private fun V2(s: S2) {
     WeftText(s.v1)
 }
 
 @Composable
-private fun Bar1(s: S1, onBack: (() -> Unit)?) {
+private fun Bar2(s: S2, onBack: (() -> Unit)?) {
     WeftNavigationBar(title = s.v0, hidden = false, onBack = onBack) {
         WeftBarButton(title = "Action", icon = null, enabled = true, onClick = { s.dispatch(0) })
     }

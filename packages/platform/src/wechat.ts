@@ -126,7 +126,7 @@ function response(status: number, data: ArrayBuffer): Response {
 export function run(app: WeftApp): void {
   let sink: WechatSink | undefined;
   const application = app as WeftApp & {
-    $config?: { pages: readonly PageClass[] };
+    $config?: { pages: readonly PageClass[]; tabs?: readonly { page: PageClass }[] };
     $initialRoute?(url: string): void;
   };
   type HostPage = {
@@ -143,15 +143,18 @@ export function run(app: WeftApp): void {
       page: (name) => ({
         onLoad(this: HostPage, query: Record<string, string>) {
           this.$weftQuery = query;
+          sink?.selectTab(name);
         },
         onReady(this: HostPage) {
-          this.$weftIndex = getCurrentPages().length - 1;
+          const isTab = application.$config?.tabs?.some(tab => tab.page.$route.name === name) ?? false;
+          this.$weftIndex = isTab ? 0 : getCurrentPages().length - 1;
           const component = this.selectComponent("#weft");
           this.$weftView = component;
           if (!sink) {
             sink = component.$sink;
             const pages = application.$config?.pages ?? [];
             sink?.configurePages(pages);
+            sink?.configureTabs(application.$config?.tabs?.map(tab => tab.page.$route.name) ?? []);
             const route = pages.find((page) => page.$route.name === name)?.$route;
             if (route) {
               const query = this.$weftQuery ?? {};
@@ -167,6 +170,11 @@ export function run(app: WeftApp): void {
           sink?.showPage(this.$weftIndex);
         },
         onShow(this: HostPage) {
+          const isTab = application.$config?.tabs?.some(tab => tab.page.$route.name === name) ?? false;
+          if (isTab) {
+            sink?.selectTab(name);
+            if (this.$weftView) sink?.bindPage(0, this.$weftView);
+          }
           if (this.$weftView) sink?.showPage(this.$weftIndex);
         },
         onUnload(this: HostPage) {

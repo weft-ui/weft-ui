@@ -3,6 +3,19 @@ import { join } from "node:path";
 import { fontFaceStart } from "./font.ts";
 import type { AssetFile, Assets } from "./scan.ts";
 
+/** Copies a tab-bar image into the main package and returns its manifest path. */
+export function writeWechatTabIcon(assets: Assets, generated: string, reference: string): string {
+  const name = reference.slice(6);
+  const image = assets.images.get(name)?.[0];
+  if (!image || ![".png", ".jpg", ".jpeg"].includes(image.ext)) {
+    throw new Error(`weft: tab icon \`${name}\` must be a PNG or JPEG image on wechat`);
+  }
+  const directory = join(generated, "assets", "tab");
+  mkdirSync(directory, { recursive: true });
+  copyFileSync(image.path, join(directory, image.file));
+  return `weft/assets/tab/${image.file}`;
+}
+
 /** Copies images/icons and writes their manifest and the embedded font faces. */
 export function writeWechatAssets(assets: Assets, generated: string, warn: (message: string) => void): void {
   const media = join(generated, "assets");

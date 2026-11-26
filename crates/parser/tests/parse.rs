@@ -75,7 +75,25 @@ fn app_preserves_start_page() {
         panic!("expected app")
     };
     assert_eq!(app.name.name, "Notes");
-    assert_eq!(app.start.name, "Home");
+    assert!(matches!(&app.entry, weft_ui_ast::AppEntry::Start(start) if start.name == "Home"));
+}
+
+#[test]
+fn app_preserves_tabs_and_arguments() {
+    let (file, diagnostics) = parse(
+        FileId(0),
+        r#"app A { tabs { Home(title = "Home", icon = "asset:home") Search(title = "Search", icon = "asset:search") } }"#,
+    );
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let Item::App(app) = &file.items[0] else {
+        panic!("expected app")
+    };
+    let weft_ui_ast::AppEntry::Tabs(tabs) = &app.entry else {
+        panic!("expected tabs")
+    };
+    assert_eq!(tabs.len(), 2);
+    assert_eq!(tabs[0].page.name, "Home");
+    assert_eq!(tabs[0].args.len(), 2);
 }
 
 #[test]

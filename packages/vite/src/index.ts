@@ -8,7 +8,7 @@ import { HERMES_TARGET, compileBytecode, nativeAdapter } from "./native.ts";
 import { checkShellProtocol, nativeShell } from "./shells.ts";
 import { type Assets, hasAssets, scanAssets } from "./assets/scan.ts";
 import { WEB_ASSETS_ID, RESOLVED_WEB_ASSETS_ID, serveWebAssets, webAssets } from "./assets/web.ts";
-import { writeWechatAssets } from "./assets/wechat.ts";
+import { writeWechatAssets, writeWechatTabIcon } from "./assets/wechat.ts";
 import { writeAndroidAssets } from "./assets/android.ts";
 import { writeWindowsAssets } from "./assets/windows.ts";
 import { writeLinuxAssets } from "./assets/linux.ts";
@@ -397,6 +397,31 @@ export default function weft(options: WeftOptions = {}): Plugin {
         if (pages.length) {
           const manifestPath = join(project, "app.json");
           const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+          const layout = JSON.parse(app.layout) as {
+            templates: { label: string }[];
+            app?: { tabs?: { page: number; title: string; icon: string; activeIcon: string }[] };
+          };
+          const tabs = layout.app?.tabs;
+          if (tabs?.length) {
+            const list = tabs.map((tab) => {
+              const name = layout.templates[tab.page]!.label;
+              const slug = name.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+              return {
+                pagePath: `weft/pages/${slug}/index`,
+                text: tab.title,
+                iconPath: writeWechatTabIcon(assets(), generated, tab.icon),
+                selectedIconPath: writeWechatTabIcon(assets(), generated, tab.activeIcon),
+              };
+            });
+            const first = list[0]!.pagePath;
+            pages.splice(pages.indexOf(first), 1);
+            pages.unshift(first);
+            const existingBar = manifest.tabBar as Record<string, unknown> | undefined;
+            manifest.tabBar = { color: "#808080", selectedColor: "#007aff", backgroundColor: "#ffffff", ...existingBar, list };
+          } else if (manifest.tabBar && typeof manifest.tabBar === "object") {
+            delete (manifest.tabBar as Record<string, unknown>).list;
+            if (!Object.keys(manifest.tabBar).length) delete manifest.tabBar;
+          }
           const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
           manifest.pages = [...pages, ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
           writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
@@ -406,6 +431,10 @@ export default function weft(options: WeftOptions = {}): Plugin {
           const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
           if (existing.some((page) => page.startsWith("weft/pages/"))) {
             manifest.pages = ["weft/index", ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
+            if (manifest.tabBar && typeof manifest.tabBar === "object") {
+              delete (manifest.tabBar as Record<string, unknown>).list;
+              if (!Object.keys(manifest.tabBar).length) delete manifest.tabBar;
+            }
             writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
           }
         }

@@ -2,7 +2,8 @@ import * as $ from "@weft-ui/runtime";
 
 const $s0 = 0;
 const $t0 = $.template("<header data-title=\"Home\" class=\"w-navbar\"></header><span class=\"w-text\">Home</span>");
-const $t1 = $.template("<header class=\"w-navbar\"><button type=\"button\" role=\"button\" tabindex=\"0\" class=\"w-bar-button w-tap\">Action</button></header><span class=\"w-text\"></span>");
+const $t1 = $.template("<header data-title=\"Settings\" class=\"w-navbar\"></header><span class=\"w-text\">Settings</span>");
+const $t2 = $.template("<header class=\"w-navbar\"><button type=\"button\" role=\"button\" tabindex=\"0\" class=\"w-bar-button w-tap\">Action</button></header><span class=\"w-text\"></span>");
 
 export function Home$c(app, args, children, depth) {
   const c = new $.Instance(app, 1, depth, args, children);
@@ -21,10 +22,27 @@ export class Home extends $.Page {
   get model() { return undefined; }
 }
 
+export function Settings$c(app, args, children, depth) {
+  const c = new $.Instance(app, 1, depth, args, children);
+  const f = $t1();
+  const n0 = f.firstChild;
+  const n1 = n0.nextSibling;
+  c.init(f);
+  return c;
+}
+
+export class Settings extends $.Page {
+  static $route = { name: "Settings", path: ["settings"], params: [] };
+  constructor($params = {}) {
+    super(Settings$c, [], {  });
+  }
+  get model() { return undefined; }
+}
+
 export function Detail$c(app, args, children, depth) {
   const c = new $.Instance(app, 1, depth, args, children);
   c.pw[0] = $.watch($s0, c, args[0]);
-  const f = $t1();
+  const f = $t2();
   const n1 = f.firstChild;
   const n0 = n1.firstChild;
   const n2 = n1.nextSibling;
@@ -48,4 +66,4 @@ export class Detail extends $.Page {
   get model() { return undefined; }
   onAction(h) { return this.$on("Action", (_, event) => h(undefined, event)); }
 }
-export class Notes extends $.Application { constructor(pages) { super(pages, { start: Home, pages: [Home, Detail] }, undefined); } }
+export class Notes extends $.Application { constructor(pages) { super(pages, { tabs: [{ page: Home, title: "Home", icon: "asset:tab_home", activeIcon: "asset:tab_home" }, { page: Settings, title: "Settings", icon: "asset:tab_settings", activeIcon: "asset:tab_settings" }], pages: [Home, Settings, Detail] }, undefined); } }

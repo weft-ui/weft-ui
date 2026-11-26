@@ -13,6 +13,36 @@ test("routes round-trip escaped path and typed query parameters", () => {
   expect(matchRoute([Detail], "/notes/not-a-number")).toBeNull();
 });
 
+test("tabs are created lazily, retained, and clear the stack on selection", () => {
+  class Settings { static $route = { name: "Settings", path: ["settings"], params: [] }; readonly params = {}; }
+  const events: string[] = [];
+  const badges: (string | null)[] = [];
+  let id = 0;
+  const page = (name: string) => ({ params: {}, $emit: (event: string) => events.push(`${name}:${event}`) });
+  const controller = new NavigationController({ Home: () => page("Home"), Settings: () => page("Settings"), Detail: () => page("Detail") }, {
+    tabs: [
+      { page: Home, title: "Home", icon: "asset:home", activeIcon: "asset:home" },
+      { page: Settings, title: "Settings", icon: "asset:settings", activeIcon: "asset:settings" },
+    ], pages: [Home, Settings, Detail],
+  }, { create: () => ++id, destroy: () => events.push("destroy"), update: () => {}, badge: (_index, text) => badges.push(text) });
+  controller.start();
+  expect(id).toBe(1);
+  controller.push(Detail, { id: 1 });
+  controller.switchTab(Settings);
+  expect(controller.entries.map(entry => entry.type)).toEqual([Settings]);
+  expect(id).toBe(3);
+  controller.switchTab(Home);
+  controller.signal(JSON.stringify({ tab: 1, stack: [], modal: 0 }));
+  expect(id).toBe(3);
+  controller.setBadge(Settings, "2");
+  controller.setBadge(Settings, "");
+  controller.setBadge(Settings, null);
+  expect(badges).toEqual(["2", "", null]);
+  expect(events).toContain("destroy");
+  expect(() => controller.switchTab(Detail)).toThrow("Detail is not a tab");
+  controller.dispose();
+});
+
 test("stack changes notify lifecycle in order and accept only host back states", () => {
   const events: string[] = [];
   const updates: string[] = [];
