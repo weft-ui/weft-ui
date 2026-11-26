@@ -1,6 +1,7 @@
 package net.mioyi.weftui
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -27,7 +28,7 @@ import androidx.compose.ui.unit.dp
 
 /** Starts the app's session and renders its root, padding for system bars when [safeArea] is enabled. */
 @Composable
-fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.Empty, make: WeftMake) {
+fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.Empty, tabs: List<WeftTab> = emptyList(), make: WeftMake) {
     val context = LocalContext.current
     val session = remember { WeftSession.start(context, layoutHash.toLong(), make) }
     DisposableEffect(session) { onDispose { session.close() } }
@@ -47,15 +48,15 @@ fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.
         LaunchedEffect(session, environment) { session.updateEnvironment(environment) }
         val fill = Modifier.fillMaxSize()
         val rootModifier = if (safeArea) fill.safeDrawingPadding() else fill
-        WeftLinear(WeftAxis.VERTICAL, rootModifier.clipToBounds()) {
-            val failure = session.failure
-            val root = session.root
-            val navigation = session.navigation
-            if (failure != null) {
-                Text(failure, Modifier.padding(16.dp), color = Color.Red)
+        val failure = session.failure
+        val root = session.root
+        val navigation = session.navigation
+        CompositionLocalProvider(LocalWeftTheme provides theme, LocalLayoutDirection provides LayoutDirection.Ltr) {
+            if (failure == null && navigation != null) {
+                Box(rootModifier.clipToBounds()) { WeftNavigationHost(session, navigation, tabs) }
             } else {
-                CompositionLocalProvider(LocalWeftTheme provides theme, LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    if (navigation != null) WeftNavigationHost(session, navigation)
+                WeftLinear(WeftAxis.VERTICAL, rootModifier.clipToBounds()) {
+                    if (failure != null) Text(failure, Modifier.padding(16.dp), color = Color.Red)
                     else if (root != null) key(root.id) { root.Content() }
                 }
             }

@@ -27,6 +27,20 @@ class NavigationTest {
     }
 
     @Test
+    fun switchingTabsReplacesAndClearsTheStack() {
+        val initial = NavigationState(0, listOf(4, 0), listOf(9, 11), 0, 0)
+        val switched = initial.switchTab(1)!!
+        assertEquals(NavigationChange.REPLACE, switched.changeFrom(initial))
+        assertEquals("{\"tab\":1,\"stack\":[],\"modal\":0}", switched.signal())
+        assertEquals(listOf(4), switched.pages())
+        assertNull(switched.switchTab(1))
+        assertNull(switched.switchTab(2))
+        val sameTab = initial.switchTab(0)!!
+        assertEquals("{\"tab\":0,\"stack\":[],\"modal\":0}", sameTab.signal())
+        assertEquals(NavigationChange.POP, sameTab.changeFrom(initial))
+    }
+
+    @Test
     fun backDismissesModalBeforePoppingStack() {
         val state = root.copy(stack = listOf(9), modal = 13, style = 1)
         val next = state.back()!!

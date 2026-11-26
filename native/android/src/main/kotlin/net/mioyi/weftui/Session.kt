@@ -8,6 +8,8 @@ import android.os.Looper
 import androidx.annotation.MainThread
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import org.json.JSONObject
 import androidx.compose.runtime.setValue
 import java.nio.ByteBuffer
 
@@ -32,6 +34,8 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     internal var navigation: NavigationState? by mutableStateOf(null)
         private set
 
+    internal val badges = mutableStateMapOf<Int, String>()
+
     internal var navigationChange = NavigationChange.REPLACE
         private set
 
@@ -40,6 +44,16 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     internal fun back() {
         val old = navigation ?: return
         val next = old.back() ?: return
+        navigationChange = next.changeFrom(old)
+        navigation = next
+        val kept = next.pages().toSet()
+        for (id in old.pages()) if (id !in kept) scopes[id]?.let(::destroy)
+        signal("navigation", next.signal())
+    }
+
+    internal fun selectTab(index: Int) {
+        val old = navigation ?: return
+        val next = old.switchTab(index) ?: return
         navigationChange = next.changeFrom(old)
         navigation = next
         val kept = next.pages().toSet()
@@ -71,7 +85,8 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
             main.postDelayed({ if (runtime != 0L) Native.tick(runtime) }, delayMs)
         }
 
-        override fun supports(module: ByteArray): Boolean = module.decodeToString() in PlatformModules.SUPPORTED
+        override fun supports(module: ByteArray): Boolean =
+            module.decodeToString().let { it == WeftProtocol.NAVIGATION_MODULE || it in PlatformModules.SUPPORTED }
 
         override fun call(id: Int, module: ByteArray, method: ByteArray, args: ByteArray) {
             // Runs after the kernel's callback returns: the kernel is not reentrant.
@@ -80,7 +95,12 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
             val done: (Boolean, ByteArray) -> Unit = { ok, result ->
                 main.post { if (runtime != 0L) Native.resolve(runtime, id, ok, result) }
             }
-            if (moduleName == WeftProtocol.UI_MODULE) {
+            if (moduleName == WeftProtocol.NAVIGATION_MODULE && methodName == WeftProtocol.NAVIGATION_BADGE) {
+                val badge = JSONObject(args.decodeToString())
+                val index = badge.getInt("tab")
+                if (badge.isNull("text")) badges.remove(index) else badges[index] = badge.getString("text")
+                done(true, ByteArray(0))
+            } else if (moduleName == WeftProtocol.UI_MODULE) {
                 main.post { if (runtime != 0L) overlays.call(methodName, args, done) }
             } else {
                 platform.call(moduleName, methodName, args, done)

@@ -8,6 +8,12 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -20,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 
+/** Display metadata for one app tab. */
+data class WeftTab(val title: String, val icon: String, val activeIcon: String)
+
 internal enum class NavigationChange { PUSH, POP, REPLACE }
 
 internal data class NavigationState(
@@ -31,6 +40,9 @@ internal data class NavigationState(
         stack.isNotEmpty() -> copy(stack = stack.dropLast(1))
         else -> null
     }
+    fun switchTab(index: Int): NavigationState? =
+        if (index !in tabs.indices || (index == tab && stack.isEmpty() && modal == 0)) null
+        else copy(tab = index, stack = emptyList(), modal = 0, style = 0)
     fun signal(): String = "{\"tab\":$tab,\"stack\":[${stack.joinToString(",")}],\"modal\":$modal}"
     fun changeFrom(old: NavigationState?): NavigationChange {
         if (old == null || tab != old.tab || tabs != old.tabs || modal != old.modal) return NavigationChange.REPLACE
@@ -43,7 +55,7 @@ internal data class NavigationState(
 }
 
 @Composable
-internal fun WeftNavigationHost(session: WeftSession, state: NavigationState) {
+internal fun WeftNavigationHost(session: WeftSession, state: NavigationState, tabs: List<WeftTab>) {
     val ids = listOf(state.tabs[state.tab]) + state.stack
     val pages = ids.mapNotNull(session::page)
     if (pages.isEmpty()) return
@@ -62,9 +74,38 @@ internal fun WeftNavigationHost(session: WeftSession, state: NavigationState) {
         },
         entryProvider = { page ->
             NavEntry(page, contentKey = page.id) {
-                Column {
-                    page.NavigationBar(if (page.id != state.tabs[state.tab]) ({ session.back() }) else null)
-                    page.Content()
+                if (page.id == state.tabs[state.tab] && tabs.isNotEmpty()) {
+                    Scaffold(bottomBar = {
+                        NavigationBar {
+                            tabs.forEachIndexed { index, tab ->
+                                val selected = index == state.tab
+                                NavigationBarItem(
+                                    selected = selected,
+                                    onClick = { session.selectTab(index) },
+                                    icon = {
+                                        BadgedBox(badge = {
+                                            session.badges[index]?.let { text ->
+                                                if (text.isEmpty()) Badge() else Badge { Text(text) }
+                                            }
+                                        }) {
+                                            WeftImage(if (selected) tab.activeIcon else tab.icon, Modifier.size(24.dp))
+                                        }
+                                    },
+                                    label = { Text(tab.title) },
+                                )
+                            }
+                        }
+                    }) { padding ->
+                        Column(Modifier.padding(padding)) {
+                            page.NavigationBar(null)
+                            page.Content()
+                        }
+                    }
+                } else {
+                    Column {
+                        page.NavigationBar(if (page.id != state.tabs[state.tab]) ({ session.back() }) else null)
+                        page.Content()
+                    }
                 }
             }
         },

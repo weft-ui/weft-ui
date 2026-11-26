@@ -12,10 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import net.mioyi.weftui.*
 
+private val appTabs = listOf(
+    WeftTab("Home", "asset:tab_home", "asset:tab_home"),
+    WeftTab("Settings", "asset:tab_settings", "asset:tab_settings"),
+)
+
 /** Root view of the app: starts the kernel with the bundle and renders the root component. */
 @Composable
 fun WeftApp() {
-    WeftRoot(layoutHash = 0x69aea4cbb1f5516auL, safeArea = true, make = ::makeScope)
+    WeftRoot(layoutHash = 0x69aea4cbb1f5516auL, safeArea = true, tabs = appTabs, make = ::makeScope)
 }
 
 /** Scope of a `create` op. */
