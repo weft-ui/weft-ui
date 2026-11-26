@@ -291,6 +291,8 @@ Web 与小程序没有内核，同样的事件由 `@weft-ui/platform` 的 `web.t
 
 `platformModules` 新增 `"ui": ["alert", "confirm", "actionSheet", "toast"]`（R4.w）。参数是 UTF-8 JSON 对象，字段同 §3 的选项（`toast` 为 `{"message", "icon", "duration"}`）；结果：`alert`、`toast` 为空，`confirm` 为 `true` / `false`，`actionSheet` 为下标或 `null`（JSON）。`toast` 在显示后立即完成。
 
+`platformModules` 另有 `"navigation": ["badge"]`（执行中补充，见「执行中发现」R2）：参数 `{"tab": <app.tabs 下标>, "text": "3" | "" | null}`，结果为空、立即完成；运行时在 `navigation.setBadge` 时同步调用（壳支持 `navigation` 时），不随 op 批次排序，壳按 Tab 下标保存角标。
+
 #### §4.7 版本协商（M2.7）
 
 - **内核与壳**：`weft_runtime_new` 先比较 `weft_host.protocol` 与内核的 `WEFT_PROTOCOL_VERSION`（生成的常量），不同时经 `weft_host.log` 报 `weft: protocol mismatch: kernel speaks 3, shell speaks 2`，返回 `NULL`。
