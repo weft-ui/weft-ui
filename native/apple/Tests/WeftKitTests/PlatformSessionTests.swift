@@ -96,6 +96,14 @@ import UniformTypeIdentifiers
     #expect(!WeftImageContent.withinPixelLimit(Data()))
 }
 
+#if os(macOS)
+@Test func macOSTabTitlesShowBadges() {
+    #expect(macOSTabTitle("Home", badge: nil) == "Home")
+    #expect(macOSTabTitle("Home", badge: "") == "Home •")
+    #expect(macOSTabTitle("Home", badge: "3") == "Home 3")
+}
+#endif
+
 @Test func navigationTransitions() {
     #expect(navigationTransition(from: [1], to: [1, 2]) == .push)
     #expect(navigationTransition(from: [1, 2], to: [1]) == .pop)

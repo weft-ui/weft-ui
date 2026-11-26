@@ -83,7 +83,7 @@ app Notes {
 
 每项都需要字面量标题和 `asset:` 图标；省略 `activeIcon` 时使用 `icon`。微信小程序的 Tab 图标必须是 PNG 或 JPEG。与上面的示例一样，为所有页面提供工厂：Tab 根页面首次选中时创建，之后保留。
 
-使用 `navigation.switchTab(Settings)` 切换 Tab 并清空推入的页面栈。`navigation.tab` 返回当前 Tab 的页面名，没有 Tab 时为 `null`。`navigation.setBadge(Settings, "3")` 显示角标，传入 `""` 显示红点，传入 `null` 移除角标。Linux 的 GTK 只能显示圆点，文字角标也显示为圆点。推入的页面会盖住 Tab 栏。Web 切换 Tab 时回到根历史条目，再将它替换为所选 Tab 的 URL。
+使用 `navigation.switchTab(Settings)` 切换 Tab 并清空推入的页面栈。`navigation.tab` 返回当前 Tab 的页面名，没有 Tab 时为 `null`。`navigation.setBadge(Settings, "3")` 显示角标，传入 `""` 显示红点，传入 `null` 移除角标。macOS 的 Tab 显示在工具栏的分段选择器中，不显示图标；角标显示在 Tab 标题中。Linux 的 GTK 只能显示圆点，文字角标也显示为圆点。推入的页面会盖住 Tab 栏。Web 切换 Tab 时回到根历史条目，再将它替换为所选 Tab 的 URL。
 
 ## 标题、显示状态与返回
 

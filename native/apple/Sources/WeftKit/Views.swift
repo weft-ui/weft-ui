@@ -133,6 +133,13 @@ private struct WeftInlineTitle: ViewModifier {
     }
 }
 
+#if os(macOS)
+func macOSTabTitle(_ title: String, badge: String?) -> String {
+    guard let badge else { return title }
+    return "\(title) \(badge.isEmpty ? "•" : badge)"
+}
+#endif
+
 private struct WeftPushedTab: ViewModifier {
     func body(content: Content) -> some View {
         #if os(iOS)
@@ -216,7 +223,11 @@ public struct WeftRoot: View {
                         }
                         .tabItem {
                             Label {
+                                #if os(macOS)
+                                Text(macOSTabTitle(tab.title, badge: session.badges[index]))
+                                #else
                                 Text(tab.title)
+                                #endif
                             } icon: {
                                 Image(index == Int(session.navigationTab) ? tab.activeIcon : tab.icon, bundle: session.assets.bundle)
                             }
