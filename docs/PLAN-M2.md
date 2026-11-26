@@ -846,11 +846,11 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R1.g | ☑ | 0422523 | |
 | T1 | ☐ | | |
 | R2.w | ⏸ | 1d8e701 | 微信开发者工具里的 Tab 检查两次超时，待维护者 |
-| R2.a | ☐ | | |
-| R2.d | ☐ | | |
-| R2.n | ☐ | | |
-| R2.g | ☐ | | |
-| R3.w | ☐ | | |
+| R2.a | ☑ | 28a6abc | 修正 1b547b6（Tab 根页标题、Tab 栏被裁切）、48f4b6b（macOS 角标）；macOS 临时两 Tab 应用由编排者运行通过 |
+| R2.d | ☑ | 8798267 | |
+| R2.n | ☑ | 4256345 | |
+| R2.g | ☑ | cb019ae | |
+| R3.w | ⏸ | 3f9b7fb | 微信开发者工具里的呈现与下滑关闭待维护者 |
 | R3.a | ☐ | | |
 | R3.d | ☐ | | |
 | R3.n | ☐ | | |
@@ -883,7 +883,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R9.w | ☐ | | |
 | R9.a | ☐ | | |
 | R9.d | ☐ | | |
-| W1 | ☐ | | |
+| W1 | ⏸ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告），字体 1630 KiB；开发者工具里分包夹具的包大小待维护者 |
 | T2 | ☐ | | |
 | B1 | ☐ | | |
 | X1 | ☐ | | |
@@ -914,3 +914,10 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R2.w] R1 的原生波次先于 R2.w 合并，`Navigation` 的 natives 已启用；R2.w 把夹具改为两个 Tab 后，五个原生平台的 `Navigation` 快照随之变化（新增 `Settings` 页与 `app.tabs`，原生壳此时忽略 Tab），C++ conformance 宿主不认识 Tab，`navigation` 重新放回 `pending.json`，由 R2.g 移出。结论：接受（过渡机制的正常用法）
 - [R2.w] 冷启动直接进入非 Tab 页时，运行时也会创建第一个 Tab 的根页；冷启动的 Tab 根页工厂在 `onReady`（视图 sink 可用时）调用，之后首次选中的 Tab 在 `onLoad` 调用。结论：接受（规范 §8.1 未规定时机）
 - [B0 起] `tests/vite/assets.test.ts` 的「dev server reloads after a variant is added」在全量 `pnpm test` 中多次失败、单独运行通过（文件监听在高负载下的时序）。结论：记录，不在 M2 范围内修正
+- [R2.a–R2.g] 规范的协议版本 3 没有把 `navigation.setBadge` 送到原生宿主的途径（`nav` op 不含角标，remote 运行时只调用可选的 `sink.badge`）。补充：平台调用模块 `navigation` 的方法 `badge`，参数 `{"tab", "text"}`，立即完成；`NativeSink` 在壳支持时调用；`isSupported("navigation")`（762a53d，SPEC 与 platform-api 指南中英文）。调用不随 op 批次排序，壳按 Tab 下标保存角标。结论：已补充规范
+- [R2.a] iOS 上 Tab 根页不显示标题、Tab 栏底部被裁切，由代理自查截图发现并修正（1b547b6）；macOS 的 `TabView` 呈现为工具栏里的分段控件，不显示图标与根页标题，`.badge` 不显示——角标改为写进 Tab 标题（`Home 3`、空串为 `Home •`），指南注明（48f4b6b）。结论：已修正
+- [R2.g] GTK 的 `GtkStackPage:needs-attention` 只能显示圆点，文字角标在 Linux 上也显示为圆点，指南注明。结论：接受（计划已预见）
+- [R2.n] Windows 虚拟机重启后 `prlctl exec` 需要等控制台用户登录；`weft-interactive` 计划任务曾经由 ssh（提升权限）注册，之后控制台会话无法覆盖它（Access denied），删除后恢复。交互式 UI 步骤只经 `prlctl exec --current-user` 运行。结论：环境问题，已处理
+- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时（新项目路径需要在开发者工具里信任），三项的开发者工具检查标 ⏸。结论：待维护者
+- [W1、R3.w] 预期变化写 C-apps 只有 web、wechat 变化，实际五个原生平台的 `js/index.js` 也变化：W1 的分包路由与 R3.w 的模态都改了共用的运行时。结论：接受，已重新录制 C-apps 基线
+- [R3.w] 代理顺带在 C++ conformance 宿主实现了 `dismiss` 动作（原属 R3.g），因此合并后 `navigation` 不必再放回 `pending.json`。结论：接受
