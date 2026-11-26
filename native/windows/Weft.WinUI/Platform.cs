@@ -18,7 +18,7 @@ namespace Weft.WinUI;
 internal static class PlatformModules
 {
     internal const int MaxFetchBytes = 32 * 1024 * 1024;
-    public static readonly HashSet<string> Supported = [WeftProtocol.FetchModule, WeftProtocol.StorageModule];
+    public static readonly HashSet<string> Supported = [WeftProtocol.FetchModule, WeftProtocol.StorageModule, WeftProtocol.UiModule];
 
     private static readonly HttpClient Http = new();
 

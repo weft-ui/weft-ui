@@ -60,6 +60,7 @@ public sealed class Screenshots
                 if (id == "controls") VerifyControls(window);
                 if (id == "inputs") VerifyInputs(window);
                 if (id == "tap") VerifyTaps(window);
+                if (id == "overlays") VerifyOverlays(window);
             }
             finally
             {
@@ -73,6 +74,45 @@ public sealed class Screenshots
             .FirstOrDefault(candidate => candidate.Properties.Name.ValueOrDefault == label ||
                 candidate.FindFirstDescendant(cf => cf.ByName(label)) is not null),
             TimeSpan.FromSeconds(5), ignoreException: true).Result;
+
+    private static void VerifyOverlays(Window window)
+    {
+        void Click(string label)
+        {
+            var button = FindButton(window, label);
+            Assert.IsNotNull(button, $"Missing button {label}");
+            button.AsButton().Invoke();
+        }
+        void Expect(string label)
+        {
+            var item = Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName(label)),
+                TimeSpan.FromSeconds(5), ignoreException: true).Result;
+            Assert.IsNotNull(item, $"Missing {label}");
+        }
+        Click("Alert");
+        Expect("This is an alert.");
+        Click("OK");
+        Expect("Alert dismissed.");
+        Click("Confirm");
+        Expect("Continue?");
+        Keyboard.Type(VirtualKeyShort.ESCAPE);
+        Expect("Cancelled.");
+        Click("Confirm");
+        Click("OK");
+        Expect("Confirmed.");
+        Click("Action sheet");
+        Click("Second");
+        Expect("Selected option 2.");
+        Click("Action sheet");
+        Expect("Choose an option");
+        Keyboard.Type(VirtualKeyShort.ESCAPE);
+        Expect("Action sheet cancelled.");
+        Click("Toast");
+        Expect("This is a toast.");
+        Expect("Toast shown.");
+        Thread.Sleep(TimeSpan.FromSeconds(2));
+        Assert.IsNull(window.FindFirstDescendant(cf => cf.ByName("This is a toast.")), "Toast did not disappear");
+    }
 
     private static void VerifyVisibility(Window window)
     {

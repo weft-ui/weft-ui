@@ -33,6 +33,7 @@ public sealed class WeftSession
     private readonly Factory make;
     private readonly Dictionary<uint, WeftScope> scopes = [];
     private readonly Panel root;
+    private readonly UiOverlay ui;
     private ElementTheme appliedTheme;
     private WindowEnvironment environment;
     private readonly ArrayBufferWriter<byte> environmentJson = new(192);
@@ -73,14 +74,17 @@ public sealed class WeftSession
                 </Style>
                 """),
         };
-        _ = new WeftSession(Path.Combine(AppContext.BaseDirectory, "weft", "bundle.hbc"), layoutHash, safeArea, make, root, theme);
-        return root;
+        var overlayRoot = new Grid();
+        overlayRoot.Children.Add(root);
+        _ = new WeftSession(Path.Combine(AppContext.BaseDirectory, "weft", "bundle.hbc"), layoutHash, safeArea, make, root, overlayRoot, theme);
+        return overlayRoot;
     }
 
-    private unsafe WeftSession(string bundle, ulong layoutHash, bool safeArea, Factory make, Panel root, WeftTheme? theme)
+    private unsafe WeftSession(string bundle, ulong layoutHash, bool safeArea, Factory make, Panel root, Grid overlayRoot, WeftTheme? theme)
     {
         this.make = make;
         this.root = root;
+        ui = new UiOverlay(overlayRoot);
         Theme = theme;
         appliedTheme = ActualTheme;
         queue = DispatcherQueue.GetForCurrentThread()
@@ -334,7 +338,8 @@ public sealed class WeftSession
             byte[] result;
             try
             {
-                result = await PlatformModules.Call(module, method, args);
+                result = await (module == WeftProtocol.UiModule
+                    ? ui.Call(method, args) : PlatformModules.Call(module, method, args));
                 ok = true;
             }
             catch (Exception error)
