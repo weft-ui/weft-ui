@@ -101,6 +101,37 @@ class NavigationTest {
       session.runtime_ = nullptr;
       assert(visible() == home && !session.scopes_.contains(4));
       assert(signal_name == "navigation" && signal_json == "{\"tab\":0,\"stack\":[],\"modal\":0}");
+
+      create(6);
+      auto tabs = encode_ids({1});
+      ops::Op modal{}; modal.code = protocol::Code::Nav; modal.nav.tabs = {tabs.data(), 1}; modal.nav.modal = 6;
+      session.apply(modal);
+      assert(session.nav_modal_ == 6 && gtk_widget_get_visible(session.modal_scrim_));
+      assert(gtk_widget_get_halign(gtk_widget_get_last_child(session.navigation_overlay_)) == GTK_ALIGN_CENTER);
+      modal.nav.style = uint32_t(protocol::ModalStyle::FullScreen);
+      session.apply(modal);
+      assert(!gtk_widget_get_visible(session.modal_scrim_));
+      assert(gtk_widget_get_halign(gtk_widget_get_last_child(session.navigation_overlay_)) == GTK_ALIGN_FILL);
+      modal.nav.modal = 0; modal.nav.style = 0;
+      session.apply(modal);
+      assert(!session.nav_modal_ && !session.scopes_.contains(6));
+      create(7); modal.nav.modal = 7; session.apply(modal);
+      session.runtime_ = reinterpret_cast<weft_runtime *>(1);
+      auto *card = gtk_widget_get_last_child(session.navigation_overlay_);
+      auto *header = gtk_widget_get_first_child(gtk_frame_get_child(GTK_FRAME(card)));
+      auto *close = gtk_center_box_get_start_widget(GTK_CENTER_BOX(header));
+      g_signal_emit_by_name(close, "clicked");
+      assert(!session.nav_modal_ && !session.scopes_.contains(7));
+      assert(signal_name == "navigation" && signal_json == "{\"tab\":0,\"stack\":[],\"modal\":0}");
+      create(8); modal.nav.modal = 8; session.apply(modal);
+      auto *controllers = gtk_widget_observe_controllers(session.modal_scrim_);
+      auto *click = g_list_model_get_item(controllers, 0);
+      g_signal_emit_by_name(click, "pressed", 1, 1.0, 1.0);
+      g_object_unref(click);
+      g_object_unref(controllers);
+      assert(!session.nav_modal_ && !session.scopes_.contains(8));
+      assert(signal_json == "{\"tab\":0,\"stack\":[],\"modal\":0}");
+      session.runtime_ = nullptr;
     }
     g_object_unref(page);
 

@@ -134,7 +134,9 @@ GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area,
     auto *keys = gtk_event_controller_key_new();
     gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
     g_signal_connect(keys, "key-pressed", G_CALLBACK(+[](GtkEventControllerKey *, guint key, guint, GdkModifierType state, gpointer data) -> gboolean {
-      return key == GDK_KEY_Left && (state & GDK_ALT_MASK) && static_cast<Session *>(data)->back();
+      auto *session = static_cast<Session *>(data);
+      if (key == GDK_KEY_Escape && session->nav_modal_) return session->back();
+      return key == GDK_KEY_Left && (state & GDK_ALT_MASK) && session->back();
     }), session);
     gtk_widget_add_controller(overlay, keys);
     auto *click = gtk_gesture_click_new();
@@ -164,14 +166,24 @@ Session::Session(GtkWidget *page, Factory make, bool app, std::vector<Tab> tabs)
     : make_(make), page_(page), environment_(std::make_unique<Environment>(page)), cancellable_(g_cancellable_new()) {
   scopes_[0] = std::make_unique<RootScope>(*this, page);
   if (app) {
-    stack_widget_ = gtk_stack_new();
-    auto &layout = attach_layout(stack_widget_);
+    navigation_overlay_ = gtk_overlay_new();
+    auto &layout = attach_layout(navigation_overlay_);
     layout.fill = true;
     layout.grow = 1;
-    gtk_widget_set_hexpand(stack_widget_, true);
-    gtk_widget_set_vexpand(stack_widget_, true);
+    gtk_widget_set_hexpand(navigation_overlay_, true);
+    gtk_widget_set_vexpand(navigation_overlay_, true);
+    gtk_widget_set_parent(navigation_overlay_, page);
+    stack_widget_ = gtk_stack_new();
+    gtk_overlay_set_child(GTK_OVERLAY(navigation_overlay_), stack_widget_);
     gtk_stack_set_transition_duration(GTK_STACK(stack_widget_), 250);
-    gtk_widget_set_parent(stack_widget_, page);
+    static bool css_installed = false;
+    if (!css_installed) {
+      auto *css = gtk_css_provider_new();
+      gtk_css_provider_load_from_data(css, ".weft-modal-scrim { background: rgba(0,0,0,0.45); } .weft-modal-card { background-color: @theme_bg_color; } .weft-modal-sheet { border-radius: 12px; }", -1);
+      gtk_style_context_add_provider_for_display(gdk_display_get_default(), GTK_STYLE_PROVIDER(css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+      g_object_unref(css);
+      css_installed = true;
+    }
     if (!tabs.empty()) {
       tab_root_ = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
       tab_stack_ = gtk_stack_new();
@@ -371,13 +383,14 @@ void Session::apply(const ops::Op &op) {
 }
 
 void Session::navigate(const ops::Nav &nav) {
-  if (!stack_widget_ || nav.modal || nav.tab >= nav.tabs.count) throw OpError("invalid navigation state");
+  if (!stack_widget_ || nav.tab >= nav.tabs.count || nav.style > uint32_t(protocol::ModalStyle::FullScreen) || (!nav.modal && nav.style)) throw OpError("invalid navigation state");
   std::vector<uint32_t> tabs, stack;
   for (auto id : nav.tabs) tabs.push_back(id);
   for (auto id : nav.stack) stack.push_back(id);
   std::unordered_set<uint32_t> kept;
   for (auto id : tabs) if (id) kept.insert(id);
   for (auto id : stack) if (id) kept.insert(id);
+  if (nav.modal && !kept.insert(nav.modal).second) throw OpError("modal page is already in navigation");
   for (auto id : kept) {
     auto found = scopes_.find(id);
     if (found == scopes_.end() || !found->second->page_widget_) throw OpError("navigation references a non-page scope");
@@ -411,7 +424,43 @@ void Session::navigate(const ops::Nav &nav) {
   for (auto id : stack) add_page(id, true);
   gtk_stack_set_transition_type(GTK_STACK(stack_widget_), push || pop ? GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT : GTK_STACK_TRANSITION_TYPE_NONE);
   gtk_stack_set_visible_child(GTK_STACK(stack_widget_), stack.empty() && tab_root_ ? tab_root_ : scopes_.at(current)->page_widget_);
+  if (nav_modal_ && nav_modal_ != nav.modal) {
+    gtk_frame_set_child(GTK_FRAME(modal_card_), nullptr);
+    gtk_overlay_remove_overlay(GTK_OVERLAY(navigation_overlay_), modal_card_);
+    gtk_overlay_remove_overlay(GTK_OVERLAY(navigation_overlay_), modal_scrim_);
+    modal_card_ = nullptr;
+    modal_scrim_ = nullptr;
+  }
+  if (nav.modal) {
+    auto &scope = *scopes_.at(nav.modal);
+    bool sheet = nav.style == uint32_t(protocol::ModalStyle::Sheet);
+    if (!gtk_widget_get_parent(scope.page_widget_)) {
+      modal_scrim_ = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+      gtk_widget_add_css_class(modal_scrim_, "weft-modal-scrim");
+      gtk_widget_set_hexpand(modal_scrim_, true);
+      gtk_widget_set_vexpand(modal_scrim_, true);
+      auto *click = gtk_gesture_click_new();
+      g_signal_connect(click, "pressed", G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer data) {
+        static_cast<Session *>(data)->back();
+      }), this);
+      gtk_widget_add_controller(modal_scrim_, GTK_EVENT_CONTROLLER(click));
+      gtk_overlay_add_overlay(GTK_OVERLAY(navigation_overlay_), modal_scrim_);
+      modal_card_ = gtk_frame_new(nullptr);
+      gtk_frame_set_child(GTK_FRAME(modal_card_), scope.page_widget_);
+      gtk_widget_add_css_class(modal_card_, "weft-modal-card");
+      gtk_overlay_add_overlay(GTK_OVERLAY(navigation_overlay_), modal_card_);
+    }
+    gtk_widget_set_visible(modal_scrim_, sheet);
+    gtk_widget_set_halign(modal_card_, sheet ? GTK_ALIGN_CENTER : GTK_ALIGN_FILL);
+    gtk_widget_set_valign(modal_card_, sheet ? GTK_ALIGN_CENTER : GTK_ALIGN_FILL);
+    gtk_widget_set_size_request(modal_card_, sheet ? 320 : -1, sheet ? 400 : -1);
+    if (sheet) gtk_widget_add_css_class(modal_card_, "weft-modal-sheet");
+    else gtk_widget_remove_css_class(modal_card_, "weft-modal-sheet");
+    gtk_button_set_icon_name(GTK_BUTTON(scope.back_button_), "window-close-symbolic");
+    gtk_widget_set_visible(scope.back_button_, true);
+  }
   std::unordered_set<uint32_t> old;
+  if (nav_modal_) old.insert(nav_modal_);
   for (auto id : nav_tabs_) if (id) old.insert(id);
   for (auto id : nav_stack_) if (id) old.insert(id);
   for (auto id : old) if (!kept.contains(id)) {
@@ -421,6 +470,7 @@ void Session::navigate(const ops::Nav &nav) {
       destroy(*found->second);
     }
   }
+  nav_modal_ = nav.modal;
   nav_tab_ = nav.tab;
   nav_tabs_ = std::move(tabs);
   nav_stack_ = std::move(stack);
@@ -455,16 +505,27 @@ void Session::select_tab() {
 }
 
 bool Session::back() {
-  if (committing_ || nav_stack_.empty()) return false;
-  auto removed = nav_stack_.back();
-  nav_stack_.pop_back();
-  auto current = nav_stack_.empty() ? nav_tabs_[nav_tab_] : nav_stack_.back();
-  gtk_stack_set_transition_type(GTK_STACK(stack_widget_), GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
-  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), nav_stack_.empty() && tab_root_ ? tab_root_ : scopes_.at(current)->page_widget_);
-  auto found = scopes_.find(removed);
-  if (found != scopes_.end()) {
-    retire_page(found->second->page_widget_, true);
-    destroy(*found->second);
+  if (committing_ || (!nav_modal_ && nav_stack_.empty())) return false;
+  if (nav_modal_) {
+    auto found = scopes_.find(nav_modal_);
+    gtk_frame_set_child(GTK_FRAME(modal_card_), nullptr);
+    gtk_overlay_remove_overlay(GTK_OVERLAY(navigation_overlay_), modal_card_);
+    gtk_overlay_remove_overlay(GTK_OVERLAY(navigation_overlay_), modal_scrim_);
+    modal_card_ = nullptr;
+    modal_scrim_ = nullptr;
+    if (found != scopes_.end()) destroy(*found->second);
+    nav_modal_ = 0;
+  } else {
+    auto removed = nav_stack_.back();
+    nav_stack_.pop_back();
+    auto current = nav_stack_.empty() ? nav_tabs_[nav_tab_] : nav_stack_.back();
+    gtk_stack_set_transition_type(GTK_STACK(stack_widget_), GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+    gtk_stack_set_visible_child(GTK_STACK(stack_widget_), nav_stack_.empty() && tab_root_ ? tab_root_ : scopes_.at(current)->page_widget_);
+    auto found = scopes_.find(removed);
+    if (found != scopes_.end()) {
+      retire_page(found->second->page_widget_, true);
+      destroy(*found->second);
+    }
   }
   std::string json = "{\"tab\":" + std::to_string(nav_tab_) + ",\"stack\":[";
   for (size_t i = 0; i < nav_stack_.size(); ++i) {

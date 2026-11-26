@@ -733,6 +733,10 @@ class Session {
   Factory make_;
   GtkWidget *page_;
   GtkWidget *stack_widget_ = nullptr;
+  GtkWidget *navigation_overlay_ = nullptr;
+  GtkWidget *modal_scrim_ = nullptr;
+  GtkWidget *modal_card_ = nullptr;
+  uint32_t nav_modal_ = 0;
   GtkWidget *tab_stack_ = nullptr;
   GtkWidget *tab_root_ = nullptr;
   std::vector<GtkWidget *> tab_pages_;
