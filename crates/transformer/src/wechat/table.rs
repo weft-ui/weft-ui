@@ -86,6 +86,30 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
         TemplateKind::Branch { index, .. } => fields.push(format!("i: {index}")),
         TemplateKind::Row { .. } => {}
     }
+    if matches!(template.kind, TemplateKind::Page) {
+        for (local, node) in template.nodes.iter().enumerate() {
+            let ViewNodeKind::Element {
+                element: Element::NavBar,
+                props,
+                ..
+            } = &node.kind
+            else {
+                continue;
+            };
+            if let Some(slot) = template
+                .values
+                .iter()
+                .find(|slot| slot.node as usize == local && slot.prop == "title")
+            {
+                let (ir_props, (_, source)) = props_of(slot.node);
+                let key = value_key(source, index_of(ir_props, "title"));
+                fields.push(format!("bar: {{ key: \"{key}\" }}"));
+            } else if let Some(prop) = props.iter().find(|prop| prop.name == "title") {
+                fields.push(format!("bar: {{ title: {} }}", prop.value));
+            }
+            break;
+        }
+    }
     let mut picker_indices = BTreeMap::new();
     let mut pickers = Vec::new();
     for node in &template.nodes {

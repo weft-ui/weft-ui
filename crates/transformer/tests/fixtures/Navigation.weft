@@ -1,0 +1,15 @@
+event Action()
+
+app Notes { start = Home }
+
+page Home() {
+    NavBar(title = "Home")
+    Text("Home")
+}
+
+page Detail(id: String) {
+    NavBar(title = "Note ${id}") {
+        BarButton(label = "Action", onTap = Action())
+    }
+    Text(id)
+}

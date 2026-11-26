@@ -19,6 +19,7 @@
     "./remote": "./src/remote.ts",
     "./wechat": "./src/wechat.ts",
     "./native": "./src/native.ts",
+    "./navigation": "./src/navigation.ts",
     "./protocol": "./src/protocol.ts",
     "./elements": "./src/elements.ts",
     "./testing": "./src/testing.ts"
@@ -30,6 +31,7 @@
       "./remote": "./dist/remote.js",
       "./wechat": "./dist/wechat.js",
       "./native": "./dist/native.js",
+      "./navigation": "./dist/navigation.js",
       "./protocol": "./dist/protocol.js",
       "./elements": "./dist/elements.js",
       "./testing": "./dist/testing.js"

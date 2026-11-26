@@ -3,7 +3,7 @@
 mod catalog;
 
 pub use catalog::Element;
-pub(crate) use catalog::{CSS, CSS_PROPS, ELEMENTS, Level};
+pub(crate) use catalog::{CSS, CSS_PROPS, ELEMENTS, FEATURES, Level};
 
 use crate::ir::Type;
 use crate::protocol::Platform;
@@ -148,6 +148,7 @@ pub(crate) struct ElementSpec {
     pub name: &'static str,
     pub props: &'static [PropSpec],
     pub children: Children,
+    pub page_root: bool,
     pub parents: &'static [Element],
     pub content: Option<&'static str>,
     pub support: &'static [(Platform, Level)],

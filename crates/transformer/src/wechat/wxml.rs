@@ -90,6 +90,8 @@ fn template(name: &str, body: &str, out: &mut String) {
 /// Tag, base class and fixed attributes of an element.
 fn tag(element: Element) -> (&'static str, &'static str, &'static str) {
     match element {
+        Element::NavBar => ("view", "w-navbar", " style=\"display:none\""),
+        Element::BarButton => ("view", "w-bar-button", " style=\"display:none\""),
         Element::Column => ("view", "w-column", ""),
         Element::Row => ("view", "w-row", ""),
         Element::Stack => ("view", "w-stack", ""),
@@ -252,6 +254,9 @@ impl Markup<'_> {
             unreachable!("caller checked the node kind");
         };
         let element = *element;
+        if element == Element::BarButton {
+            return;
+        }
         self.styles.has_textarea |= element == Element::TextArea;
         let (tag, mut class, mut fixed) = tag(element);
         let tappable = props.iter().any(|prop| prop.name == "onTap");

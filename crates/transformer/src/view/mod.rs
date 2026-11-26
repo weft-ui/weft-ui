@@ -40,6 +40,7 @@ impl TemplateId {
 /// Block templates of a whole app.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ViewLayout {
+    app: Option<TemplateId>,
     safe_area: bool,
     theme: Option<Vec<(String, Color, Color)>>,
     templates: Vec<Template>,
@@ -473,6 +474,7 @@ mod tests {
                 },
             ],
             children: Children::Any,
+            page_root: false,
             parents: &[],
             content: None,
             support: &[],

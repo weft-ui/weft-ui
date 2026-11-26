@@ -26,6 +26,9 @@ fn node(out: &mut Code, template: &Template, index: u32, parent: Option<u32>) {
             children,
         } => {
             let args = match element {
+                Element::NavBar | Element::BarButton => {
+                    unreachable!("navigation is not supported on native platforms")
+                }
                 Element::Column => "weft::Axis::Vertical".to_owned(),
                 Element::Row => "weft::Axis::Horizontal".to_owned(),
                 Element::Button => match template.event(index, "onClick") {
@@ -164,6 +167,9 @@ fn member(template: &Template, index: u32) -> String {
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
+        Element::NavBar | Element::BarButton => {
+            unreachable!("navigation is not supported on native platforms")
+        }
         Element::Column | Element::Row => "Linear",
         Element::Stack => "Stack",
         Element::Scroll => "Scroll",

@@ -14,6 +14,7 @@ import { createUI } from "./ui.ts";
 import type { App, RequestInit, Response } from "./index.d.ts";
 
 export { PlatformError } from "./error.ts";
+export { navigation } from "@weft-ui/runtime/navigation";
 export type { App, RequestInit, Response } from "./index.d.ts";
 
 const os = __WEFT_PLATFORM__;

@@ -66,6 +66,7 @@ impl ViewLayout {
             })
             .collect();
         let mut layout = ViewLayout {
+            app: program.app.as_ref().map(|app| TemplateId(app.start.0)),
             safe_area: options.safe_area,
             theme: program.theme.as_ref().map(|theme| theme.colors.clone()),
             templates,
@@ -259,10 +260,17 @@ impl Builder<'_> {
                     },
                 });
                 let spec = element.spec();
+                let ignored = self
+                    .platform
+                    .is_some_and(|platform| spec.support.contains(&(platform, Level::Ignored)));
                 let mut statics = Vec::new();
                 let mut values = Vec::with_capacity(props.len());
                 let mut edited = None;
                 for prop in props {
+                    if ignored {
+                        values.push(None);
+                        continue;
+                    }
                     let slot = match &prop.value {
                         PropValue::Handler(_) => None,
                         PropValue::Expr(value) => {
@@ -306,7 +314,11 @@ impl Builder<'_> {
                     };
                     values.push(slot);
                 }
-                let (events, edit) = element_events(&mut draft.events, local, spec, props, edited);
+                let (events, edit) = if ignored {
+                    (vec![None; props.len()], None)
+                } else {
+                    element_events(&mut draft.events, local, spec, props, edited)
+                };
                 let children: Vec<u32> = children.iter().map(|&c| self.node(draft, c)).collect();
                 if let ViewNodeKind::Element {
                     props, children: c, ..

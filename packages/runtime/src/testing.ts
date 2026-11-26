@@ -20,7 +20,7 @@ export interface Layout {
 
 export interface TemplateLayout {
   label: string;
-  kind: "component" | "branch" | "row" | "slot";
+  kind: "component" | "page" | "branch" | "row" | "slot";
   roots: number[];
   nodes: NodeLayout[];
   values: { node: number; prop: string; type: "Int" | "Float" | "Bool" | "String" | "Color" | "Strings" }[];
@@ -43,6 +43,8 @@ export interface ViewElement {
   type: string;
   props: Record<string, Value>;
   children: ViewElement[];
+  /** Navigation bar of a page, separate from its content. */
+  bar?: ViewElement | null;
 }
 
 interface Scope {
@@ -65,6 +67,7 @@ export class Renderer extends OpWriter implements Sink {
   #session: Session | null = null;
   #scopes = new Map<number, Scope>();
   #root: Scope | null = null;
+  #nav: { tab: number; tabs: number[]; stack: number[]; modal: number } | null = null;
   #elements = new WeakMap<ViewElement, [Scope, number]>();
 
   constructor(layout: Layout) {
@@ -85,7 +88,7 @@ export class Renderer extends OpWriter implements Sink {
     if (!batch) return;
     const ops = decode(batch);
     for (const op of ops) {
-      if (op.op === "splice" || op.op === "bind" || op.op === "nav") {
+      if (op.op === "splice" || op.op === "bind") {
         throw new Error(`weft protocol: unsupported ${op.op} for this layout`);
       }
     }
@@ -102,11 +105,28 @@ export class Renderer extends OpWriter implements Sink {
     this.#session = null;
     this.#scopes.clear();
     this.#root = null;
+    this.#nav = null;
   }
 
-  /** The rendered tree. */
+  /** The rendered tree. A page's bar is separate from its content. */
   tree(): ViewElement[] {
-    return this.#root ? this.#expandScope(this.#root) : [];
+    if (!this.#nav) return this.#root ? this.#expandScope(this.#root) : [];
+    const id = this.#nav.modal || this.#nav.stack.at(-1) || this.#nav.tabs[this.#nav.tab];
+    if (!id) return [];
+    const content = this.#expandScope(this.#scope(id));
+    const bar = content.find((element) => element.type === "NavBar") ?? null;
+    return [{ type: "Page", props: {}, bar, children: content.filter((element) => element !== bar) }];
+  }
+
+  /** Simulates a host back action, updating host state before reporting it. */
+  back(): void {
+    const nav = this.#nav;
+    if (!nav || (!nav.modal && nav.stack.length === 0)) return;
+    const next = { ...nav, stack: [...nav.stack] };
+    if (next.modal) next.modal = 0;
+    else next.stack.pop();
+    this.#setNav(next);
+    this.#session!.signal("navigation", JSON.stringify({ tab: next.tab, stack: next.stack, modal: next.modal }));
   }
 
   /** Rendered elements of `type`, in document order. */
@@ -114,6 +134,7 @@ export class Renderer extends OpWriter implements Sink {
     const out: ViewElement[] = [];
     const visit = (element: ViewElement) => {
       if (element.type === type) out.push(element);
+      if (element.bar) visit(element.bar);
       element.children.forEach(visit);
     };
     this.tree().forEach(visit);
@@ -219,8 +240,32 @@ export class Renderer extends OpWriter implements Sink {
     return point;
   }
 
+  #setNav(next: { tab: number; tabs: number[]; stack: number[]; modal: number }): void {
+    if (this.#root || next.tab < 0 || next.tab >= next.tabs.length || !next.tabs[next.tab] || next.stack.includes(0)) {
+      throw new Error("weft protocol: invalid navigation state");
+    }
+    const previous = new Set(this.#nav ? [...this.#nav.tabs, ...this.#nav.stack, this.#nav.modal].filter(Boolean) : []);
+    const ids = [...next.tabs, ...next.stack, next.modal].filter(Boolean);
+    const retained = new Set<number>();
+    for (const id of ids) {
+      if (retained.has(id)) throw new Error(`weft protocol: scope ${id} appears twice in navigation`);
+      const scope = this.#scope(id);
+      if (scope.template.kind !== "page" || (scope.mounted && !previous.has(id))) {
+        throw new Error(`weft protocol: scope ${id} is not an available page`);
+      }
+      retained.add(id);
+    }
+    for (const id of previous) if (!retained.has(id)) this.#destroy(this.#scope(id));
+    for (const id of retained) this.#scope(id).mounted = true;
+    this.#nav = { ...next, tabs: [...next.tabs], stack: [...next.stack] };
+  }
+
   #apply(op: Op): void {
     switch (op.op) {
+      case "nav": {
+        this.#setNav(op);
+        return;
+      }
       case "create": {
         const template = this.layout.templates[op.template];
         if (!template) throw new Error(`weft protocol: unknown template ${op.template}`);

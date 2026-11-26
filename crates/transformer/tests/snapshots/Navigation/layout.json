@@ -1,0 +1,35 @@
+{
+  "hash": "d5c7270f5c04012d",
+  "app": {"start": 0},
+  "safeArea": true,
+  "templates": [
+    {
+      "label": "Home",
+      "kind": "page",
+      "roots": [0, 1],
+      "nodes": [
+        {"element": "NavBar", "props": {"title": "Home"}, "children": []},
+        {"element": "Text", "props": {"value": "Home"}, "children": []}
+      ],
+      "values": [],
+      "events": [],
+      "points": []
+    },
+    {
+      "label": "Detail",
+      "kind": "page",
+      "roots": [0, 2],
+      "nodes": [
+        {"element": "NavBar", "props": {}, "children": [1]},
+        {"element": "BarButton", "props": {}, "children": []},
+        {"element": "Text", "props": {}, "children": []}
+      ],
+      "values": [
+        {"node": 0, "prop": "title", "type": "String"},
+        {"node": 2, "prop": "value", "type": "String"}
+      ],
+      "events": [],
+      "points": []
+    }
+  ]
+}

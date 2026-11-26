@@ -47,6 +47,8 @@ A scope is created by `create` and is not yet mounted in the tree. It is implici
 
 Applications use page-root scopes referenced by `nav` instead of `attach`; a program uses only one root convention. Page roots are created and fully set in the same batch before `nav`. The first batch contains the complete navigation state; later `nav` ops are sent only on changes. Pages no longer referenced by the latest state (including host-reported navigation) and their descendants are destroyed, and JS sends no further ops for them.
 
+The host selects transitions by comparing states: an appended stack entry is a push, a shortened stack is a pop, and other changes are replacements without animation. A user-initiated back is applied by the host first, then reported through `Session.signal("navigation", json)` as `{"tab": 0, "stack": [9], "modal": 0}` (stack and modal values are page scope IDs). JS adopts a valid back state, invokes page visibility handlers and destroys removed scopes without echoing `nav`. Only closing the modal, shortening the stack, or switching tabs while clearing the stack is valid; other states are protocol errors, logged with `console.error` and corrected by resending JS's state. Web and mini programs deliver the same event directly to the runtime.
+
 A lazy point owns a flat sequence of item IDs, allocated from 1 without reuse within that point. Stable keys retain IDs until removed. `splice` replaces the changed middle after the common prefix and suffix; retained IDs keep their materialized scopes, removed IDs destroy theirs. `bind` associates an item with a created scope, or releases it when child is 0. Window requests materialize in-range items and release out-of-range scopes; initially up to 20 items are materialized. A created item scope and its initial values precede its `bind` in the same batch.
 
 ## Ops
@@ -71,7 +73,7 @@ Guarantees:
 
 ## Events
 
-Only one message goes in the opposite direction: `Session.dispatch(scope, slot, payload) → boolean`. `slot` is the event slot index, and the event slot determines the type of `payload`. JS runs the handler and flushes synchronously, so the sink receives any ops caused by the event before the call returns. The return value indicates whether a controlled edit was accepted. It is `true` if the event slot has no `controls`, the scope has been destroyed, or the current value of the controlled value slot equals the payload. On `false`, the view restores the control to the current value of the controlled value slot (any value rewritten by the host has already arrived via `set`). Events for destroyed or unknown scopes are ignored and return `true`.
+Element events use `Session.dispatch(scope, slot, payload) → boolean`. `slot` is the event slot index, and the event slot determines the type of `payload`. JS runs the handler and flushes synchronously, so the sink receives any ops caused by the event before the call returns. The return value indicates whether a controlled edit was accepted. It is `true` if the event slot has no `controls`, the scope has been destroyed, or the current value of the controlled value slot equals the payload. On `false`, the view restores the control to the current value of the controlled value slot (any value rewritten by the host has already arrived via `set`). Events for destroyed or unknown scopes are ignored and return `true`.
 
 ## Binary encoding (version 3)
 
@@ -147,7 +149,7 @@ The headless renderer appends a template label or slot description after `#`, fo
 `Sink` is the platform-side interface (`src/remote.ts`):
 
 - `open(session)`: Called once at mount. `session` provides `hash`, `dispatch`, and `detach` (called when the platform view disappears before the app).
-- `create` / `set` / `branch` / `rows` / `attach`: Record ops in the current batch.
+- `create` / `set` / `branch` / `rows` / `attach` / `splice` / `bind` / `nav`: Record ops in the current batch.
 - `commit()`: Apply the entire batch at the end of a flush.
 - `close()`: On unmount, discard all scopes.
 

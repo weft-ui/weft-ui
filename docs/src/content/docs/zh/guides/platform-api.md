@@ -9,7 +9,7 @@ sidebar:
 
 ## 用 `run` 启动应用
 
-`run(app: App): void` 接收生成的根组件实例。包导出的 `App` 类型描述了实例的生命周期：`mount(target: never): void` 和 `unmount(): void`。宿主负责提供挂载目标，启动应用时无需自己调用 `mount`。
+`run(app: App): void` 接收生成的根组件或应用实例。包含页面的应用见[页面与导航](/zh/guides/navigation/)。包导出的 `App` 类型描述了实例的生命周期：`mount(target: never): void` 和 `unmount(): void`。宿主负责提供挂载目标，启动应用时无需自己调用 `mount`。
 
 在[待办事项示例](/zh/guides/logic/)中，`App` 由 `App.weft` 生成。先注册需要的事件处理器，再调用 `run`：
 

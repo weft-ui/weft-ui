@@ -25,6 +25,10 @@ import { CSS, CSS_PROPS, type InputType } from "./elements.ts";
 import type { Value } from "./remote.ts";
 
 export * from "./core.ts";
+export type { PageClass } from "./navigation.ts";
+import { NavigationController, activate, componentMounted, type ApplicationConfig, type NavigationPage, type PageFactories } from "./navigation.ts";
+import { matchRoute, routeURL, type RouteInfo } from "./route.ts";
+import { WebNavigationHost, decorate } from "./web-navigation.ts";
 
 /* ------------------------------------------------------------------------ */
 /* Blocks                                                                    */
@@ -395,6 +399,7 @@ export class App extends AppBase {
   }
 
   mount(target: Node): void {
+    if (!(this instanceof Page)) componentMounted();
     if (this.#root) throw new Error("weft: component is already mounted");
     const doc = target.ownerDocument ?? (target as Document);
     if (!doc.querySelector("style[data-weft]")) {
@@ -429,17 +434,82 @@ export class App extends AppBase {
 
 /** Base class of generated pages. */
 export class Page<P> extends App {
+  declare static readonly $route: RouteInfo;
   readonly params: Readonly<P>;
+  $navigation: NavigationController | null = null;
+  override $emit(name: string, payload: object): void {
+    if (this.$navigation) activate(this.$navigation);
+    super.$emit(name, payload);
+  }
 
   constructor(create: Create, args: unknown[], params: P) {
     super(create, args);
-    this.params = params;
+    this.params = Object.freeze(params);
+    if (!Object.prototype.hasOwnProperty.call(Page.prototype, "onShow")) {
+      Object.defineProperties(Page.prototype, {
+        onShow: { value(this: Page<unknown>, handler: (model: unknown) => void) { return this.$on("Show", handler); } },
+        onHide: { value(this: Page<unknown>, handler: (model: unknown) => void) { return this.$on("Hide", handler); } },
+      });
+    }
   }
+  override mount(_target: Node): void { throw new Error("weft: pages are mounted by their app"); }
+  $mountPage(target: Node): void { super.mount(target); }
+}
+
+/** An application retains each page's DOM while it remains on the stack. */
+export class Application {
+  readonly $application = true;
+  readonly $config: ApplicationConfig;
+  private readonly controller: NavigationController;
+  private host: WebNavigationHost | null = null;
+  private mountedPages = new Set<NavigationPage>();
+  private document: Document | null = null;
+  private readonly visibility = () => this.controller.setForeground(!this.document?.hidden);
+
+  constructor(factories: PageFactories, config: ApplicationConfig, _hash = "") {
+    this.$config = config;
+    this.controller = new NavigationController(factories, config, {
+      create: value => { (value as Page<Record<string, never>>).$navigation = this.controller; return 0; },
+      destroy: (value) => { const page = value as Page<Record<string, never>>; page.unmount(); page.$navigation = null; this.mountedPages.delete(value); },
+      update: (entries, operation) => {
+        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), operation === "correct" ? "host" : operation);
+        entries.forEach(({ page }, i) => {
+          if (!this.mountedPages.has(page)) { (page as Page<Record<string, never>>).$mountPage(sections[i]!); this.mountedPages.add(page); }
+          decorate(sections[i]!, i > 0, () => this.controller.pop());
+        });
+      },
+    });
+  }
+  $activate(): void { activate(this.controller); }
+  mount(target: Node): void {
+    if (this.host) throw new Error("weft: application is already mounted");
+    const doc = target.ownerDocument ?? target as Document;
+    const window = doc.defaultView;
+    if (!window) throw new Error("weft: application target requires a window");
+    this.document = doc;
+    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls));
+    activate(this.controller);
+    doc.addEventListener("visibilitychange", this.visibility);
+    this.visibility();
+    const url = window.location.pathname + window.location.search;
+    const route = matchRoute(this.$config.pages, url);
+    try {
+      this.controller.start(route ? (route.page === this.$config.start ? [url] : [routeURL(this.$config.start, {}), url]) : []);
+    } catch (error) { this.unmount(); throw error; }
+  }
+  unmount(): void { if (!this.host) return; this.document?.removeEventListener("visibilitychange", this.visibility); this.document = null; this.controller.dispose(); this.host.dispose(); this.host = null; }
 }
 
 /* ------------------------------------------------------------------------ */
 /* DOM helpers used by generated code                                        */
 /* ------------------------------------------------------------------------ */
+
+/** Sets a navigation bar button's icon without disturbing its accessible text. */
+export function barIcon(button: HTMLElement, value: string): void {
+  const src = value.startsWith("asset:") ? asset(value.slice(6)).src : value;
+  button.classList.toggle("w-bar-button-icon", !!src);
+  button.style.backgroundImage = src ? `url(${JSON.stringify(src)})` : "";
+}
 
 /** Tracks loading state for an image that has a placeholder. */
 export function imagePlaceholder(node: HTMLImageElement): void {

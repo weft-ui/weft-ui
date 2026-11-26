@@ -47,6 +47,8 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 
 应用用 `nav` 引用页面根 scope，不发送 `attach`；同一程序只使用一种根。页面根在引用它的 `nav` 之前创建并设置全部值，位于同一批次。首批包含完整导航状态，之后只在状态变化时发送 `nav`。最新状态（包括宿主上报的导航状态）不再引用的页面及其后代被销毁，JS 不再为它发送 op。
 
+宿主比较前后状态选择转场：栈尾追加为推入，栈截短为弹出，其他变化为无动画替换。用户返回时宿主先应用变化，再以 `Session.signal("navigation", json)` 上报，例如 `{"tab": 0, "stack": [9], "modal": 0}`（栈和模态值为页面 scope ID）。JS 采纳有效的返回状态，调用页面显示状态处理器并销毁移除的 scope，不回送 `nav`。有效变化仅包括关闭模态、截短栈，或切换 Tab 并清空栈；其他状态是协议错误，JS 以 `console.error` 记录并重新下发自己的状态。Web 和小程序将相同事件直接交给运行时。
+
 惰性挂载点拥有扁平项序列，item ID 在该挂载点内从 1 递增且不复用；稳定 key 离开列表前保持同一 ID。`splice` 替换公共前后缀之间变化的部分，保留 ID 的已物化 scope，销毁被移除项的 scope。`bind` 将项关联到已创建的 scope，child 为 0 时释放。窗口请求物化范围内的项并释放范围外的 scope；首次最多物化前 20 项。项 scope 的创建与初始值在同一批次中先于 `bind`。
 
 ## Ops
@@ -71,7 +73,7 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 
 ## 事件
 
-反方向只有一种消息：`Session.dispatch(scope, slot, payload) → boolean`，`slot` 是事件槽下标，`payload` 的类型由事件槽决定。JS 同步执行处理函数并 flush，所以返回前 sink 已经收到这次事件引起的 ops。返回值表示受控编辑是否被接受：事件槽没有 `controls`、scope 已销毁、或者被控值槽的当前值等于载荷时为 `true`。返回 `false` 时视图把控件恢复成被控值槽的当前值（宿主改写过的值已经通过 `set` 到达）。已销毁或未知 scope 的事件被忽略并返回 `true`。
+元素事件使用 `Session.dispatch(scope, slot, payload) → boolean`，`slot` 是事件槽下标，`payload` 的类型由事件槽决定。JS 同步执行处理函数并 flush，所以返回前 sink 已经收到这次事件引起的 ops。返回值表示受控编辑是否被接受：事件槽没有 `controls`、scope 已销毁、或者被控值槽的当前值等于载荷时为 `true`。返回 `false` 时视图把控件恢复成被控值槽的当前值（宿主改写过的值已经通过 `set` 到达）。已销毁或未知 scope 的事件被忽略并返回 `true`。
 
 ## 二进制编码（版本 3）
 
@@ -147,7 +149,7 @@ nav 0 [4] [] 0
 `Sink` 是平台一侧的接口（`src/remote.ts`）：
 
 - `open(session)`：mount 时调用一次，`session` 带 `hash`、`dispatch` 和 `detach`（平台视图先于 app 消失时调用）。
-- `create` / `set` / `branch` / `rows` / `attach`：记录本批 ops。
+- `create` / `set` / `branch` / `rows` / `attach` / `splice` / `bind` / `nav`：记录本批 ops。
 - `commit()`：一次 flush 结束，应用整批。
 - `close()`：unmount，丢弃所有 scope。
 

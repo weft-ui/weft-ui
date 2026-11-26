@@ -51,6 +51,13 @@ pub(crate) enum Target {
 
 pub(crate) fn target(element: Element, prop: &str) -> Target {
     match (element, prop) {
+        (Element::NavBar, "title") => Target::Attr("data-title"),
+        (Element::NavBar, "hidden") => Target::Flag {
+            name: "hidden",
+            default: false,
+        },
+        (Element::BarButton, "label") => Target::Text,
+        (Element::BarButton, "icon") => Target::Attr("data-icon"),
         (Element::Text | Element::Span, "value") => Target::Text,
         (Element::Input | Element::TextArea | Element::Slider, "value") => Target::Attr("value"),
         (Element::Input, "type") => Target::InputType,

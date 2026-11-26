@@ -28,6 +28,10 @@ import {
 } from "./core.ts";
 
 export * from "./core.ts";
+export type { PageClass } from "./navigation.ts";
+import { NavigationController, activate, componentMounted, type ApplicationConfig, type NavigationEntry, type NavigationOperation, type PageFactories } from "./navigation.ts";
+import { routeURL, type RouteInfo } from "./route.ts";
+import { onSignal } from "./native.ts";
 
 /* ------------------------------------------------------------------------ */
 /* Protocol                                                                  */
@@ -54,6 +58,9 @@ export interface Ops {
   rows(scope: number, point: number, children: readonly number[]): void;
   /** Mounts a component instance or slot content once; scope `0` point `0` is the root. */
   attach(scope: number, point: number, child: number): void;
+  nav?(tab: number, tabs: readonly number[], stack: readonly number[], modal: number, style: "sheet" | "fullScreen"): void;
+  routes?(routes: readonly { page: string; url: string }[], mode: "push" | "replace" | "pop" | "root" | "host"): void;
+  beforePush?(depth: number): void;
 }
 
 /** What a sink receives from the app it renders. */
@@ -68,6 +75,8 @@ export interface Session {
   dispatch(scope: number, slot: number, payload: unknown): boolean;
   /** Requests materialization of the lazy point's half-open item range. */
   window(scope: number, point: number, start: number, end: number): void;
+  /** Delivers a host signal to the application. */
+  signal(name: string, json: string): void;
   /** Releases the app without calling the sink again, e.g. when the view went away. */
   detach(): void;
 }
@@ -97,7 +106,7 @@ interface Handler {
 const mounted = new Set<App>();
 
 onCommit(() => {
-  for (const app of mounted) app.$sink!.commit();
+  for (const app of mounted) app.$commit();
 });
 
 const noop = (): void => {};
@@ -121,7 +130,7 @@ export class Block {
 
   constructor(app: App, template: number) {
     this.app = app;
-    this.id = ++app.$lastScope;
+    this.id = app.$allocateScope();
     app.$scopes.set(this.id, this);
     app.$sink!.create(this.id, template);
   }
@@ -410,6 +419,10 @@ export class App extends AppBase {
   /** Live scopes by id; ids are allocated per app, starting at 1. */
   $scopes = new Map<number, Block>();
   $lastScope = 0;
+  $owner: App | null = null;
+  $allocateScope(): number { return this.$owner ? this.$owner.$allocateScope() : ++this.$lastScope; }
+  $createRoot(): Instance { return this.#create(this, this.$args, [], 0); }
+  $commit(): void { this.$sink!.commit(); }
 
   constructor(create: Create, args: unknown[], hash: string) {
     super(args);
@@ -427,8 +440,10 @@ export class App extends AppBase {
       window: (scope, point, start, end) => {
         console.error(`weft: lazy window requested for scope ${scope}, point ${point}, range [${start}, ${end}), but lazy points are not implemented`);
       },
+      signal: () => {},
       detach: () => this.$detach(),
     });
+    componentMounted();
     this.$sink = sink;
     mounted.add(this);
     try {
@@ -478,10 +493,101 @@ export class App extends AppBase {
 
 /** Base class of generated pages. */
 export class Page<P> extends App {
+  declare static readonly $route: RouteInfo;
   readonly params: Readonly<P>;
 
   constructor(create: Create, args: unknown[], hash: string, params: P) {
     super(create, args, hash);
-    this.params = params;
+    this.params = Object.freeze(params);
+    if (!Object.prototype.hasOwnProperty.call(Page.prototype, "onShow")) {
+      Object.defineProperties(Page.prototype, {
+        onShow: { value(this: Page<unknown>, handler: (model: unknown) => void) { return this.$on("Show", handler); } },
+        onHide: { value(this: Page<unknown>, handler: (model: unknown) => void) { return this.$on("Hide", handler); } },
+      });
+    }
+  }
+
+  override mount(_target: Target): void { throw new Error("weft: pages are mounted by their app"); }
+}
+
+/** An application owns all page scopes and emits complete navigation states. */
+export class Application extends App {
+  readonly $application = true;
+  readonly $config: ApplicationConfig;
+  private readonly controller: NavigationController;
+  private unsubscribe: (() => void) | null = null;
+  private initialURL: string | null = null;
+  private pendingNavigation: { entries: readonly NavigationEntry[]; mode: NavigationOperation } | null = null;
+
+  constructor(factories: PageFactories, config: ApplicationConfig, hash = "") {
+    super(() => { throw new Error("weft: application has no component root"); }, [], hash);
+    this.$config = config;
+    this.controller = new NavigationController(factories, config, {
+      beforePush: depth => this.$sink?.beforePush?.(depth),
+      create: (value) => {
+        const page = value as Page<Record<string, never>>;
+        page.$owner = this; page.$sink = this.$sink; page.$scopes = this.$scopes;
+        page.$root = page.$createRoot();
+        return page.$root.id;
+      },
+      destroy: (value) => { const page = value as Page<Record<string, never>>; page.$root?.destroy(); page.$root = null; page.$sink = null; page.$owner = null; },
+      update: (entries, mode) => {
+        if (mode === "host" && this.$root) return;
+        this.pendingNavigation = { entries, mode };
+        this.$root = (entries[0]!.page as Page<Record<string, never>>).$root;
+        schedule();
+      },
+    });
+  }
+
+  override $commit(): void {
+    const pending = this.pendingNavigation;
+    if (pending) {
+      this.pendingNavigation = null;
+      const sink = this.$sink!;
+      if (!sink.nav) throw new Error("weft: sink does not support navigation");
+      sink.routes?.(pending.entries.map(({ page, type }) => ({ page: type.$route.name, url: routeURL(type, page.params) })), pending.mode === "correct" ? "host" : pending.mode);
+      sink.nav(0, [pending.entries[0]!.id], pending.entries.slice(1).map(entry => entry.id), 0, "sheet");
+    }
+    super.$commit();
+  }
+  $activate(): void { activate(this.controller); }
+  $initialRoute(url: string): void { this.initialURL = url; }
+  $restore(urls: readonly string[]): void { this.controller.restore(urls, "correct"); }
+  $signal(name: string, json: string): void {
+    if (name === "navigation") this.controller.signal(json);
+    else if (name === "lifecycle") {
+      try {
+        const value = JSON.parse(json) as { state?: unknown };
+        if (value.state === "foreground" || value.state === "background") this.controller.setForeground(value.state === "foreground");
+      } catch { /* Ignore malformed host lifecycle signals. */ }
+    }
+  }
+
+  override mount(target: Target): void {
+    if (this.$sink) throw new Error("weft: application is already mounted");
+    const sink = sinkOf(target);
+    sink.open({ hash: this.$hash, dispatch: (scope, slot, payload) => {
+      activate(this.controller);
+      const block = this.$scopes.get(scope); const handler = block?.h?.[slot];
+      if (!block || !handler) return true;
+      handler.f?.(payload); flushSync();
+      return handler.k < 0 || block.dead || block.v[handler.k] === payload;
+    }, window: (scope, point, start, end) => console.error(`weft: lazy window requested for scope ${scope}, point ${point}, range [${start}, ${end}), but lazy points are not implemented`),
+    signal: (name, json) => this.$signal(name, json), detach: () => this.$detach() });
+    this.$sink = sink; mounted.add(this); activate(this.controller);
+    if (globalThis.__weft) {
+      const navigation = onSignal("navigation", json => this.$signal("navigation", json));
+      const lifecycle = onSignal("lifecycle", json => this.$signal("lifecycle", json));
+      this.unsubscribe = () => { navigation(); lifecycle(); };
+    }
+    try { this.controller.start(this.initialURL ? [this.initialURL] : []); } catch (error) { this.$detach(); sink.close(); throw error; }
+  }
+
+  override $detach(): boolean {
+    if (!this.$sink) return false;
+    this.unsubscribe?.(); this.unsubscribe = null;
+    this.controller.dispose(); this.pendingNavigation = null; this.$root = null; mounted.delete(this); this.$sink = null;
+    return true;
   }
 }

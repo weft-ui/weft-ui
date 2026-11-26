@@ -49,9 +49,11 @@ interface Element extends Documented {
   children?: Children;
   parents?: string[];
   content?: string;
+  pageRoot?: boolean;
 }
 
 interface Schema {
+  features?: Record<string, Support>;
   unions?: Record<string, string[]>;
   groups?: Record<string, Member[]>;
   elements: Element[];
@@ -157,6 +159,10 @@ function validateMembers(members: LocatedMember[], unions: Record<string, string
 }
 
 function expand(schema: Schema, platforms: Platforms): ExpandedElement[] {
+  for (const [name, support] of Object.entries(schema.features ?? {})) {
+    if (!/^[a-z][A-Za-z0-9]*$/.test(name)) invalid(`features.${name}`, "expected a lowerCamelCase feature name");
+    validateSupport(support, `features.${name}`, platforms);
+  }
   const unions = schema.unions ?? {};
   for (const [name, values] of Object.entries(unions)) {
     const path = `unions.${name}`;
@@ -188,6 +194,7 @@ function expand(schema: Schema, platforms: Platforms): ExpandedElement[] {
 
   return schema.elements.map((element, i) => {
     const path = `elements[${i}]`;
+    if (element.pageRoot !== undefined && typeof element.pageRoot !== "boolean") invalid(`${path}.pageRoot`, "expected a boolean");
     const members = (element.groups ?? []).flatMap((name, j) => {
       const group = groups.get(name);
       if (group === undefined) invalid(`${path}.groups[${j}]`, `unknown group ${quote(name)}`);
@@ -324,7 +331,7 @@ function rustChildren(children: Children = "none"): string {
 
 function rust(
   elements: ExpandedElement[], platforms: Platforms,
-  unions: Record<string, string[]>, css: CssCatalog, sheet: string,
+  unions: Record<string, string[]>, css: CssCatalog, sheet: string, features: Record<string, Support>,
 ): string {
   // Elements with identical expanded members share one slice.
   const shared = new Map<string, string>();
@@ -340,6 +347,7 @@ function rust(
         name: ${quote(element.name)},
         props: ${props(element.members)},
         children: ${rustChildren(element.children)},
+        page_root: ${element.pageRoot ?? false},
         parents: &[${(element.parents ?? []).map((name) => `Element::${name}`).join(", ")}],
         content: ${element.content === undefined ? "None" : `Some(${quote(element.content)})`},
         support: ${rustSupport(element.support, platforms)},
@@ -351,8 +359,7 @@ function rust(
     }
     return `const ${name}: &[PropSpec] = &[\n${rendered}\n];`;
   }).join("\n\n");
-  const usesPlatform = [specs, members].some((code) => code.includes("Platform::"));
-  const platformImport = usesPlatform ? "use crate::protocol::Platform;\n" : "";
+  const platformImport = "use crate::protocol::Platform;\n";
   const unionSpecs = Object.entries(unions).map(([name, values]) => {
     const list = values.map((value) => quote(value)).join(", ");
     const prefix = `const ${snake(name).toUpperCase()}: &[&str] = &`;
@@ -361,6 +368,15 @@ function rust(
       : `${prefix}[\n${values.map((value) => `    ${quote(value)},`).join("\n")}\n];`;
   }).join("\n");
   const customImport = css.mappings.some((mapping) => mapping.unit === "custom") ? "CustomCss, " : "";
+  const featureEntries = Object.entries(features).map(([name, support]) => {
+    const entries = rustSupport(support, platforms);
+    return entries.includes("\n")
+      ? `(\n        ${quote(name)},\n        ${entries},\n    )`
+      : `(${quote(name)}, ${entries})`;
+  });
+  const featureList = featureEntries.length === 1 ? `&[${featureEntries[0]!.replaceAll("\n    ", "\n")}]`
+    : featureEntries.length === 0 ? "&[]"
+    : `&[\n${featureEntries.map((entry) => `    ${entry},`).join("\n")}\n]`;
   return `${header}
 use super::{
     Children, Css, CssTarget, CssUnit, ${customImport}ElementSpec, PropKind, PropSpec, PropType,
@@ -373,6 +389,9 @@ pub(crate) enum Level {
     #[allow(dead_code, reason = "the catalog may omit ignored entries")]
     Ignored,
 }
+
+/// Platform support exceptions for language features.
+pub(crate) const FEATURES: &[(&str, &[(Platform, Level)])] = ${featureList};
 
 /// Built-in elements available in Weft views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -558,6 +577,7 @@ function reference(
       ? `${text.directChildren} ${codeList(element.children)}.`
       : `**${text.summary[3]}:** ${childrenLabel(element.children, locale)}.`);
     if (element.parents) out.push(`${text.directParents} ${codeList(element.parents)}.`);
+    if (element.pageRoot) out.push(locale === "en" ? "Must be the first top-level node of a page, outside conditional and loop blocks." : "必须是页面的第一个顶层节点，不能放在条件或循环中。");
     const props = element.members.filter(isProp);
     if (props.length > 0) {
       out.push(table(text.properties, props.map((prop) => [
@@ -604,7 +624,7 @@ export function generateElements(platforms: Platforms): Record<string, string> {
   const css = collectCss(elements);
   const sheet = readFileSync(new URL("weft.css", import.meta.url), "utf8");
   const outputs: Record<string, string> = {
-    "crates/transformer/src/elements/catalog.rs": rust(elements, platforms, unions, css, sheet),
+    "crates/transformer/src/elements/catalog.rs": rust(elements, platforms, unions, css, sheet, schema.features ?? {}),
     "packages/runtime/src/elements.ts": typescript(elements, unions, css.mappings, sheet),
     ...nativeUnions(unions),
   };

@@ -259,6 +259,70 @@ test("WeChat generates a theme stylesheet and resolves dynamic theme colors", as
   }
 });
 
+test("Web navigation preserves pages across browser back and refresh", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+event Open
+page Home() { Button(onClick = Open) { Text("Open detail") } }
+page Detail(id: String) path "/notes/{id}" { NavBar(title = "Detail") Text(id) }
+app Notes { start = Home }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Detail, Notes } from "./App.weft";
+import { navigation, run } from "@weft-ui/platform";
+run(new Notes({
+  Home: () => { const page = new Home({}); page.onOpen(() => navigation.push(Detail, { id: "42" })); return page; },
+  Detail: (params) => new Detail(params),
+}));
+`);
+  await build("web");
+  const server = await preview({ root, configFile: false, logLevel: "silent", build: { outDir: "apps/web" }, preview: { host: "127.0.0.1", port: 0 } });
+  try {
+    const address = server.httpServer.address();
+    if (!address || typeof address === "string") throw new Error("preview server has no TCP address");
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.goto(`http://127.0.0.1:${address.port}/`);
+      await page.getByText("Open detail").click();
+      await page.waitForURL("**/notes/42");
+      expect(await page.getByText("42", { exact: true }).count()).toBe(1);
+      await page.reload();
+      expect(await page.getByText("42", { exact: true }).count()).toBe(1);
+      await page.goBack();
+      await page.getByText("Open detail").waitFor();
+    } finally { await browser.close(); }
+  } finally { await server.close(); }
+}, 15_000);
+
+test("WeChat app builds one generated page per route and preserves user app settings", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { NavBar(title = "Home") Text("home") }
+page Detail(id: String) { NavBar(hidden = true) Text(id) }
+app Notes { start = Home }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Detail, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Detail: (params) => new Detail(params) }));
+`);
+  const project = join(root, "apps/wechat");
+  await mkdir(project, { recursive: true });
+  await writeFile(join(project, "app.json"), JSON.stringify({ pages: ["custom/page", "weft/index"], window: { backgroundColor: "#123456" } }));
+  await build("wechat");
+  const manifest = JSON.parse(await readFile(join(project, "app.json"), "utf8"));
+  expect(manifest.pages).toEqual(["weft/pages/home/index", "weft/pages/detail/index", "custom/page"]);
+  expect(manifest.window.backgroundColor).toBe("#123456");
+  const home = JSON.parse(await readFile(join(project, "weft/pages/home/index.json"), "utf8"));
+  const detail = JSON.parse(await readFile(join(project, "weft/pages/detail/index.json"), "utf8"));
+  expect(home.navigationBarTitleText).toBe("Home");
+  expect(detail.navigationStyle).toBe("custom");
+  for (const page of ["home", "detail"]) {
+    for (const extension of ["js", "json", "wxml", "wxss"]) {
+      expect(existsSync(join(project, `weft/pages/${page}/index.${extension}`))).toBe(true);
+    }
+  }
+});
+
 test("WEFT_PLATFORM=wechat generates a mini program project that runs", async () => {
   await build("wechat");
   const project = join(root, "apps/wechat");

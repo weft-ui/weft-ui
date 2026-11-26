@@ -288,6 +288,18 @@ impl<'src> Printer<'src, '_> {
             Item::Page(page) => {
                 self.component(&page.component, page.path.as_ref().map(|(_, span)| *span))
             }
+            Item::App(app) => {
+                self.token(TokenKind::Ident)?;
+                self.doc.text(" ");
+                self.ident(&app.name)?;
+                self.constant_entries(std::slice::from_ref(&app.start), |printer, start| {
+                    printer.token(TokenKind::Ident)?;
+                    printer.operator_gap();
+                    printer.token(TokenKind::Eq)?;
+                    printer.operator_gap();
+                    printer.ident(start)
+                })
+            }
             Item::TypeAlias(alias) => {
                 self.token(TokenKind::Ident)?;
                 self.operator_gap();

@@ -91,6 +91,9 @@ impl Body<'_> {
             }
         }
         match element {
+            Element::NavBar | Element::BarButton => {
+                unreachable!("navigation is not supported on native platforms")
+            }
             Element::Column | Element::Row | Element::Stack | Element::Scroll => {
                 let gap = with_default(prop("gap"), "0");
                 let align = Argument::Union(prop("align"), "CrossAlign", ".start");

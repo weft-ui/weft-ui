@@ -6,7 +6,7 @@ import { render } from "../../packages/runtime/src/testing.ts";
 import { App as DomApp, Instance as DomInstance, List as DomList, Row as DomRow, style, theme } from "../../packages/runtime/src/index.ts";
 import { App as RemoteApp, Instance as RemoteInstance, List as RemoteList, Row as RemoteRow, type Sink } from "../../packages/runtime/src/remote.ts";
 
-test.each(["splice", "bind", "nav"] as const)("headless rejects %s before applying the batch", (op) => {
+test.each(["splice", "bind"] as const)("headless rejects %s before applying the batch", (op) => {
   const renderer = render({
     hash: "test",
     templates: [{
@@ -20,11 +20,46 @@ test.each(["splice", "bind", "nav"] as const)("headless rejects %s before applyi
   renderer.commit();
   renderer.set(1, 0, "after");
   if (op === "splice") renderer.splice(1, 0, 0, 0, [{ item: 1, template: 0 }]);
-  else if (op === "bind") renderer.bind(1, 0, 1, 2);
-  else renderer.nav(0, [1], [], 0, "sheet");
+  else renderer.bind(1, 0, 1, 2);
   expect(() => renderer.commit()).toThrow(`weft protocol: unsupported ${op}`);
   expect(renderer.tree()[0].props.text).toBe("before");
   expect(renderer.batches).toHaveLength(1);
+});
+
+test("headless navigation renders the current page and reports host back", () => {
+  const renderer = render({ hash: "test", templates: [{
+    label: "page", kind: "page", roots: [0, 1],
+    nodes: [
+      { element: "NavBar", props: { title: "Note" }, children: [] },
+      { element: "Text", props: { value: "content" }, children: [] },
+    ], values: [], events: [], points: [],
+  }] });
+  const signal = vi.fn();
+  renderer.open({ hash: "test", dispatch: () => true, window: () => {}, signal, detach: () => {} });
+  renderer.create(1, 0);
+  renderer.nav(0, [1], [], 0, "sheet");
+  renderer.commit();
+  expect(renderer.tree()[0]).toMatchObject({ type: "Page", bar: { type: "NavBar", props: { title: "Note" } }, children: [{ type: "Text" }] });
+  renderer.create(2, 0);
+  renderer.nav(0, [1], [2], 0, "sheet");
+  renderer.commit();
+  renderer.back();
+  expect(signal).toHaveBeenCalledWith("navigation", JSON.stringify({ tab: 0, stack: [], modal: 0 }));
+  renderer.set(2, 0, "late");
+  expect(() => renderer.commit()).toThrow("unknown scope 2");
+});
+
+test("headless navigation rejects non-page and duplicate scope references", () => {
+  const renderer = render({ hash: "test", templates: [
+    { label: "component", kind: "component", roots: [], nodes: [], values: [], events: [], points: [] },
+    { label: "page", kind: "page", roots: [], nodes: [], values: [], events: [], points: [] },
+  ] });
+  renderer.create(1, 0);
+  renderer.nav(0, [1], [], 0, "sheet");
+  expect(() => renderer.commit()).toThrow("scope 1 is not an available page");
+  renderer.create(2, 1);
+  renderer.nav(0, [2], [2], 0, "sheet");
+  expect(() => renderer.commit()).toThrow("appears twice in navigation");
 });
 
 test("remote sessions report and ignore lazy window requests before lazy points exist", () => {

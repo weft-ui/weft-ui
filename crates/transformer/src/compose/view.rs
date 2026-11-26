@@ -66,6 +66,9 @@ impl Body<'_> {
         )
         .then(|| self.template.controlled(node));
         let names: &[&str] = match element {
+            Element::NavBar | Element::BarButton => {
+                unreachable!("navigation is not supported on native platforms")
+            }
             Element::Column | Element::Row => {
                 let axis = if element == Element::Row {
                     "HORIZONTAL"
@@ -183,6 +186,9 @@ impl Body<'_> {
             Element::Spacer | Element::Spinner | Element::Divider
         ));
         match element {
+            Element::NavBar | Element::BarButton => {
+                unreachable!("navigation is not supported on Android")
+            }
             Element::Input | Element::TextArea => {
                 let (event, slot) = controlled.expect("text controls have value slots");
                 out.writer.end_line(format_args!(

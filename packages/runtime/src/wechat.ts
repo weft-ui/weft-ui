@@ -16,17 +16,26 @@ import { warnMissingAsset } from "./core.ts";
 import { declarations } from "./css.ts";
 import { CSS_PROPS } from "./elements.ts";
 import { sameValue, type Session, type Sink, type Value } from "./remote.ts";
+import { matchRoute, type PageClass } from "./route.ts";
 
 type Data = Record<string, unknown>;
 
 type AssetVariants = Readonly<Record<string, readonly [scale: number, src: string][]>>;
 
-declare const wx: { getWindowInfo?(): { pixelRatio: number } };
+declare const wx: {
+  getWindowInfo?(): { pixelRatio: number };
+  setNavigationBarTitle(options: { title: string }): void;
+  navigateTo(options: { url: string }): void;
+  redirectTo(options: { url: string }): void;
+  navigateBack(options: { delta: number }): void;
+};
 
 /** Data keys of one layout template (see `crates/transformer/src/wechat/table.rs`). */
 export interface TemplateKeys {
   /** WXML template rendering a component body as the root. */
   n?: string;
+  /** Static title or data key of the page's dynamic navigation title. */
+  bar?: { title?: string; key?: string };
   /** WXML template of slot content, stored in its data as `t`. */
   t?: string;
   /** Branch index of an `if` branch template. */
@@ -103,6 +112,12 @@ export class WechatSink implements Sink {
   /** Handler id → scope and event slot. */
   #handlers = new Map<number, [Scope, number]>();
   #lastHandler = 0;
+  #pages: number[] = [];
+  #views = new Map<number, View>();
+  #routeCount = 0;
+  #hostNavigating = 0;
+  #pageTypes: readonly PageClass[] = [];
+  #nextNavigation = 0;
 
   constructor(view: View, layout: Layout, assets?: AssetVariants) {
     this.#view = view;
@@ -166,6 +181,7 @@ export class WechatSink implements Sink {
     if (sameValue(scope.o[key], next)) return;
     scope.o[key] = next;
     if (!scope.fresh) this.#pend(scope, key);
+    if (scope.keys.bar?.key === key && this.#pages.at(-1) === id) this.showPage(this.#pages.length - 1);
     if (mapping === "src") {
       if (typeof extra === "string" && scope.o[extra]) {
         scope.o[extra] = "";
@@ -253,6 +269,86 @@ export class WechatSink implements Sink {
     if (!scope.fresh) this.#pend(scope, key);
   }
 
+  /** Enforces the platform page-stack limit before creating another page. */
+  beforePush(depth: number): void {
+    if (depth >= 10) throw new Error("weft: the mini program page stack is limited to 10 pages");
+  }
+
+  /** Supplies route metadata for encoding mini program page queries. */
+  configurePages(pages: readonly PageClass[]): void {
+    this.#pageTypes = pages;
+  }
+
+  /** Refreshes the native title when the platform shows a page. */
+  showPage(index: number): void {
+    const scope = this.#scopes.get(this.#pages[index]);
+    const bar = scope?.keys.bar;
+    if (!bar) return;
+    const title = bar.key === undefined ? bar.title : scope?.o[bar.key];
+    wx.setNavigationBarTitle({ title: typeof title === "string" ? title : "" });
+  }
+
+  /** Associates a platform page with the corresponding navigation stack position. */
+  bindPage(index: number, view: View): void {
+    this.#views.set(index, view);
+    view.$sink = this;
+    const scope = this.#scopes.get(this.#pages[index]);
+    if (scope) view.setData({ t: scope.keys.n, r: scope.o });
+  }
+
+  unloadPage(index: number, view?: View): void {
+    if (!view || this.#views.get(index) === view) this.#views.delete(index);
+    if (this.#hostNavigating > 0) {
+      this.#hostNavigating--;
+      return;
+    }
+    if (index > 0 && index < this.#pages.length) {
+      const removed = this.#pages.slice(index);
+      this.#pages = this.#pages.slice(0, index);
+      this.#routeCount = this.#pages.length;
+      this.#session?.signal("navigation", JSON.stringify({ tab: 0, stack: this.#pages.slice(1), modal: 0 }));
+      for (const id of removed) {
+        const scope = this.#scopes.get(id);
+        if (scope) this.#destroy(scope);
+      }
+    }
+  }
+
+  routes(routes: readonly { page: string; url: string }[], operation: "push" | "replace" | "pop" | "root" | "host"): void {
+    const previous = this.#routeCount;
+    this.#routeCount = routes.length;
+    if (!previous || operation === "host") return;
+    if (operation === "push" || operation === "replace") {
+      const route = routes[routes.length - 1];
+      const slug = route.page.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+      const match = matchRoute(this.#pageTypes, route.url);
+      if (!match) throw new Error(`weft: cannot encode route ${route.url}`);
+      const query = Object.entries(match.params).filter(([, value]) => value != null)
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+      query.push(`__w=${++this.#nextNavigation}`);
+      const url = `/weft/pages/${slug}/index?${query.join("&")}`;
+      if (operation === "push") wx.navigateTo({ url });
+      else { this.#hostNavigating++; wx.redirectTo({ url }); }
+    } else {
+      const delta = previous - routes.length;
+      if (delta > 0) { this.#hostNavigating += delta; wx.navigateBack({ delta }); }
+    }
+  }
+
+  nav(_tab: number, tabs: readonly number[], stack: readonly number[], _modal: number, _style: "sheet" | "fullScreen"): void {
+    const initial = this.#pages.length === 0;
+    const next = [tabs[0], ...stack].filter((id) => id !== 0);
+    const kept = new Set(next);
+    for (const id of this.#pages) if (!kept.has(id)) {
+      const scope = this.#scopes.get(id);
+      if (scope) this.#destroy(scope);
+    }
+    this.#pages = next;
+    for (const id of next) this.#scope(id).seg = "r";
+    if (!this.#views.size) this.#views.set(0, this.#view);
+    if (initial && next.length) this.showPage(0);
+  }
+
   /** Sends the batch with one `setData`. */
   commit(): void {
     const data = new Map<string, unknown>();
@@ -269,7 +365,12 @@ export class WechatSink implements Sink {
     this.#rootFresh = false;
     for (const scope of this.#created) scope.fresh = false;
     this.#created = [];
-    if (data.size > 0) this.#view.setData(uncovered(data));
+    if (this.#pages.length) {
+      for (const [index, view] of this.#views) {
+        const scope = this.#scopes.get(this.#pages[index]);
+        if (scope) view.setData({ t: scope.keys.n, r: scope.o });
+      }
+    } else if (data.size > 0) this.#view.setData(uncovered(data));
   }
 
   close(): void {
@@ -280,6 +381,7 @@ export class WechatSink implements Sink {
 
   /** The view went away: releases the app without touching the view. */
   detach(): void {
+    if (this.#pages.length) return;
     const session = this.#session;
     this.#session = null;
     session?.detach();
@@ -313,8 +415,9 @@ export class WechatSink implements Sink {
     if (typeof bound === "string" && kind !== "textarea") return bound;
     const path = this.#locate(scope, key);
     if (path !== null) {
-      this.#view.setData({ [path]: value });
-      this.#view.setData({ [path]: bound });
+      const view = this.#viewFor(scope);
+      view.setData({ [path]: value });
+      view.setData({ [path]: bound });
     }
     return undefined;
   }
@@ -338,7 +441,7 @@ export class WechatSink implements Sink {
     if (scope.o[key] === metrics) return;
     scope.o[key] = metrics;
     const path = this.#locate(scope, key);
-    if (path !== null) this.#view.setData({ [path]: metrics });
+    if (path !== null) this.#viewFor(scope).setData({ [path]: metrics });
   }
 
   #imageSource(src: string): string {
@@ -371,7 +474,14 @@ export class WechatSink implements Sink {
       top = top.up;
       path = `${top.seg}.${path}`;
     }
-    return top === this.#root ? path : null;
+    return top === this.#root || this.#pages.includes(top.id) ? path : null;
+  }
+
+  #viewFor(scope: Scope): View {
+    let top = scope;
+    while (top.up) top = top.up;
+    const index = this.#pages.indexOf(top.id);
+    return this.#views.get(index) ?? this.#view;
   }
 
   /** Destroys a scope and its descendants. */
@@ -392,6 +502,10 @@ export class WechatSink implements Sink {
     this.#rootFresh = false;
     this.#created = [];
     this.#pending = [];
+    this.#pages = [];
+    this.#views.clear();
+    this.#routeCount = 0;
+    this.#hostNavigating = 0;
   }
 }
 

@@ -1,11 +1,13 @@
 import type { PlatformModule } from "@weft-ui/runtime/protocol";
-import { view } from "@weft-ui/runtime/wechat";
+import { view, type View, type WechatSink } from "@weft-ui/runtime/wechat";
+import type { PageClass } from "@weft-ui/runtime/navigation";
 import { Environment, type EnvironmentData } from "./environment.ts";
 import { PlatformError } from "./error.ts";
 import { createUI } from "./ui.ts";
 import type { App as WeftApp, ColorScheme, RequestInit, Response } from "./index.d.ts";
 
 export { PlatformError } from "./error.ts";
+export { navigation } from "@weft-ui/runtime/navigation";
 export type { App, RequestInit, Response } from "./index.d.ts";
 
 interface Failure {
@@ -59,8 +61,10 @@ declare function App(options: {
     view: typeof view;
     mount(target: never): void;
     unmount(): void;
+    page(name: string): object;
   };
 }): void;
+declare function getCurrentPages(): unknown[];
 
 // Decode UTF-8 without relying on TextDecoder in mini program logic layers.
 // Invalid sequences use U+FFFD, consuming only their valid prefix.
@@ -120,11 +124,55 @@ function response(status: number, data: ArrayBuffer): Response {
 
 /** Registers the app lifecycle and generated-view factory with the WeChat host. */
 export function run(app: WeftApp): void {
+  let sink: WechatSink | undefined;
+  const application = app as WeftApp & {
+    $config?: { pages: readonly PageClass[] };
+    $initialRoute?(url: string): void;
+  };
+  type HostPage = {
+    selectComponent(id: string): View;
+    $weftIndex: number;
+    $weftQuery: Record<string, string>;
+    $weftView?: View;
+  };
   App({
     weft: {
       view,
       mount: (target) => app.mount(target),
       unmount: () => app.unmount(),
+      page: (name) => ({
+        onLoad(this: HostPage, query: Record<string, string>) {
+          this.$weftQuery = query;
+        },
+        onReady(this: HostPage) {
+          this.$weftIndex = getCurrentPages().length - 1;
+          const component = this.selectComponent("#weft");
+          this.$weftView = component;
+          if (!sink) {
+            sink = component.$sink;
+            const pages = application.$config?.pages ?? [];
+            sink?.configurePages(pages);
+            const route = pages.find((page) => page.$route.name === name)?.$route;
+            if (route) {
+              const query = this.$weftQuery ?? {};
+              const path = route.path.map((segment) => segment.startsWith("{") && segment.endsWith("}")
+                ? encodeURIComponent(query[segment.slice(1, -1)] ?? "") : segment).join("/");
+              const args = Object.entries(query).filter(([key]) => key !== "__w")
+                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
+              application.$initialRoute?.(`/${path}${args ? `?${args}` : ""}`);
+            }
+            app.mount(component as never);
+          }
+          sink?.bindPage(this.$weftIndex, component);
+          sink?.showPage(this.$weftIndex);
+        },
+        onShow(this: HostPage) {
+          if (this.$weftView) sink?.showPage(this.$weftIndex);
+        },
+        onUnload(this: HostPage) {
+          sink?.unloadPage(this.$weftIndex, this.$weftView);
+        },
+      }),
     },
   });
 }

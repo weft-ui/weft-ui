@@ -2,11 +2,11 @@
 
 use weft_ui_ast::span::offset;
 use weft_ui_ast::{
-    Arg, Assign, AssignOp, BinaryOp, Block, CallStmt, ComponentDecl, Diagnostic, ElementNode,
-    EventDecl, Expr, ExprKind, Field, File, FileId, ForNode, Ident, IfBranch, IfNode, Import, Item,
-    Lambda, LambdaStmt, LetDecl, ModelDecl, Node, NodeKind, Page, Param, SlotFill, Span, StateDecl,
-    StrPart, StyleDecl, StyleEntry, ThemeDecl, ThemeEntry, ThemeValue, TypeAlias, TypeExpr,
-    TypeExprKind, UnaryOp,
+    AppDecl, Arg, Assign, AssignOp, BinaryOp, Block, CallStmt, ComponentDecl, Diagnostic,
+    ElementNode, EventDecl, Expr, ExprKind, Field, File, FileId, ForNode, Ident, IfBranch, IfNode,
+    Import, Item, Lambda, LambdaStmt, LetDecl, ModelDecl, Node, NodeKind, Page, Param, SlotFill,
+    Span, StateDecl, StrPart, StyleDecl, StyleEntry, ThemeDecl, ThemeEntry, ThemeValue, TypeAlias,
+    TypeExpr, TypeExprKind, UnaryOp,
 };
 
 use crate::lexer::{lex, scan_interpolation};
@@ -351,14 +351,7 @@ impl<'src> Parser<'src> {
                             .map(|(component, path)| Item::Page(Page { component, path })),
                     );
                 }
-                Some(ItemKeyword::App) => {
-                    self.error(self.token().span, "app declarations are not supported");
-                    self.bump();
-                    self.bump();
-                    if self.at(TokenKind::LBrace) {
-                        self.skip_balanced();
-                    }
-                }
+                Some(ItemKeyword::App) => items.extend(self.app().map(Item::App)),
                 Some(ItemKeyword::TypeAlias) => {
                     items.extend(self.type_alias().map(Item::TypeAlias));
                 }
@@ -367,7 +360,7 @@ impl<'src> Parser<'src> {
                 None if self.at(TokenKind::Eof) => break,
                 None => {
                     self.error_expected(
-                        "`model`, `event`, `component`, `page`, `type`, `style`, `theme` or `import`",
+                        "`model`, `event`, `component`, `page`, `app`, `type`, `style`, `theme` or `import`",
                     );
                     while self.item_keyword().is_none() && !self.at(TokenKind::Eof) {
                         self.skip_balanced();
@@ -376,6 +369,24 @@ impl<'src> Parser<'src> {
             }
         }
         File { imports, items }
+    }
+
+    fn app(&mut self) -> Option<AppDecl> {
+        let span = self.bump().span;
+        let name = self.ident("app name")?;
+        self.expect(TokenKind::LBrace)?;
+        let keyword = self.ident("`start`")?;
+        if keyword.name != "start" {
+            self.error(keyword.span, "expected `start`");
+        }
+        self.expect(TokenKind::Eq)?;
+        let start = self.ident("start page")?;
+        self.expect(TokenKind::RBrace)?;
+        Some(AppDecl {
+            name,
+            start,
+            span: self.span_from(span),
+        })
     }
 
     fn import(&mut self) -> Option<Import> {

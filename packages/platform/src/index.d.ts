@@ -1,4 +1,5 @@
 import type { Platform, PlatformModule } from "@weft-ui/runtime/protocol";
+import type { PageClass } from "@weft-ui/runtime/navigation";
 
 declare global {
   /** The platform being built, defined by `@weft-ui/vite` in every environment. */
@@ -22,6 +23,19 @@ export interface App {
 
 /** Starts an app using the selected platform's host lifecycle. */
 export function run(app: App): void;
+
+/** A page and its route parameters. */
+export interface Route { readonly page: string; readonly params: Readonly<Record<string, string | number | boolean | null>> }
+type ParamsArg<P> = {} extends P ? [params?: P] : [params: P];
+/** Stack navigation for a mounted application. */
+export const navigation: {
+  readonly stack: readonly Route[];
+  push<P>(page: PageClass<P>, ...params: ParamsArg<P>): void;
+  replace<P>(page: PageClass<P>, ...params: ParamsArg<P>): void;
+  pop(count?: number): void;
+  popToRoot(): void;
+  onChange(listener: () => void): () => void;
+};
 
 /** Portable HTTP request options. */
 export interface RequestInit {

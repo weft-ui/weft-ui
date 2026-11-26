@@ -2,7 +2,7 @@
 
 use weft_ui_ast::Diagnostic;
 
-use crate::elements::{Element, Level};
+use crate::elements::{Element, FEATURES, Level};
 use crate::ir::{NodeKind, Program};
 use crate::transform::Platform;
 
@@ -12,13 +12,26 @@ pub(crate) fn check(program: &Program, platform: Platform) -> Vec<Diagnostic> {
             .iter()
             .find_map(|&(target, level)| (target == platform).then_some(level))
     };
-    check_with(program, platform, |element, member| {
+    let mut diagnostics = check_with(program, platform, |element, member| {
         let spec = element.spec();
         level(match member {
             None => spec.support,
             Some(name) => spec.prop(name)?.support,
         })
-    })
+    });
+    if let Some(app) = &program.app
+        && FEATURES
+            .iter()
+            .find(|(name, _)| *name == "navigation")
+            .and_then(|(_, support)| level(support))
+            == Some(Level::No)
+    {
+        diagnostics.push(Diagnostic::error(
+            app.span,
+            format!("apps are not supported on {platform}"),
+        ));
+    }
+    diagnostics
 }
 
 fn check_with(

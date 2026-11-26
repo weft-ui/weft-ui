@@ -98,6 +98,117 @@ fn pages_reject_invalid_parameters_paths_calls_and_events() {
     }
 }
 
+#[test]
+fn apps_validate_start_pages_and_page_roots() {
+    let cases = [
+        (
+            "app A { start = Home } app B { start = Home } page Home() {}",
+            "duplicate app declaration",
+        ),
+        (
+            "app A { start = Home } page Home(id: String) {}",
+            "start page `Home` must not have required route parameters",
+        ),
+        (
+            "app A { start = Home } component Home() {}",
+            "start page `Home` must be a page",
+        ),
+        (
+            "component Root() { NavBar() }",
+            "`NavBar` must be the first top-level node of a page",
+        ),
+        (
+            "page Home() { Text(\"a\") NavBar() }",
+            "`NavBar` must be the first top-level node of a page",
+        ),
+        (
+            "page Home() { if (true) { NavBar() } }",
+            "`NavBar` must be the first top-level node of a page",
+        ),
+        (
+            "page Home() { NavBar() NavBar() }",
+            "`NavBar` must be the first top-level node of a page",
+        ),
+    ];
+    for (source, expected) in cases {
+        let found = diagnostics(&[("main.weft", source)]);
+        assert!(
+            found.iter().any(|d| d.contains(expected)),
+            "{source}: {found:?}"
+        );
+    }
+    let valid = compile(&[(
+        "main.weft",
+        "app A { start = Home } page Home() { NavBar(title = \"Home\") { BarButton(label = \"Back\") } }",
+    )]);
+    assert!(valid.diagnostics.is_empty(), "{:?}", valid.diagnostics);
+    assert!(valid.program.expect("valid app").app.is_some());
+}
+
+#[test]
+fn app_layout_and_platform_support() {
+    use weft_ui_transformer::{compile_app, transform::Platform};
+    let mut loader = MemoryLoader::new();
+    loader.insert(
+        "app.weft",
+        "app Notes { start = Home } page Home() { NavBar(title = \"Home\") }",
+    );
+    let output = compile_app(
+        load(&["app.weft"], &mut loader),
+        Platform::Wechat,
+        &Default::default(),
+    );
+    assert!(
+        output.compilation.diagnostics.is_empty(),
+        "{:?}",
+        output.compilation.diagnostics
+    );
+    let layout = output.layout.expect("WeChat has a layout").to_json();
+    assert!(layout.contains("\"app\": {\"start\": 0}"), "{layout}");
+    let output = compile_app(
+        load(&["app.weft"], &mut loader),
+        Platform::Ios,
+        &Default::default(),
+    );
+    assert!(
+        output
+            .compilation
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("apps are not supported on ios"))
+    );
+}
+
+#[test]
+fn app_start_can_be_in_a_transitive_import() {
+    let compilation = compile(&[
+        (
+            "app.weft",
+            "import \"middle.weft\" app Notes { start = Home }",
+        ),
+        ("middle.weft", "import \"home.weft\""),
+        ("home.weft", "page Home() {}"),
+    ]);
+    assert!(
+        compilation.diagnostics.is_empty(),
+        "{:?}",
+        compilation.diagnostics
+    );
+    assert!(compilation.program.expect("valid app").app.is_some());
+}
+
+#[test]
+fn app_page_closure_rejects_unrelated_entry_pages() {
+    let mut loader = MemoryLoader::new();
+    loader.insert("app.weft", "app A { start = Home } page Home() {}");
+    loader.insert("other.weft", "page Other() {}");
+    let compilation = check(load(&["app.weft", "other.weft"], &mut loader));
+    assert!(compilation.diagnostics.iter().any(|d| {
+        d.message
+            .contains("page `Other` is not in the import closure of app `A`")
+    }));
+}
+
 fn compile(files: &[(&str, &str)]) -> Compilation {
     let mut loader = MemoryLoader::new();
     for (path, text) in files {

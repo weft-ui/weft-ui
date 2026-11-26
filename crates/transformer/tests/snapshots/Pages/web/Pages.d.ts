@@ -22,6 +22,8 @@ export declare class Detail extends $Page<DetailParams> {
   constructor(model: NoteModel, params: DetailParams);
   get model(): NoteModel;
   readonly params: Readonly<DetailParams>;
+  onShow(handler: (model: NoteModel) => void): () => void;
+  onHide(handler: (model: NoteModel) => void): () => void;
 }
 
 export interface AboutParams {
@@ -30,4 +32,6 @@ export declare class About extends $Page<AboutParams> {
   constructor(params: AboutParams);
   get model(): undefined;
   readonly params: Readonly<AboutParams>;
+  onShow(handler: (model: undefined) => void): () => void;
+  onHide(handler: (model: undefined) => void): () => void;
 }

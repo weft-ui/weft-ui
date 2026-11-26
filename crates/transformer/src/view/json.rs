@@ -29,6 +29,10 @@ impl ViewLayout {
             out.key("hash");
             out.string(&format!("{hash:016x}"));
         }
+        if let Some(start) = self.app {
+            out.key("app");
+            out.inline(&format!("{{\"start\": {}}}", start.0));
+        }
         out.key("safeArea");
         out.inline(if self.safe_area { "true" } else { "false" });
         if let Some(colors) = &self.theme {

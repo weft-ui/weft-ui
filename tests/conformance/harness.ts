@@ -15,9 +15,9 @@ import { type Value, tick as remoteTick } from "@weft-ui/runtime/remote";
 import { type Renderer, type ViewElement, render } from "@weft-ui/runtime/testing";
 import { Window } from "happy-dom";
 import { limitInput } from "../src/input.ts";
-import { type Element as WxElement, compile, loadView } from "../src/miniprogram.ts";
+import { type Element as WxElement, compile, loadNavigationView, loadView } from "../src/miniprogram.ts";
 
-const window = new Window();
+const window = new Window({ url: "http://localhost/" });
 // The DOM runtime parses its templates with the global `document`.
 globalThis.document = window.document as unknown as Document;
 
@@ -35,6 +35,8 @@ export type AppClass<A extends AppLike> = new (model: A["model"]) => A;
 
 /** User actions, addressing elements by type and document order. */
 export interface Actions {
+  /** Simulates the platform back action. */
+  back(): void;
   /** Fires the named event, or the element's first event, without a payload. */
   click(type: string, index: number, event?: string): void;
   /** Gives or takes away user focus. */
@@ -57,6 +59,9 @@ export interface Script<A extends AppLike> {
   component: string;
   /** The root component as the importing build compiles it: for the Web in Vitest, in remote mode in native bundles. */
   App: AppClass<A>;
+  /** Optional factory for application roots, whose page classes differ by backend. */
+  create?(exports: Record<string, unknown>, log: (entry: string) => void): A;
+  exports?: Record<string, unknown>;
   model(): A["model"];
   /** Registers host handlers; `log` records what they see, compared across platforms. */
   setup(app: A, log: (entry: string) => void): void;
@@ -78,6 +83,7 @@ export interface Driver<A extends AppLike> extends Actions {
   tree(): Neutral[];
   /** Waits for the flush scheduled by the last action. */
   settle(): Promise<void>;
+  dispose?(): void;
 }
 
 /** Props compared across platforms; styling differs by design. */
@@ -131,6 +137,7 @@ export interface Built<A extends AppLike> {
   layout: string;
   App: AppClass<A>;
   tick: () => Promise<void>;
+  exports: Record<string, unknown>;
 }
 
 export async function buildFixture<A extends AppLike>(script: Script<A>): Promise<Built<A>> {
@@ -139,13 +146,16 @@ export async function buildFixture<A extends AppLike>(script: Script<A>): Promis
   const stem = script.entry.replace(/\.weft$/, "");
   // Generated modules exist only after the build.
   const module = await import(pathToFileURL(join(out, `${stem}.js`)).href);
-  return { out, layout, App: module[script.component] as AppClass<A>, tick: remoteTick };
+  return { out, layout, App: module[script.component] as AppClass<A>, tick: remoteTick, exports: module };
 }
 
-function start<A extends AppLike>(script: Script<A>, App: AppClass<A>, target: unknown): { app: A; log: string[] } {
+function start<A extends AppLike>(script: Script<A>, App: AppClass<A>, target: unknown, exports: Record<string, unknown> = {}): { app: A; log: string[] } {
   const log: string[] = [];
-  const app = new App(script.model());
+  const app = script.create ? script.create(exports, (entry) => log.push(entry)) : new App(script.model());
   script.setup(app, (entry) => log.push(entry));
+  const sink = (target as { $sink?: { configurePages?(pages: readonly unknown[]): void } }).$sink;
+  const config = (app as A & { $config?: { pages: readonly unknown[] } }).$config;
+  if (config) sink?.configurePages?.(config.pages);
   // Each platform's mount takes its own target type.
   app.mount(target as never);
   return { app, log };
@@ -154,10 +164,10 @@ function start<A extends AppLike>(script: Script<A>, App: AppClass<A>, target: u
 /** The headless renderer; its batches are the golden ops. */
 export function headless<A extends AppLike>(script: Script<A>, built: Built<A>): Driver<A> & { renderer: Renderer } {
   const renderer = render(built.layout);
-  const { app, log } = start(script, built.App, renderer);
+  const { app, log } = start(script, built.App, renderer, built.exports);
   const find = (type: string, index: number) => {
     const found: [ViewElement, string][] = [];
-    reduce(renderer.tree(), classify, found);
+    reduce(renderer.tree().flatMap((e) => e.type === "Page" ? e.children : [e]), classify, found);
     return nth(found, type, index);
   };
   const classify = (e: ViewElement) => {
@@ -175,7 +185,8 @@ export function headless<A extends AppLike>(script: Script<A>, built: Built<A>):
     renderer,
     app,
     log,
-    tree: () => reduce(renderer.tree(), classify),
+    tree: () => reduce(renderer.tree().flatMap((e) => e.type === "Page" ? e.children : [e]), classify),
+    back: () => renderer.back(),
     click: (type, index, event) => renderer.click(find(type, index), event),
     focus: (type, index, value) => renderer.focus(find(type, index), value),
     edit: (type, index, value) => {
@@ -221,6 +232,8 @@ function wxClassify(e: WxElement | string): Classified<WxElement | string> | nul
   switch (e.tag) {
     case "view": {
       const classes = String(e.attrs.class).split(/\s+/);
+      // Navigation bars are represented by the native page chrome, not content.
+      if (classes.includes("w-navbar")) return null;
       if (classes.includes("w-wx-tap-image")) {
         const image = e.children[0];
         if (!image || typeof image === "string") throw new Error("expected a tappable image");
@@ -268,26 +281,30 @@ function wxClassify(e: WxElement | string): Classified<WxElement | string> | nul
 
 /** The mini program view component, rendered by the WXML interpreter. */
 export async function wechat<A extends AppLike>(script: Script<A>, built: Built<A>): Promise<Driver<A>> {
-  const view = loadView(built.out);
-  const { app, log } = start(script, built.App, view);
+  const navigation = script.create ? loadNavigationView(built.out) : null;
+  const root = navigation?.root ?? loadView(built.out);
+  const view = () => navigation?.current() ?? root;
+  const { app, log } = start(script, built.App, root, built.exports);
   const find = (type: string, index: number) => {
     const found: [WxElement | string, string][] = [];
-    reduce(view.render(), wxClassify, found);
+    reduce(view().render(), wxClassify, found);
     return nth(found, type, index) as WxElement;
   };
   return {
     name: "wechat",
     app,
     log,
-    tree: () => reduce(view.render(), wxClassify),
+    back: () => navigation?.back(),
+    dispose: () => navigation?.dispose(),
+    tree: () => reduce(view().render(), wxClassify),
     click: (type, index, event) => {
-      view.fire(find(type, index), actionEvent(type, event).wechat);
+      view().fire(find(type, index), actionEvent(type, event).wechat);
     },
-    focus: (type, index, value) => void view.fire(find(type, index), value ? "focus" : "blur"),
+    focus: (type, index, value) => void view().fire(find(type, index), value ? "focus" : "blur"),
     edit: (type, index, value) => {
       const element = find(type, index);
       const { wechat } = actionEvent(type);
-      view.fire(element, wechat, type === "Picker" ? String(value) : value);
+      view().fire(element, wechat, type === "Picker" ? String(value) : value);
     },
     settle: built.tick,
   };
@@ -337,17 +354,28 @@ function domClassify(e: Element): Classified<Element> {
 export function web<A extends AppLike>(script: Script<A>): Driver<A> {
   const target = document.createElement("div");
   document.body.append(target);
-  const { app, log } = start(script, script.App, target);
+  const { app, log } = start(script, script.App, target, script.exports);
+  let back: Promise<void> | undefined;
+  const roots = () => {
+    const page = [...target.children].find((element) => element.classList.contains("w-page") && !(element as HTMLElement).hidden);
+    return page ? [...page.children].filter((element) => !element.classList.contains("w-navbar")) : [...target.children];
+  };
   const find = (type: string, index: number) => {
     const found: [Element, string][] = [];
-    reduce([...target.children], domClassify, found);
+    reduce(roots(), domClassify, found);
     return nth(found, type, index);
   };
   return {
     name: "web",
     app,
     log,
-    tree: () => reduce([...target.children], domClassify),
+    back: () => {
+      const pending = Promise.withResolvers<void>();
+      back = pending.promise;
+      window.addEventListener("popstate", () => pending.resolve(), { once: true });
+      window.history.back();
+    },
+    tree: () => reduce(roots(), domClassify),
     click: (type, index, name) => {
       const element = find(type, index) as HTMLElement;
       const { dom } = actionEvent(type, name);
@@ -368,6 +396,9 @@ export function web<A extends AppLike>(script: Script<A>): Driver<A> {
       const event = new window.Event(actionEvent(type).dom) as unknown as Event;
       input.dispatchEvent(event);
     },
-    settle: webTick,
+    settle: async () => {
+      if (back) { await back; back = undefined; }
+      await webTick();
+    },
   };
 }

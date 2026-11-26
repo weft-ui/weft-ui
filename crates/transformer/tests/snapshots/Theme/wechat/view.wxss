@@ -1,4 +1,17 @@
 .w-root{display:flex;flex-direction:column;align-items:flex-start;box-sizing:border-box;width:100%;height:100%;overflow:hidden}
+.w-page{display:flex;flex-direction:column;position:relative;width:100%;height:100%;overflow:hidden}
+.w-page[hidden]{display:none}
+.w-page-push{animation:w-page-push .2s ease-out}
+.w-page-pop{animation:w-page-pop .2s ease-out}
+@keyframes w-page-push{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes w-page-pop{from{transform:translateX(-25%)}to{transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.w-page-push,.w-page-pop{animation:none}}
+.w-navbar{display:flex;align-items:center;flex:none;min-height:44px;width:100%;box-sizing:border-box}
+.w-navbar::before{content:attr(data-title);flex:1;text-align:center}
+.w-navbar-hidden{display:none}
+.w-navbar button{min-width:44px;min-height:44px}
+.w-navbar-back{order:-1}
+.w-bar-button-icon{font-size:0;background-repeat:no-repeat;background-position:center;background-size:24px 24px}
 .w-column{display:flex;flex-direction:column;align-items:flex-start}
 .w-row{display:flex;flex-direction:row;align-items:flex-start}
 .w-stack{display:grid;position:relative;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:start start}

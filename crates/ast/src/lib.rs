@@ -37,6 +37,7 @@ pub enum Item {
     Event(EventDecl),
     Component(ComponentDecl),
     Page(Page),
+    App(AppDecl),
     TypeAlias(TypeAlias),
     Style(StyleDecl),
     Theme(ThemeDecl),
@@ -51,6 +52,7 @@ impl Item {
             Item::Event(e) => &e.name,
             Item::Component(c) => &c.name,
             Item::Page(page) => &page.component.name,
+            Item::App(app) => &app.name,
             Item::TypeAlias(alias) => &alias.name,
             Item::Style(style) => &style.name,
             Item::Theme(_) => return None,
@@ -137,6 +139,14 @@ pub struct ComponentDecl {
     pub states: Vec<StateDecl>,
     pub lets: Vec<LetDecl>,
     pub body: Vec<Node>,
+    pub span: Span,
+}
+
+/// Application declaration and its initial page.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AppDecl {
+    pub name: Ident,
+    pub start: Ident,
     pub span: Span,
 }
 

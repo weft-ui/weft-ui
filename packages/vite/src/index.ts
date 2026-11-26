@@ -390,6 +390,25 @@ export default function weft(options: WeftOptions = {}): Plugin {
       });
       writeGenerated(generated, app);
       if (platform === "wechat") {
+        const pages = app.views
+          .map((file) => file.path)
+          .filter((path) => /^pages\/[^/]+\/index\.js$/.test(path))
+          .map((path) => `weft/${path.slice(0, -3)}`);
+        if (pages.length) {
+          const manifestPath = join(project, "app.json");
+          const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+          const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
+          manifest.pages = [...pages, ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
+          writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+        } else if (app.views.some((file) => file.path === "index.js")) {
+          const manifestPath = join(project, "app.json");
+          const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+          const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
+          if (existing.some((page) => page.startsWith("weft/pages/"))) {
+            manifest.pages = ["weft/index", ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
+            writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+          }
+        }
         writeWechatAssets(assets(), generated, (message) => this.warn(message));
         return;
       }

@@ -56,8 +56,18 @@ pub struct Program {
     pub models: Vec<Model>,
     pub events: Vec<Event>,
     pub components: Vec<Component>,
+    /// Application entry, if this program declares one.
+    pub app: Option<Application>,
     /// The one theme declaration in the import closure, if present.
     pub theme: Option<Theme>,
+}
+
+/// Application declaration and its initial page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Application {
+    pub name: String,
+    pub span: Span,
+    pub start: ComponentId,
 }
 
 /// Resolved color tokens in declaration order. Numeric tokens are folded in the IR.

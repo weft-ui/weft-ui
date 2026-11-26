@@ -16,9 +16,9 @@ import { tick } from "@weft-ui/runtime/remote";
 import type { Actions, AppLike, Script } from "../harness.ts";
 
 interface Action {
-  method: "click" | "edit";
-  type: string;
-  index: number;
+  method: "click" | "edit" | "back";
+  type?: string;
+  index?: number;
   event?: string;
   value?: string | boolean | number;
 }
@@ -28,7 +28,7 @@ function host(method: string, args: object): Promise<ArrayBuffer> {
 }
 
 async function play<A extends AppLike>(script: Script<A>): Promise<void> {
-  const app = new script.App(script.model());
+  const app = script.create ? script.create(script.exports ?? {}, () => {}) : new script.App(script.model());
   script.setup(app, () => {});
   run(app);
   await tick();
@@ -37,6 +37,7 @@ async function play<A extends AppLike>(script: Script<A>): Promise<void> {
     // Steps are synchronous, so the host performs their user actions afterwards, in order.
     const actions: Action[] = [];
     const ui: Actions = {
+      back: () => void actions.push({ method: "back" }),
       click: (type, index, event) => void actions.push({ method: "click", type, index, event }),
       focus: (type, index, value) => void actions.push({ method: "click", type, index, event: "onFocusChange", value }),
       edit: (type, index, value) => void actions.push({ method: "edit", type, index, value }),

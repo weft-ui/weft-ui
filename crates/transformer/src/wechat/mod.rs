@@ -15,6 +15,7 @@ mod elements;
 mod table;
 mod wxml;
 
+use crate::bridge::js;
 use crate::elements::CSS;
 use crate::style;
 use crate::transform::{Context, OutputFile};
@@ -33,6 +34,25 @@ const INTRINSIC_IMAGE_CSS: &str = "\
 .w-stack > .w-image-natural-width.w-fill{width:auto}
 .w-stack > .w-image-intrinsic.w-fill{aspect-ratio:auto}
 ";
+
+fn json_string(value: &str) -> String {
+    use std::fmt::Write as _;
+
+    let mut out = String::with_capacity(value.len() + 2);
+    out.push('"');
+    for c in value.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if c.is_control() => {
+                let _ = write!(out, "\\u{:04x}", u32::from(c));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
 
 /// Generates the WeChat mini program's view component and host page.
 ///
@@ -124,6 +144,70 @@ pub fn transform(cx: &Context<'_>) -> Vec<OutputFile> {
             ),
         },
     ];
+    if let Some(app) = &program.app {
+        files.retain(|file| !file.path.starts_with("index."));
+        let start = app.start.index();
+        let pages = std::iter::once(&program.components[start]).chain(
+            program
+                .components
+                .iter()
+                .enumerate()
+                .filter(|(index, component)| *index != start && component.page.is_some())
+                .map(|(_, component)| component),
+        );
+        for page in pages {
+            let mut slug = String::new();
+            for (index, c) in page.name.chars().enumerate() {
+                if c.is_ascii_uppercase() && index != 0 {
+                    slug.push('-');
+                }
+                slug.push(c.to_ascii_lowercase());
+            }
+            let prefix = format!("pages/{slug}/index");
+            files.push(OutputFile {
+                path: format!("{prefix}.js"),
+                contents: format!("Page(getApp().weft.page({}));\n", js::string(&page.name)),
+            });
+            let mut title = "";
+            let mut hidden = false;
+            if let Some(root) = page.roots.first()
+                && let crate::ir::NodeKind::Element {
+                    element: crate::elements::Element::NavBar,
+                    props,
+                    ..
+                } = &page.node(*root).kind
+            {
+                for prop in props {
+                    let crate::ir::PropValue::Expr(expr) = &prop.value else {
+                        continue;
+                    };
+                    match (prop.name, crate::view::literal(expr)) {
+                        ("title", Some(crate::view::Literal::Str(value))) => title = value,
+                        ("hidden", Some(crate::view::Literal::Bool(true))) => hidden = true,
+                        _ => {}
+                    }
+                }
+            }
+            files.push(OutputFile {
+                path: format!("{prefix}.json"),
+                contents: format!(
+                    "{{\n  \"navigationBarTitleText\": {}{}\n  \"usingComponents\": {{\n    \"weft-view\": \"/weft/view\"\n  }}\n}}\n",
+                    json_string(title),
+                    if hidden { ",\n  \"navigationStyle\": \"custom\"," } else { "," },
+                ),
+            });
+            files.push(OutputFile {
+                path: format!("{prefix}.wxml"),
+                contents: format!("<weft-view id=\"weft\" class=\"w-root{safe_class}\"/>\n"),
+            });
+            files.push(OutputFile {
+                path: format!("{prefix}.wxss"),
+                contents: format!(
+                    "@import \"../../view.wxss\";\npage{{height:100%;overflow:hidden}}\n{safe_css}"
+                ),
+            });
+        }
+    }
     if needs_assets {
         // Direct compiler users may not have a Vite asset directory. The plugin replaces this manifest.
         files.push(OutputFile {

@@ -1,0 +1,21 @@
+event Open()
+event Replace()
+event Root()
+
+page Home() {
+    NavBar(title = "Home")
+    Button(onClick = { Open() }) { Text("Open") }
+}
+
+page Detail(id: String, from: String = "feed") path "/notes/{id}" {
+    NavBar(title = "Note ${id}") {
+        BarButton(label = "Replace", onTap = { Replace() })
+    }
+    Column {
+        Text("Detail ${id}")
+        Button(onClick = { Replace() }) { Text("Replace") }
+        Button(onClick = { Root() }) { Text("Root") }
+    }
+}
+
+app Notes { start = Home }

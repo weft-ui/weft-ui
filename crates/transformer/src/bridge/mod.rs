@@ -253,6 +253,25 @@ fn code(program: &Program, links: &Links<'_>, runtime: &str) -> String {
         }
     }
     let mut imports: BTreeMap<FileId, Vec<String>> = BTreeMap::new();
+    if program
+        .app
+        .as_ref()
+        .is_some_and(|app| app.span.file == entry.file)
+    {
+        let pages = program
+            .components
+            .iter()
+            .enumerate()
+            .filter(|(_, component)| component.page.is_some())
+            .map(|(index, _)| Symbol::Component(ComponentId(offset(index))));
+        for (file, symbols) in links.group(pages) {
+            imports.entry(file).or_default().extend(
+                symbols
+                    .iter()
+                    .map(|s| js::aliased(s.name(program), &js::binding(s.name(program)))),
+            );
+        }
+    }
     for (file, symbols) in links.group(used) {
         imports
             .entry(file)
@@ -301,6 +320,21 @@ fn code(program: &Program, links: &Links<'_>, runtime: &str) -> String {
         ));
     }
 
+    if let Some(app) = program
+        .app
+        .as_ref()
+        .filter(|app| app.span.file != entry.file)
+        && let Some((module, _)) = links
+            .closures
+            .iter()
+            .find(|(_, closure)| closure.contains(&app.span.file))
+    {
+        out.line(format!(
+            "export {{ {} }} from {};",
+            app.name,
+            links.specifier(module)
+        ));
+    }
     if let Some(theme) = theme.filter(|theme| theme.span.file == entry.file) {
         out.open("$.theme({");
         for (name, light, dark) in &theme.colors {
@@ -339,6 +373,29 @@ fn code(program: &Program, links: &Links<'_>, runtime: &str) -> String {
     converters.write(&mut out);
     consts.write(&mut out);
     out.append(components);
+    if let Some(app) = program
+        .app
+        .as_ref()
+        .filter(|app| app.span.file == entry.file)
+    {
+        let pages: Vec<_> = program
+            .components
+            .iter()
+            .filter(|component| component.page.is_some())
+            .map(|component| js::binding(&component.name))
+            .collect();
+        let start = js::binding(&program.component(app.start).name);
+        let hash = match links.mode {
+            Mode::Dom(..) => "undefined".to_owned(),
+            Mode::Remote(layout) => format!("\"{:016x}\"", layout.hash()),
+        };
+        let name = js::binding(&app.name);
+        let export = if name == app.name { "export " } else { "" };
+        out.line(format!("{export}class {name} extends $.Application {{ constructor(pages) {{ super(pages, {{ start: {start}, pages: [{}] }}, {hash}); }} }}", pages.join(", ")));
+        if name != app.name {
+            out.line(format!("export {{ {name} as {} }};", app.name));
+        }
+    }
     let aliases = own_aliases(program, entry, false);
     if !aliases.is_empty() {
         out.line("");
@@ -389,6 +446,43 @@ fn dts(program: &Program, links: &Links<'_>) -> Code {
         ));
     }
 
+    if program
+        .app
+        .as_ref()
+        .is_some_and(|app| app.span.file == entry.file)
+    {
+        let runtime = match links.mode {
+            Mode::Dom(..) => "@weft-ui/runtime",
+            Mode::Remote(_) => "@weft-ui/runtime/remote",
+        };
+        out.line(format!(
+            "import type {{ Application as $Application }} from {};",
+            js::string(runtime)
+        ));
+        let pages = program
+            .components
+            .iter()
+            .enumerate()
+            .filter(|(_, component)| component.page.is_some())
+            .map(|(index, _)| Symbol::Component(ComponentId(offset(index))));
+        for (file, symbols) in links.group(pages) {
+            let names: Vec<_> = symbols
+                .iter()
+                .flat_map(|s| {
+                    let name = s.name(program);
+                    [
+                        js::aliased(name, &js::binding(name)),
+                        format!("{name}Params"),
+                    ]
+                })
+                .collect();
+            out.line(format!(
+                "import type {{ {} }} from {};",
+                names.join(", "),
+                links.specifier(links.module(file))
+            ));
+        }
+    }
     let mut used = BTreeSet::new();
     used_models(program, entry, &mut used);
     for &id in &entry.events {
@@ -425,6 +519,20 @@ fn dts(program: &Program, links: &Links<'_>) -> Code {
         out.line(format!("export * from {};", links.specifier(module)));
     }
     // `export *` skips `default`.
+    if let Some(app) = program
+        .app
+        .as_ref()
+        .filter(|app| app.name == "default" && app.span.file != entry.file)
+        && let Some((module, _)) = links
+            .closures
+            .iter()
+            .find(|(_, closure)| closure.contains(&app.span.file))
+    {
+        out.line(format!(
+            "export {{ default }} from {};",
+            links.specifier(module)
+        ));
+    }
     for symbol in links.foreign().filter(|s| s.name(program) == "default") {
         let keyword = match symbol {
             Symbol::Component(_) => "export",
@@ -449,6 +557,44 @@ fn dts(program: &Program, links: &Links<'_>) -> Code {
     for &id in &entry.components {
         out.line("");
         host::app_dts(program, id, links.mode, &mut out);
+    }
+    if let Some(app) = program
+        .app
+        .as_ref()
+        .filter(|app| app.span.file == entry.file)
+    {
+        let name = js::binding(&app.name);
+        let export = if name == app.name { "export " } else { "" };
+        out.open(format!(
+            "{export}declare class {name} extends $Application {{"
+        ));
+        out.open("constructor(pages: {");
+        for component in program
+            .components
+            .iter()
+            .filter(|component| component.page.is_some())
+        {
+            let model = component
+                .params
+                .first()
+                .is_some_and(|param| matches!(&param.kind, ParamKind::Value(Type::Model(_))));
+            let routes = &component.params[usize::from(model)..];
+            let args = if routes.is_empty() {
+                String::new()
+            } else {
+                format!("params: {}Params", component.name)
+            };
+            out.line(format!(
+                "{}: ({args}) => {};",
+                js::object_key(&component.name),
+                js::binding(&component.name)
+            ));
+        }
+        out.close("});");
+        out.close("}");
+        if name != app.name {
+            out.line(format!("export {{ {name} as {} }};", app.name));
+        }
     }
     let aliases = own_aliases(program, entry, true);
     if !aliases.is_empty() {

@@ -439,6 +439,12 @@ fn page_dts(program: &Program, id: ComponentId, out: &mut Code) {
     }
     out.line(format!("get model(): {model_type};"));
     out.line(format!("readonly params: Readonly<{params_name}>;"));
+    out.line(format!(
+        "onShow(handler: (model: {model_type}) => void): () => void;"
+    ));
+    out.line(format!(
+        "onHide(handler: (model: {model_type}) => void): () => void;"
+    ));
     for &event in &comp.reachable_events {
         let event = program.event(event);
         let method = js::handler_method(&event.name);

@@ -61,6 +61,7 @@ enum Target {
     Orientation,
     Disabled,
     ImageSource,
+    BarIcon,
     Attr(&'static str),
     Class(&'static str),
     Direction,
@@ -72,7 +73,10 @@ fn target(element: Element, prop: &str, has_clamp: bool, has_placeholder: bool) 
         return Target::Class(class);
     }
     match (element, prop) {
-        (Element::Text | Element::Span, "value") => Target::Text,
+        (Element::Text | Element::Span, "value") | (Element::BarButton, "label") => Target::Text,
+        (Element::NavBar, "title") => Target::Attr("data-title"),
+        (Element::NavBar, "hidden") => Target::Class("w-navbar-hidden"),
+        (Element::BarButton, "icon") => Target::BarIcon,
         (Element::Input | Element::TextArea, "value") => Target::Value,
         (Element::Input, "type") => Target::InputType,
         (Element::Input, "returnKey") => Target::Attr("enterkeyhint"),
@@ -108,6 +112,8 @@ fn target(element: Element, prop: &str, has_clamp: bool, has_placeholder: bool) 
 /// Tag, fixed attributes and base class of an element.
 fn tag(element: Element, props: &[Prop]) -> (&'static str, &'static str, &'static str) {
     match element {
+        Element::NavBar => ("header", "", "w-navbar"),
+        Element::BarButton => ("button", " type=\"button\"", "w-bar-button"),
         Element::Column => ("div", "", "w-column"),
         Element::Row => ("div", "", "w-row"),
         Element::Stack => ("div", "", "w-stack"),
@@ -246,6 +252,7 @@ fn template_literal(prop: &Prop, target: Target) -> Option<Literal<'_>> {
                 | Target::PickerOptions
                 | Target::PickerPlaceholder
                 | Target::ImageSource
+                | Target::BarIcon
         )
     {
         return None;
@@ -272,6 +279,7 @@ fn apply(target: Target, mask: Option<u8>, node: &str, value: &str) -> String {
         Target::PickerPlaceholder => format!("$.placeholder({node}, {value});"),
         Target::Disabled => format!("{node}.disabled = {value};"),
         Target::ImageSource | Target::Attr("src") => format!("$.image({node}, {value});"),
+        Target::BarIcon => format!("$.barIcon({node}, {value});"),
         Target::Attr(name) => format!("{node}.setAttribute({}, {value});", js::string(name)),
         Target::Class(name) => format!("{node}.classList.toggle({}, {value});", js::string(name)),
         Target::Direction | Target::Orientation => {

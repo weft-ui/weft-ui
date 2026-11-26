@@ -22,7 +22,7 @@ import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileApp } from "@weft-ui/compiler";
-import { view } from "@weft-ui/runtime/wechat";
+import { view, type WechatSink } from "@weft-ui/runtime/wechat";
 import { limitInput } from "./input.ts";
 
 type Data = Record<string, unknown>;
@@ -43,6 +43,8 @@ interface ViewOptions {
 interface PageOptions {
   onLoad?(this: PageInstance, query: Data): void;
   onReady?(this: PageInstance): void;
+  onShow?(this: PageInstance): void;
+  onHide?(this: PageInstance): void;
   onUnload?(this: PageInstance): void;
 }
 
@@ -82,6 +84,7 @@ interface Globals {
   Page(options: PageOptions): void;
   Component(options: ViewOptions): void;
   getApp(): Data | undefined;
+  getCurrentPages(): PageInstance[];
   wx: object;
 }
 
@@ -120,6 +123,7 @@ function framework(wx: object) {
       registered.component = options;
     },
     getApp: () => registered.app,
+    getCurrentPages: () => [],
     wx,
   };
   return { registered, globals };
@@ -137,8 +141,12 @@ function component(path: string, globals: Globals, registered: { component?: Vie
 export interface MiniProgram {
   /** What `app.js` passed to `App()`. */
   app: Data;
-  /** The view component instance on the first page. */
-  view: TestView;
+  /** The view component instance on the current page. */
+  readonly view: TestView;
+  /** Most recent native navigation title. */
+  readonly title: string;
+  /** Simulates the system back action. */
+  back(): void;
   /** Runs the page's `onUnload`. */
   unload(): void;
 }
@@ -148,30 +156,54 @@ export interface MiniProgram {
  * the first page of `app.json` with its view component and runs the page's
  * `onLoad` and `onReady`. `wx` is the API object the scripts see.
  */
-export function launch(project: string, options: { wx?: object } = {}): MiniProgram {
-  const { registered, globals } = framework(options.wx ?? {});
+export function launch(project: string, options: { wx?: object; route?: string } = {}): MiniProgram {
+  const wx = { ...options.wx } as Record<string, unknown>;
+  let title = "";
+  const { registered, globals } = framework(wx);
+  const stack: { options: PageOptions; instance: PageInstance; view: TestView }[] = [];
+  globals.getCurrentPages = () => stack.map((page) => page.instance);
+  const open = (url: string) => {
+    const [route, query = ""] = url.replace(/^\//, "").split("?", 2);
+    const page = join(project, route!);
+    const usingComponents: Record<string, string> = JSON.parse(readFileSync(`${page}.json`, "utf8")).usingComponents ?? {};
+    const components = new Map<string, TestView>();
+    let view: TestView | undefined;
+    for (const node of parse(readFileSync(`${page}.wxml`, "utf8"))) {
+      if (typeof node === "string" || !(node.tag in usingComponents)) continue;
+      view = component(resolve(dirname(page), usingComponents[node.tag]!), globals, registered);
+      if (node.attrs.id) components.set(`#${node.attrs.id}`, view);
+    }
+    if (!view) throw new Error(`${page}.wxml uses no component`);
+    registered.page = undefined;
+    run(`${page}.js`, globals);
+    // The script calls Page() through the framework callback, which TypeScript cannot track.
+    const pageOptions = registered.page as PageOptions | undefined;
+    if (!pageOptions) throw new Error(`${page}.js did not call Page()`);
+    const instance: PageInstance = { selectComponent: (selector) => components.get(selector) ?? null };
+    stack.push({ options: pageOptions, instance, view });
+    pageOptions.onLoad?.call(instance, Object.fromEntries(new URLSearchParams(query)));
+    pageOptions.onShow?.call(instance);
+    pageOptions.onReady?.call(instance);
+  };
+  const hide = () => { const page = stack.at(-1); page?.options.onHide?.call(page.instance); };
+  const remove = () => { const page = stack.pop(); if (page) { page.options.onUnload?.call(page.instance); page.view.detach(); } };
+  const back = (delta = 1) => {
+    if (stack.length < 2) return;
+    hide();
+    for (let i = 0; i < delta && stack.length > 1; i++) remove();
+    const page = stack.at(-1)!;
+    page.options.onShow?.call(page.instance);
+  };
+  wx.navigateTo = ({ url }: { url: string }) => { hide(); open(url); };
+  wx.redirectTo = ({ url }: { url: string }) => { hide(); remove(); open(url); };
+  wx.navigateBack = ({ delta = 1 }: { delta?: number } = {}) => back(delta);
+  wx.setNavigationBarTitle = ({ title: next }: { title: string }) => { title = next; };
   run(join(project, "app.js"), globals);
   const app = registered.app;
   if (!app) throw new Error("app.js did not call App()");
   const config = JSON.parse(readFileSync(join(project, "app.json"), "utf8")) as { pages: string[] };
-  const page = join(project, config.pages[0]!);
-  const usingComponents: Record<string, string> =
-    JSON.parse(readFileSync(`${page}.json`, "utf8")).usingComponents ?? {};
-  const components = new Map<string, TestView>();
-  let view: TestView | undefined;
-  for (const node of parse(readFileSync(`${page}.wxml`, "utf8"))) {
-    if (typeof node === "string" || !(node.tag in usingComponents)) continue;
-    view = component(resolve(dirname(page), usingComponents[node.tag]!), globals, registered);
-    if (node.attrs.id) components.set(`#${node.attrs.id}`, view);
-  }
-  if (!view) throw new Error(`${page}.wxml uses no component`);
-  run(`${page}.js`, globals);
-  const pageOptions = registered.page;
-  if (!pageOptions) throw new Error(`${page}.js did not call Page()`);
-  const instance: PageInstance = { selectComponent: (selector) => components.get(selector) ?? null };
-  pageOptions.onLoad?.call(instance, {});
-  pageOptions.onReady?.call(instance);
-  return { app, view, unload: () => pageOptions.onUnload?.call(instance) };
+  open(options.route ?? config.pages[0]!);
+  return { app, get view() { return stack.at(-1)!.view; }, get title() { return title; }, back, unload: () => { while (stack.length) remove(); } };
 }
 
 /* ---- Unbundled output ---------------------------------------------------- */
@@ -224,6 +256,33 @@ export function loadView(dir: string): TestView {
   const { registered, globals } = framework({});
   globals.getApp = () => ({ weft: { view } });
   return component(join(dir, "view"), globals, registered);
+}
+
+/** A multi-page stand-in for an unbundled navigation fixture. */
+export function loadNavigationView(dir: string): { root: TestView; current(): TestView; back(): void; dispose(): void } {
+  const stack = [loadView(dir)];
+  const root = stack[0]!;
+  const sink = () => (root as TestView & { $sink: WechatSink }).$sink;
+  const globals = globalThis as typeof globalThis & { wx?: object };
+  const previous = globals.wx;
+  const remove = () => {
+    const index = stack.length - 1;
+    sink().unloadPage(index);
+    stack.pop()!.detach();
+  };
+  const wx = {
+    navigateTo: () => { const next = loadView(dir); stack.push(next); sink().bindPage(stack.length - 1, next); },
+    redirectTo: () => { remove(); const next = loadView(dir); stack.push(next); sink().bindPage(stack.length - 1, next); },
+    navigateBack: ({ delta }: { delta: number }) => { for (let i = 0; i < delta && stack.length > 1; i++) remove(); sink().showPage(stack.length - 1); },
+    setNavigationBarTitle: () => {},
+  };
+  globals.wx = wx;
+  return {
+    root,
+    current: () => stack[stack.length - 1]!,
+    back: () => { if (stack.length > 1) remove(); },
+    dispose: () => { if (previous === undefined) delete globals.wx; else globals.wx = previous; },
+  };
 }
 
 /* ---- View component ------------------------------------------------------ */

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "Home",
+  "usingComponents": {
+    "weft-view": "/weft/view"
+  }
+}

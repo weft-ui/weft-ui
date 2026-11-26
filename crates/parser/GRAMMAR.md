@@ -11,11 +11,11 @@ This document defines the normative grammar of the `.weft` language. The parser 
 - Identifiers: `[A-Za-z_][A-Za-z0-9_]*`.
 - Reserved keywords: `if` `else` `for` `in` `true` `false` `null`.
 - Contextual keywords (ordinary identifiers elsewhere, such as the `model` parameter in Demo):
-  - `import` (followed by a string) and `model` / `event` / `component` / `page` / `type` / `style` (followed by an identifier) begin declarations only at the top level;
+  - `import` (followed by a string) and `model` / `event` / `component` / `page` / `app` / `type` / `style` (followed by an identifier) begin declarations only at the top level;
   - `theme` followed by `{` begins a top-level theme declaration; `dark` introduces its second color only in a theme entry;
   - `state` (followed by an identifier) begins a state declaration only in a component body;
   - `let` (followed by an identifier) begins a local declaration at the start of a component body or block;
-  - `path` introduces a page's optional path after its parameter list;
+  - `path` introduces a page's optional path after its parameter list; `start` names the entry page inside an `app`;
   - `key` appears only in a `for` header.
 - Integers: `[0-9]+`, within the range of `i64`. Floating-point numbers: `[0-9]+ "." [0-9]+ ([eE] [+-]? [0-9]+)?` or `[0-9]+ [eE] [+-]? [0-9]+`.
 - Strings: `"..."`, with escapes `\n` `\r` `\t` `\0` `\\` `\"` `\$` `\u{XXXX}`.
@@ -29,7 +29,8 @@ EBNF notation: `X?` means optional, `X*` means zero or more occurrences, `X+` me
 ```text
 File        = Import* Item* EOF ;
 Import      = "import" STRING ;               (* no interpolation *)
-Item        = Model | Event | Component | Page | TypeAlias | Style | Theme ;
+Item        = Model | Event | Component | Page | App | TypeAlias | Style | Theme ;
+App         = "app" IDENT "{" "start" "=" IDENT "}" ;
 TypeAlias   = "type" IDENT "=" Type ;
 Style       = "style" IDENT "{" ( StyleEntry ","? )* "}" ;
 StyleEntry  = IDENT "=" ConstValue ;
@@ -130,6 +131,12 @@ Every AST node carries a source span (file and byte offsets). Diagnostics are lo
 - An explicit path starts with `/` and consists of literal segments (`[a-z0-9._~-]+`) or `{name}` parameters. Each path parameter occurs at most once and names a required `String`, `Int`, or union route parameter. Other route parameters use the query string. Without a path, the page name becomes a kebab-case path, e.g. `/user-profile`.
 - Paths overlap if they have the same number of segments and each pair is either the same literal or includes a parameter; overlapping paths are an error. Page events cannot be named `Show` or `Hide`, which are reserved for page methods.
 
+### Applications
+
+- A compilation unit has at most one `app`. Its `start` must name a page without required route parameters. The application contains all pages in the transitive import closure of the file declaring it; pages outside that closure are errors.
+- An application is mounted with its generated application class and a factory for every page. Factories create page instances and register their handlers. Pages cannot be mounted directly. Programs without an `app` continue to mount a root component.
+- A `NavBar` can appear at most once, as the first top-level node of a page, never inside `if` or `for`. `BarButton` may only appear inside `NavBar`; it requires an accessible `label`.
+
 ### Types
 
 - Primitive types are `Int` `Float` `Bool` `String` `Color`. Other types are compound types `T[]` and `T?` and `model` names.
@@ -200,6 +207,8 @@ The compiler rejects elements, properties, and events marked unsupported for the
 
 | Element | Positional property | Events | Children |
 | --- | --- | --- | --- |
+| `NavBar` | — | — | `BarButton` |
+| `BarButton` | — | `onTap` | None |
 | `Column` | — | `onTap` | Any |
 | `Row` | — | `onTap` | Any |
 | `Text` | `value` | `onTap` | `Span` |

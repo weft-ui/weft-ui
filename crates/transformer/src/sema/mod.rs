@@ -16,8 +16,8 @@ use weft_ui_ast::{Diagnostic, FileId, ParsedFile, ParsedProgram, SourceMap, Span
 use crate::deps;
 use crate::elements::{self, LIFECYCLE as CALL_HOOKS};
 use crate::ir::{
-    Component, ComponentId, Event, EventId, Expr, Field, Model, ModelId, Module, PageInfo, Param,
-    ParamKind, Program, Type, type_display,
+    Application, Component, ComponentId, Event, EventId, Expr, Field, Model, ModelId, Module,
+    PageInfo, Param, ParamKind, Program, Type, type_display,
 };
 use lower::{Instance, Lowerer};
 use record::{AliasSymbol, ProbeContext, RawCall, RawProbe, Recorder, StyleSymbol, Target};
@@ -497,6 +497,7 @@ fn check(
         cx.components[id.index()].uses_theme = uses_theme;
         bodies.push((file, c, id));
     }
+    let app = check_app(files, &cx, diags);
     report_page_overlaps(&cx.components, diags);
     let mut instances: Vec<Vec<Instance>> = vec![Vec::new(); cx.components.len()];
     let mut lowered = Vec::with_capacity(bodies.len());
@@ -514,6 +515,21 @@ fn check(
         component.bindings = body.bindings;
         component.emits = body.emits;
         component.uses_theme |= body.uses_theme;
+        for (index, node) in component.nodes.iter().enumerate() {
+            if let crate::ir::NodeKind::Element { element, .. } = &node.kind
+                && element.spec().page_root
+                && (component.page.is_none()
+                    || component.roots.first() != Some(&crate::ir::NodeId(offset(index))))
+            {
+                diags.push(Diagnostic::error(
+                    node.span,
+                    format!(
+                        "`{}` must be the first top-level node of a page",
+                        element.name()
+                    ),
+                ));
+            }
+        }
         instances[id.index()] = body.instances;
     }
 
@@ -569,6 +585,7 @@ fn check(
         models: cx.models,
         events: cx.events,
         components: cx.components,
+        app,
         theme: cx.theme.map(|theme| theme.output),
     };
     if let Some(recorder) = &cx.recorder {
@@ -597,12 +614,105 @@ fn check(
     (program, cx.recorder)
 }
 
+fn check_app(
+    files: &[ParsedFile],
+    cx: &Checker<'_>,
+    diags: &mut Vec<Diagnostic>,
+) -> Option<Application> {
+    let mut apps = files
+        .iter()
+        .flat_map(|f| f.ast.items.iter())
+        .filter_map(|item| {
+            if let ast::Item::App(app) = item {
+                Some(app)
+            } else {
+                None
+            }
+        });
+    let app = apps.next()?;
+    if let Some(previous) = cx.decls.get(&app.name.name) {
+        diags.push(
+            Diagnostic::error(
+                app.name.span,
+                format!("`{}` is declared more than once", app.name.name),
+            )
+            .with_secondary(previous.span, "first declared here"),
+        );
+    }
+    if elements::element(&app.name.name).is_some()
+        || PRIMITIVES.contains(&app.name.name.as_str())
+        || matches!(app.name.name.as_str(), CHILDREN | EVENT)
+    {
+        diags.push(Diagnostic::error(
+            app.name.span,
+            format!("`{}` is built in and cannot be redeclared", app.name.name),
+        ));
+    }
+    for duplicate in apps {
+        diags.push(
+            Diagnostic::error(duplicate.span, "duplicate app declaration")
+                .with_secondary(app.span, "first declared here"),
+        );
+    }
+    let mut closure = HashSet::new();
+    let mut pending = vec![app.span.file];
+    while let Some(file) = pending.pop() {
+        if closure.insert(file) {
+            pending.extend(files[file.index()].imports.iter().map(|&(id, _)| id));
+        }
+    }
+    for component in &cx.components {
+        if component.page.is_some() && !closure.contains(&component.file) {
+            diags.push(Diagnostic::error(
+                component.span,
+                format!(
+                    "page `{}` is not in the import closure of app `{}`",
+                    component.name, app.name.name
+                ),
+            ));
+        }
+    }
+    let start = cx
+        .decls
+        .get(&app.start.name)
+        .and_then(|decl| match decl.kind {
+            DeclKind::Component(id)
+                if cx.components[id.index()].page.is_some() && closure.contains(&decl.file) =>
+            {
+                Some(id)
+            }
+            _ => None,
+        });
+    let Some(start) = start else {
+        diags.push(Diagnostic::error(
+            app.start.span,
+            format!(
+                "start page `{}` must be a page in the app import closure",
+                app.start.name
+            ),
+        ));
+        return None;
+    };
+    let page = &cx.components[start.index()];
+    if page.params.iter().any(|param| matches!(&param.kind, ParamKind::Value(ty) if !matches!(ty, Type::Model(_) | Type::Optional(_))) && param.default.is_none()) {
+        diags.push(Diagnostic::error(app.start.span, format!("start page `{}` must not have required route parameters", app.start.name)));
+    }
+    Some(Application {
+        name: app.name.name.clone(),
+        span: app.span,
+        start,
+    })
+}
+
 fn declare<'a>(
     cx: &mut Checker<'a>,
     file: FileId,
     item: &'a ast::Item,
     diags: &mut Vec<Diagnostic>,
 ) -> Option<DeclKind> {
+    if matches!(item, ast::Item::App(_)) {
+        return None;
+    }
     if let ast::Item::Theme(decl) = item {
         if let Some(previous) = &cx.theme {
             diags.push(
@@ -718,7 +828,9 @@ fn declare<'a>(
             });
             DeclKind::Style(id)
         }
-        ast::Item::Theme(_) => unreachable!("theme declarations are checked separately"),
+        ast::Item::Theme(_) | ast::Item::App(_) => {
+            unreachable!("special declarations are checked separately")
+        }
     };
     cx.record(name.span, || decl_target(kind));
     cx.decls.insert(

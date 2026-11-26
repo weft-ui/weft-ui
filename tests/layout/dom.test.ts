@@ -5,7 +5,7 @@ import { expect, test, vi } from "vitest";
 import { Layout } from "../../crates/transformer/tests/fixtures/Layout.weft";
 import { About, Detail } from "./Pages.weft";
 
-test("generated pages mount as roots with route parameters", async () => {
+test("generated pages cannot be mounted directly", () => {
   const doc = new Window().document as unknown as Document;
   vi.stubGlobal("document", doc);
   const target = doc.createElement("main");
@@ -14,14 +14,8 @@ test("generated pages mount as roots with route parameters", async () => {
   const about = new About({});
   try {
     expect(page.params).toEqual({ id: "42", from: "feed", draft: null });
-    page.mount(target);
-    expect(target.textContent).toBe("A note42");
-    page.model.title = "Updated";
-    await tick();
-    expect(target.textContent).toBe("Updated42");
-    page.unmount();
-    about.mount(target);
-    expect(target.textContent).toBe("About");
+    expect(() => page.mount(target)).toThrow("weft: pages are mounted by their app");
+    expect(() => about.mount(target)).toThrow("weft: pages are mounted by their app");
   } finally {
     page.unmount();
     about.unmount();

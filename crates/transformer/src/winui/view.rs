@@ -30,6 +30,9 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                 .peekable();
             let declaration = if slots.peek().is_some() { "" } else { "var " };
             let args = std::fmt::from_fn(|out| match element {
+                Element::NavBar | Element::BarButton => {
+                    unreachable!("navigation is not supported on native platforms")
+                }
                 Element::Column | Element::Row => {
                     write!(out, "vertical: {}", *element == Element::Column)?;
                     if let Some(slot) = template.event(index, "onTap") {
@@ -119,6 +122,9 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
+        Element::NavBar | Element::BarButton => {
+            unreachable!("navigation is not supported on native platforms")
+        }
         Element::Column | Element::Row => "WeftStack",
         Element::Text => "WeftText",
         Element::Span => "WeftSpan",

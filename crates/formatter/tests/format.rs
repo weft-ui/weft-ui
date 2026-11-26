@@ -89,6 +89,15 @@ component C(foo: Int = 0007, bar: Float = 1.20E+02) {
 }
 
 #[test]
+fn app_declaration_formats_and_round_trips() {
+    golden(
+        "app Notes{start=Home}",
+        "app Notes {\n    start = Home\n}\n",
+        Options::default(),
+    );
+}
+
+#[test]
 fn page_declarations_format_and_round_trip() {
     golden(
         r#"page Detail(id:String) /* route */ path /* literal */ "/notes/{id}" {Text(id)} page About(){}"#,

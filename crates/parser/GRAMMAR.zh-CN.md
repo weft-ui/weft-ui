@@ -11,11 +11,11 @@
 - 标识符：`[A-Za-z_][A-Za-z0-9_]*`。
 - 保留关键字：`if` `else` `for` `in` `true` `false` `null`。
 - 上下文关键字（其他位置是普通标识符，例如 Demo 中的参数 `model`）：
-  - `import`（后跟字符串）、`model` / `event` / `component` / `page` / `type` / `style`（后跟标识符）只在顶层开启声明；
+  - `import`（后跟字符串）、`model` / `event` / `component` / `page` / `app` / `type` / `style`（后跟标识符）只在顶层开启声明；
   - `theme`（后跟 `{`）开启顶层主题声明；`dark` 只在主题条目中引出第二个颜色；
   - `state`（后跟标识符）只在组件体内开启状态声明；
   - `let`（后跟标识符）在组件体或块的开头开启局部声明；
-  - `path` 只在页面参数表之后引出可选路径；
+  - `path` 只在页面参数表之后引出可选路径；`start` 只在 `app` 内指定入口页面；
   - `key` 只在 `for` 头部出现。
 - 整数：`[0-9]+`，范围为 `i64`。浮点：`[0-9]+ "." [0-9]+ ([eE] [+-]? [0-9]+)?` 或 `[0-9]+ [eE] [+-]? [0-9]+`。
 - 字符串：`"..."`，转义 `\n` `\r` `\t` `\0` `\\` `\"` `\$` `\u{XXXX}`。
@@ -29,7 +29,8 @@ EBNF 记法：`X?` 可选，`X*` 零或多次，`X+` 一或多次，`"tok"` 为 
 ```text
 File        = Import* Item* EOF ;
 Import      = "import" STRING ;               (* 不允许插值 *)
-Item        = Model | Event | Component | Page | TypeAlias | Style | Theme ;
+Item        = Model | Event | Component | Page | App | TypeAlias | Style | Theme ;
+App         = "app" IDENT "{" "start" "=" IDENT "}" ;
 TypeAlias   = "type" IDENT "=" Type ;
 Style       = "style" IDENT "{" ( StyleEntry ","? )* "}" ;
 StyleEntry  = IDENT "=" ConstValue ;
@@ -130,6 +131,12 @@ Call        = IDENT "(" ArgList? ")" ;
 - 显式路径以 `/` 开头，由字面量段（`[a-z0-9._~-]+`）或 `{name}` 参数段组成。每个路径参数最多出现一次，且必须是必填的 `String`、`Int` 或联合路由参数；其他路由参数走查询字符串。省略路径时页面名转为 kebab-case 路径，例如 `/user-profile`。
 - 两条路径段数相同，且每对段要么是相同字面量、要么至少一侧为参数时，路径重叠并报错。页面事件不能命名为 `Show` 或 `Hide`，这两个名字留给页面方法。
 
+### 应用
+
+- 一个编译单元最多声明一个 `app`。`start` 必须指向没有必填路由参数的页面。应用包含声明 `app` 的文件的传递导入闭包内的全部页面；闭包外的页面会报错。
+- 使用生成的应用类和每个页面对应的工厂挂载应用。工厂创建页面实例并注册处理器。页面不能直接挂载；没有 `app` 的程序仍以组件为根挂载。
+- `NavBar` 每个页面最多一个，必须是页面的第一个顶层节点，不能放在 `if` 或 `for` 内。`BarButton` 只能放在 `NavBar` 中，必须提供作为无障碍名称的 `label`。
+
 ### 类型
 
 - 基础类型 `Int`、`Float`、`Bool`、`String`、`Color`，复合类型 `T[]`、`T?`，以及 `model` 名。
@@ -200,6 +207,8 @@ Call        = IDENT "(" ArgList? ")" ;
 
 | 元素 | 位置属性 | 事件 | 子节点 |
 | --- | --- | --- | --- |
+| `NavBar` | — | — | `BarButton` |
+| `BarButton` | — | `onTap` | 无 |
 | `Column` | — | `onTap` | 不限 |
 | `Row` | — | `onTap` | 不限 |
 | `Text` | `value` | `onTap` | `Span` |

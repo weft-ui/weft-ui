@@ -13,9 +13,23 @@ pub(crate) enum Level {
     Ignored,
 }
 
+/// Platform support exceptions for language features.
+pub(crate) const FEATURES: &[(&str, &[(Platform, Level)])] = &[(
+    "navigation",
+    &[
+        (Platform::Ios, Level::No),
+        (Platform::Macos, Level::No),
+        (Platform::Android, Level::No),
+        (Platform::Windows, Level::No),
+        (Platform::Linux, Level::No),
+    ],
+)];
+
 /// Built-in elements available in Weft views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Element {
+    NavBar,
+    BarButton,
     Column,
     Row,
     Text,
@@ -364,6 +378,19 @@ pub(crate) const CSS_PROPS: &[Css<'static>] = &[
 ];
 
 pub(crate) const CSS: &str = r#".w-root{display:flex;flex-direction:column;align-items:flex-start;box-sizing:border-box;width:100%;height:100%;overflow:hidden}
+.w-page{display:flex;flex-direction:column;position:relative;width:100%;height:100%;overflow:hidden}
+.w-page[hidden]{display:none}
+.w-page-push{animation:w-page-push .2s ease-out}
+.w-page-pop{animation:w-page-pop .2s ease-out}
+@keyframes w-page-push{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes w-page-pop{from{transform:translateX(-25%)}to{transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.w-page-push,.w-page-pop{animation:none}}
+.w-navbar{display:flex;align-items:center;flex:none;min-height:44px;width:100%;box-sizing:border-box}
+.w-navbar::before{content:attr(data-title);flex:1;text-align:center}
+.w-navbar-hidden{display:none}
+.w-navbar button{min-width:44px;min-height:44px}
+.w-navbar-back{order:-1}
+.w-bar-button-icon{font-size:0;background-repeat:no-repeat;background-position:center;background-size:24px 24px}
 .w-column{display:flex;flex-direction:column;align-items:flex-start}
 .w-row{display:flex;flex-direction:row;align-items:flex-start}
 .w-stack{display:grid;position:relative;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:start start}
@@ -418,6 +445,72 @@ input.w-switch:disabled{opacity:.45;cursor:default}
 "#;
 
 const PROPS_0: &[PropSpec] = &[
+    PropSpec {
+        name: "title",
+        kind: PropKind::Value(PropType::String),
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        support: &[],
+    },
+    PropSpec {
+        name: "hidden",
+        kind: PropKind::Value(PropType::Bool),
+        positional: false,
+        required: false,
+        constant: true,
+        css: None,
+        controlled_by: None,
+        support: &[],
+    },
+];
+
+const PROPS_1: &[PropSpec] = &[
+    PropSpec {
+        name: "icon",
+        kind: PropKind::Value(PropType::String),
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        support: &[],
+    },
+    PropSpec {
+        name: "label",
+        kind: PropKind::Value(PropType::String),
+        positional: false,
+        required: true,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        support: &[],
+    },
+    PropSpec {
+        name: "disabled",
+        kind: PropKind::Value(PropType::Bool),
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        support: &[],
+    },
+    PropSpec {
+        name: "onTap",
+        kind: PropKind::Handler { payload: None },
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        support: &[],
+    },
+];
+
+const PROPS_2: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -770,7 +863,7 @@ const PROPS_0: &[PropSpec] = &[
     },
 ];
 
-const PROPS_1: &[PropSpec] = &[
+const PROPS_3: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -1193,7 +1286,7 @@ const PROPS_1: &[PropSpec] = &[
     },
 ];
 
-const PROPS_2: &[PropSpec] = &[
+const PROPS_4: &[PropSpec] = &[
     PropSpec {
         name: "color",
         kind: PropKind::Value(PropType::Color),
@@ -1266,7 +1359,7 @@ const PROPS_2: &[PropSpec] = &[
     },
 ];
 
-const PROPS_3: &[PropSpec] = &[
+const PROPS_5: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -1469,7 +1562,7 @@ const PROPS_3: &[PropSpec] = &[
     },
 ];
 
-const PROPS_4: &[PropSpec] = &[
+const PROPS_6: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -1760,7 +1853,7 @@ const PROPS_4: &[PropSpec] = &[
     },
 ];
 
-const PROPS_5: &[PropSpec] = &[
+const PROPS_7: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -1975,7 +2068,7 @@ const PROPS_5: &[PropSpec] = &[
     },
 ];
 
-const PROPS_6: &[PropSpec] = &[
+const PROPS_8: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -2258,7 +2351,7 @@ const PROPS_6: &[PropSpec] = &[
     },
 ];
 
-const PROPS_7: &[PropSpec] = &[
+const PROPS_9: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -2591,7 +2684,7 @@ const PROPS_7: &[PropSpec] = &[
     },
 ];
 
-const PROPS_8: &[PropSpec] = &[
+const PROPS_10: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -2944,7 +3037,7 @@ const PROPS_8: &[PropSpec] = &[
     },
 ];
 
-const PROPS_9: &[PropSpec] = &[PropSpec {
+const PROPS_11: &[PropSpec] = &[PropSpec {
     name: "size",
     kind: PropKind::Value(PropType::Int),
     positional: false,
@@ -2955,7 +3048,7 @@ const PROPS_9: &[PropSpec] = &[PropSpec {
     support: &[],
 }];
 
-const PROPS_10: &[PropSpec] = &[
+const PROPS_12: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -3170,7 +3263,7 @@ const PROPS_10: &[PropSpec] = &[
     },
 ];
 
-const PROPS_11: &[PropSpec] = &[
+const PROPS_13: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -3427,7 +3520,7 @@ const PROPS_11: &[PropSpec] = &[
     },
 ];
 
-const PROPS_12: &[PropSpec] = &[
+const PROPS_14: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -3620,7 +3713,7 @@ const PROPS_12: &[PropSpec] = &[
     },
 ];
 
-const PROPS_13: &[PropSpec] = &[
+const PROPS_15: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -3823,7 +3916,7 @@ const PROPS_13: &[PropSpec] = &[
     },
 ];
 
-const PROPS_14: &[PropSpec] = &[
+const PROPS_16: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -4026,7 +4119,7 @@ const PROPS_14: &[PropSpec] = &[
     },
 ];
 
-const PROPS_15: &[PropSpec] = &[
+const PROPS_17: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -4271,7 +4364,7 @@ const PROPS_15: &[PropSpec] = &[
     },
 ];
 
-const PROPS_16: &[PropSpec] = &[
+const PROPS_18: &[PropSpec] = &[
     PropSpec {
         name: "width",
         kind: PropKind::Value(PropType::Int),
@@ -4506,12 +4599,46 @@ const PROPS_16: &[PropSpec] = &[
     },
 ];
 
-pub(crate) const ELEMENTS: [ElementSpec; 18] = [
+pub(crate) const ELEMENTS: [ElementSpec; 20] = [
+    ElementSpec {
+        element: Element::NavBar,
+        name: "NavBar",
+        props: PROPS_0,
+        children: Children::Only(&[Element::BarButton]),
+        page_root: true,
+        parents: &[],
+        content: None,
+        support: &[
+            (Platform::Ios, Level::No),
+            (Platform::Macos, Level::No),
+            (Platform::Android, Level::No),
+            (Platform::Windows, Level::No),
+            (Platform::Linux, Level::No),
+        ],
+    },
+    ElementSpec {
+        element: Element::BarButton,
+        name: "BarButton",
+        props: PROPS_1,
+        children: Children::None,
+        page_root: false,
+        parents: &[Element::NavBar],
+        content: None,
+        support: &[
+            (Platform::Wechat, Level::Ignored),
+            (Platform::Ios, Level::No),
+            (Platform::Macos, Level::No),
+            (Platform::Android, Level::No),
+            (Platform::Windows, Level::No),
+            (Platform::Linux, Level::No),
+        ],
+    },
     ElementSpec {
         element: Element::Column,
         name: "Column",
-        props: PROPS_0,
+        props: PROPS_2,
         children: Children::Any,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4519,8 +4646,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Row,
         name: "Row",
-        props: PROPS_0,
+        props: PROPS_2,
         children: Children::Any,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4528,8 +4656,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Text,
         name: "Text",
-        props: PROPS_1,
+        props: PROPS_3,
         children: Children::Only(&[Element::Span]),
+        page_root: false,
         parents: &[],
         content: Some("value"),
         support: &[],
@@ -4537,8 +4666,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Span,
         name: "Span",
-        props: PROPS_2,
+        props: PROPS_4,
         children: Children::None,
+        page_root: false,
         parents: &[Element::Text],
         content: None,
         support: &[],
@@ -4546,8 +4676,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Button,
         name: "Button",
-        props: PROPS_3,
+        props: PROPS_5,
         children: Children::Any,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4555,8 +4686,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Input,
         name: "Input",
-        props: PROPS_4,
+        props: PROPS_6,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4564,8 +4696,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Checkbox,
         name: "Checkbox",
-        props: PROPS_5,
+        props: PROPS_7,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4573,8 +4706,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Image,
         name: "Image",
-        props: PROPS_6,
+        props: PROPS_8,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4582,8 +4716,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Stack,
         name: "Stack",
-        props: PROPS_7,
+        props: PROPS_9,
         children: Children::Any,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4591,8 +4726,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Scroll,
         name: "Scroll",
-        props: PROPS_8,
+        props: PROPS_10,
         children: Children::Any,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4600,8 +4736,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Spacer,
         name: "Spacer",
-        props: PROPS_9,
+        props: PROPS_11,
         children: Children::None,
+        page_root: false,
         parents: &[Element::Column, Element::Row, Element::Scroll],
         content: None,
         support: &[],
@@ -4609,8 +4746,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Switch,
         name: "Switch",
-        props: PROPS_10,
+        props: PROPS_12,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4618,8 +4756,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::TextArea,
         name: "TextArea",
-        props: PROPS_11,
+        props: PROPS_13,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4627,8 +4766,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Spinner,
         name: "Spinner",
-        props: PROPS_12,
+        props: PROPS_14,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4636,8 +4776,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Progress,
         name: "Progress",
-        props: PROPS_13,
+        props: PROPS_15,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4645,8 +4786,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Divider,
         name: "Divider",
-        props: PROPS_14,
+        props: PROPS_16,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4654,8 +4796,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Slider,
         name: "Slider",
-        props: PROPS_15,
+        props: PROPS_17,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],
@@ -4663,8 +4806,9 @@ pub(crate) const ELEMENTS: [ElementSpec; 18] = [
     ElementSpec {
         element: Element::Picker,
         name: "Picker",
-        props: PROPS_16,
+        props: PROPS_18,
         children: Children::None,
+        page_root: false,
         parents: &[],
         content: None,
         support: &[],

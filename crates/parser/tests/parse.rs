@@ -68,6 +68,17 @@ page Recovered() {}"#;
 }
 
 #[test]
+fn app_preserves_start_page() {
+    let (file, diagnostics) = parse(FileId(0), "app Notes { start = Home } page Home() {}");
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let Item::App(app) = &file.items[0] else {
+        panic!("expected app")
+    };
+    assert_eq!(app.name.name, "Notes");
+    assert_eq!(app.start.name, "Home");
+}
+
+#[test]
 fn named_slot_fill_has_a_label_and_child_block() {
     let input = r#"component Screen() { Card { header: { let title = "Hi" Text(title) } } }"#;
     let (file, diagnostics) = parse(FileId(0), input);
