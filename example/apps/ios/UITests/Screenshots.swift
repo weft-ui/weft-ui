@@ -29,7 +29,28 @@ final class Screenshots: XCTestCase {
             if id == "inputs" { checkInputs(in: app) }
             if id == "tap" { checkTap(in: app) }
             if id == "form" { checkForm(in: app) }
+            if id == "overlays" { checkOverlays(in: app) }
         }
+    }
+
+    @MainActor
+    private func checkOverlays(in app: XCUIApplication) {
+        app.buttons["Alert"].tap()
+        XCTAssertTrue(app.alerts.buttons["OK"].waitForExistence(timeout: 5))
+        app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.staticTexts["Alert dismissed."].waitForExistence(timeout: 5))
+        app.buttons["Confirm"].tap()
+        XCTAssertTrue(app.alerts.buttons["OK"].waitForExistence(timeout: 5))
+        app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.staticTexts["Confirmed."].waitForExistence(timeout: 5))
+        app.buttons["Action sheet"].tap()
+        XCTAssertTrue(app.buttons["Second"].waitForExistence(timeout: 5))
+        app.buttons["Second"].tap()
+        XCTAssertTrue(app.staticTexts["Selected option 2."].waitForExistence(timeout: 5))
+        app.buttons["Toast"].tap()
+        let toast = app.staticTexts["This is a toast."]
+        XCTAssertTrue(toast.waitForExistence(timeout: 5))
+        XCTAssertTrue(toast.waitForNonExistence(timeout: 5))
     }
 
     @MainActor

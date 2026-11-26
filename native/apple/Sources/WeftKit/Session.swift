@@ -22,6 +22,7 @@ public final class WeftSession {
     /// Why the app failed to start or render, shown instead of its views.
     public private(set) var failure: String?
 
+    let overlays = WeftOverlays()
     let assets: WeftAssets
     let safeArea: Bool
     @ObservationIgnored private let make: Make
@@ -198,6 +199,19 @@ public final class WeftSession {
 
     fileprivate func call(_ id: UInt32, _ module: String, _ method: String, _ args: Data) {
         // Runs after the kernel's callback returns: the kernel is not reentrant.
+        if module == WeftProtocol.uiModule {
+            Task { [weak self] in
+                guard let self else { return }
+                do {
+                    try self.overlays.call(method, args) { [weak self] data in
+                        self?.resolve(id, .success(data))
+                    }
+                } catch {
+                    self.resolve(id, .failure(error))
+                }
+            }
+            return
+        }
         Task { [weak self] in
             let result: Result<Data, any Error>
             do {

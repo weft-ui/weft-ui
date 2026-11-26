@@ -5,6 +5,33 @@ import Testing
 import UniformTypeIdentifiers
 @testable import WeftKit
 
+@Test @MainActor func overlayParsingResultsAndQueue() async throws {
+    let overlays = WeftOverlays()
+    var results: [String] = []
+    func receive(_ data: Data) { results.append(String(decoding: data, as: UTF8.self)) }
+    try overlays.call("confirm", Data(#"{"title":"Continue?","confirmText":"Yes","destructive":true}"#.utf8), resolve: receive)
+    let first = try #require(overlays.active)
+    #expect(first.options.title == "Continue?")
+    #expect(first.options.confirmText == "Yes")
+    #expect(first.options.destructive == true)
+    try overlays.call("actionSheet", Data(#"{"options":["A","B"],"destructiveIndex":1}"#.utf8), resolve: receive)
+    #expect(overlays.active?.id == first.id)
+    try overlays.call("toast", Data(#"{"message":"Saved","icon":"success","duration":"long"}"#.utf8), resolve: receive)
+    #expect(overlays.toast?.options.message == "Saved")
+    #expect(results == [""])
+    overlays.finish(first.id, result: WeftOverlays.result(false))
+    await Task.yield()
+    let second = try #require(overlays.active)
+    #expect(second.options.options == ["A", "B"])
+    #expect(second.options.destructiveIndex == 1)
+    overlays.finish(second.id, result: WeftOverlays.result(1))
+    #expect(results == ["", "false", "1"])
+    #expect(String(decoding: WeftOverlays.result(nil as Int?), as: UTF8.self) == "null")
+    #expect(String(decoding: WeftOverlays.result(true), as: UTF8.self) == "true")
+    #expect(throws: (any Error).self) { try overlays.call("actionSheet", Data(#"{"options":[]}"#.utf8), resolve: receive) }
+    #expect(throws: (any Error).self) { try overlays.call("alert", Data("[]".utf8), resolve: receive) }
+}
+
 @Test func fetchAndImageRejectNonHttpSchemes() {
     #expect((try? PlatformModules.validatedFetchURL("https://example.com/data")) != nil)
     #expect((try? PlatformModules.validatedFetchURL("HTTP://example.com/data")) != nil)

@@ -1,4 +1,127 @@
 import SwiftUI
+import Observation
+
+struct WeftOverlayOptions: Decodable {
+    var title: String?
+    var message: String?
+    var confirmText: String?
+    var cancelText: String?
+    var destructive: Bool?
+    var options: [String]?
+    var destructiveIndex: Int?
+    var icon: String?
+    var duration: String?
+}
+
+@MainActor @Observable
+final class WeftOverlays {
+    struct Dialog: Identifiable {
+        let id = UUID()
+        let method: String
+        let options: WeftOverlayOptions
+        let resolve: (Data) -> Void
+    }
+    struct Toast: Identifiable {
+        let id = UUID()
+        let options: WeftOverlayOptions
+    }
+    private(set) var active: Dialog?
+    private(set) var toast: Toast?
+    private var pending: [Dialog] = []
+    private var toastTask: Task<Void, Never>?
+
+    func call(_ method: String, _ data: Data, resolve: @escaping (Data) -> Void) throws {
+        let options = try JSONDecoder().decode(WeftOverlayOptions.self, from: data)
+        switch method {
+        case WeftProtocol.uiToast:
+            toastTask?.cancel()
+            let item = Toast(options: options)
+            toast = item
+            toastTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(options.duration == "long" ? 3000 : 1500))
+                guard !Task.isCancelled, self?.toast?.id == item.id else { return }
+                self?.toast = nil
+            }
+            resolve(Data())
+        case WeftProtocol.uiAlert, WeftProtocol.uiConfirm, WeftProtocol.uiActionSheet:
+            if method == WeftProtocol.uiActionSheet && !(1...6).contains(options.options?.count ?? 0) {
+                throw PlatformFailure("weft: actionSheet expects 1–6 options")
+            }
+            let dialog = Dialog(method: method, options: options, resolve: resolve)
+            if active == nil && pending.isEmpty { active = dialog } else { pending.append(dialog) }
+        default:
+            throw PlatformFailure("weft: ui.\(method) is not implemented")
+        }
+    }
+
+    func finish(_ id: UUID, result: Data) {
+        guard let dialog = active, dialog.id == id else { return }
+        active = nil
+        dialog.resolve(result)
+        // Present the next dialog after SwiftUI has dismissed the current one.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.active == nil, !self.pending.isEmpty else { return }
+            self.active = self.pending.removeFirst()
+        }
+    }
+
+    static func result(_ value: Bool) -> Data { Data((value ? "true" : "false").utf8) }
+    static func result(_ index: Int?) -> Data { Data(index.map(String.init)?.utf8 ?? "null".utf8) }
+}
+
+private struct WeftOverlayModifier: ViewModifier {
+    let overlays: WeftOverlays
+
+    func body(content: Content) -> some View {
+        let dialog = overlays.active
+        let isAlert = dialog?.method == WeftProtocol.uiAlert || dialog?.method == WeftProtocol.uiConfirm
+        let alertBinding = Binding(get: { isAlert }, set: { shown in
+            if !shown, let dialog { dismiss(dialog) }
+        })
+        let sheetBinding = Binding(get: { dialog?.method == WeftProtocol.uiActionSheet }, set: { shown in
+            if !shown, let dialog { dismiss(dialog) }
+        })
+        content
+            .alert(dialog?.options.title ?? "", isPresented: alertBinding, presenting: dialog) { item in
+                if item.method == WeftProtocol.uiConfirm {
+                    Button(item.options.cancelText ?? "Cancel", role: .cancel) {
+                        overlays.finish(item.id, result: WeftOverlays.result(false))
+                    }
+                }
+                Button(item.options.confirmText ?? "OK", role: item.options.destructive == true ? .destructive : nil) {
+                    overlays.finish(item.id, result: item.method == WeftProtocol.uiConfirm ? WeftOverlays.result(true) : Data())
+                }
+            } message: { item in
+                if let message = item.options.message { Text(verbatim: message) }
+            }
+            .confirmationDialog(dialog?.options.title ?? "", isPresented: sheetBinding, titleVisibility: .visible, presenting: dialog) { item in
+                ForEach(Array((item.options.options ?? []).enumerated()), id: \.offset) { index, label in
+                    Button(label, role: index == item.options.destructiveIndex ? .destructive : nil) {
+                        overlays.finish(item.id, result: WeftOverlays.result(index))
+                    }
+                }
+                Button(item.options.cancelText ?? "Cancel", role: .cancel) { dismiss(item) }
+            }
+            .overlay(alignment: .bottom) {
+                if let toast = overlays.toast {
+                    HStack {
+                        if toast.options.icon == "success" { Image(systemName: "checkmark.circle.fill") }
+                        if toast.options.icon == "error" { Image(systemName: "xmark.circle.fill") }
+                        Text(verbatim: toast.options.message ?? "")
+                    }
+                    .padding(.horizontal, 18).padding(.vertical, 10)
+                    .foregroundStyle(.white).background(.black.opacity(0.8), in: Capsule())
+                    .padding(.bottom, 24)
+                }
+            }
+    }
+
+    private func dismiss(_ item: WeftOverlays.Dialog) {
+        let result = item.method == WeftProtocol.uiConfirm ? WeftOverlays.result(false) :
+            item.method == WeftProtocol.uiActionSheet ? WeftOverlays.result(nil as Int?) : Data()
+        overlays.finish(item.id, result: result)
+    }
+}
 
 /// Renders the root component or startup failure, respecting the safe area by default.
 public struct WeftRoot: View {
@@ -24,6 +147,7 @@ public struct WeftRoot: View {
                     .ignoresSafeArea()
                 }
             }
+            .modifier(WeftOverlayModifier(overlays: session.overlays))
             .onChange(of: environment, initial: true) { _, updated in
                 session.update(environment: updated)
             }
