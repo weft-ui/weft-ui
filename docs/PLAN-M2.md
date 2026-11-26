@@ -840,12 +840,12 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | P3 | ☑ | 4c861c8 | |
 | L1 | ☑ | e28e65a、9211773 | 后者把 DOM 测试用的 `Pages.weft` 移出 conformance 夹具目录 |
 | R1.w | ☑ | 4403a24 | 微信开发者工具里的推入、系统返回与动态标题已用 automator 验证 |
-| R1.a | ☐ | | |
-| R1.d | ☐ | | |
-| R1.n | ☐ | | |
-| R1.g | ☐ | | |
+| R1.a | ☑ | 614924d | macOS 临时两页应用（推入、工具栏返回、⌘[、BarButton）由编排者运行通过；⌘[ 的修正在 b682267 |
+| R1.d | ☑ | b682267 | 含本波次的启用改动与修正 |
+| R1.n | ☑ | 667ec77 | |
+| R1.g | ☑ | 0422523 | |
 | T1 | ☐ | | |
-| R2.w | ☐ | | |
+| R2.w | ⏸ | 1d8e701 | 微信开发者工具里的 Tab 检查两次超时，待维护者 |
 | R2.a | ☐ | | |
 | R2.d | ☐ | | |
 | R2.n | ☐ | | |
@@ -906,3 +906,11 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R4.g] `GtkAlertDialog` 不能单独设置某个按钮的危险样式，`destructive` 与 `destructiveIndex` 在 Linux 上以普通按钮显示，已写入 platform-api 指南。结论：接受（平台限制）
 - [R1.w] 预期变化写「原生快照与原生平台的产物不变」，实际：五个原生平台的 `js/index.js` 变化（导航状态机与 `nav`、`navigation` 信号在共用的 remote 运行时里，原生 bundle 也包含它）；L1 的 `Pages` 原生快照中 `Pages.d.ts` 加入 `onShow`、`onHide` 声明（规范 §1，R1.w 加入）。原生生成视图与布局不变。结论：接受（运行时与声明的必然结果），已重新录制 C-apps 基线
 - [R1.w] 在独立 worktree 里与 R4 原生波次并行；原生波次推进了 C-apps 基线，R1.w 改用其基础提交 91b7e4c 的基线比对，合并后在主工作区重新检查并录制。结论：接受
+- [R1.a] macOS 的 ⌘[ 不生效：自定义的返回按钮放在栈根的工具栏里，推入的页面只显示系统的返回按钮，快捷键随根页面的工具栏一起消失。修正：⌘[ 改由导航栈背景上一个透明按钮承担，标题栏隐藏时同样有效（b682267）。结论：已修正
+- [R1.a] 提交缺少 changeset，补在 b682267（`.changeset/navigation-apple.md`）。结论：已修正
+- [R1.d] `android:enableOnBackInvokedCallback` 写在原生壳的清单（`native/android/src/main/AndroidManifest.xml`）而不是生成的 `weft` 模块清单：两者都会合并进应用，写在壳里不改动 `@weft-ui/vite`。结论：接受
+- [R1.d、R1.g] 预期变化写「其他不变」，实际：现有 `Pages` 快照变化——Android 的 `Generated.kt` 为两个页面作用域加 `isPage` 覆写，Linux 的 `Generated.cpp` 在页面作用域构造时调用 `init_page()`。原因：宿主据此区分页面根与组件根。结论：接受
+- [R1.a–R1.g] 原生代理只运行了与自身相关的检查，编排者在波次末尾跑全量 C-rust 时发现 Compose 与 WinUI 生成器未格式化、`analysis.rs` 仍断言 iOS 报 `apps are not supported`（启用后应能编译出含 `app` 的布局），GTK 单测直接读 `Navigation.weft` 夹具（R2.w 改夹具后会失败，改为内联源码）。均在 b682267 修正。结论：已修正
+- [R2.w] R1 的原生波次先于 R2.w 合并，`Navigation` 的 natives 已启用；R2.w 把夹具改为两个 Tab 后，五个原生平台的 `Navigation` 快照随之变化（新增 `Settings` 页与 `app.tabs`，原生壳此时忽略 Tab），C++ conformance 宿主不认识 Tab，`navigation` 重新放回 `pending.json`，由 R2.g 移出。结论：接受（过渡机制的正常用法）
+- [R2.w] 冷启动直接进入非 Tab 页时，运行时也会创建第一个 Tab 的根页；冷启动的 Tab 根页工厂在 `onReady`（视图 sink 可用时）调用，之后首次选中的 Tab 在 `onLoad` 调用。结论：接受（规范 §8.1 未规定时机）
+- [B0 起] `tests/vite/assets.test.ts` 的「dev server reloads after a variant is added」在全量 `pnpm test` 中多次失败、单独运行通过（文件监听在高负载下的时序）。结论：记录，不在 M2 范围内修正
