@@ -347,7 +347,7 @@ pub fn transform(cx: &Context<'_>, options: &AppOptions) -> Vec<OutputFile> {
                 path: format!("{prefix}.wxml"),
                 contents: format!(concat!(
                     "<weft-view id=\"weft\" class=\"w-root{safe_class}\"/>\n",
-                    "<page-container show=\"{{{{m}}}}\" position=\"bottom\" round=\"{{{{ms == 0}}}}\" custom-style=\"{{{{mc}}}}\" bind:afterleave=\"$dismissed\">",
+                    "<page-container show=\"{{{{m}}}}\" position=\"bottom\" round=\"{{{{ms == 0}}}}\" close-on-slide-down=\"{{{{ms == 0}}}}\" custom-style=\"{{{{mc}}}}\" bind:afterleave=\"$dismissed\">",
                     "<view class=\"w-modal-bar\" hidden=\"{{{{mh}}}}\"><text>{{{{mt}}}}</text><button class=\"w-modal-close\" bindtap=\"$dismissed\" aria-label=\"Close\">×</button></view>",
                     "<weft-view id=\"modal\" class=\"w-root w-modal-view{safe_class}\" style=\"height:{{{{mh ? (ms == 0 ? '90vh' : '100vh') : (ms == 0 ? 'calc(90vh - 44px)' : 'calc(100vh - 44px)')}}}}\"/></page-container>\n"
                 ), safe_class = safe_class),
@@ -355,7 +355,7 @@ pub fn transform(cx: &Context<'_>, options: &AppOptions) -> Vec<OutputFile> {
             files.push(OutputFile {
                 path: format!("{prefix}.wxss"),
                 contents: format!(
-                    "@import \"../../view.wxss\";\npage{{height:100%;overflow:hidden}}\n.w-modal-bar{{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px}}\n.w-modal-close{{margin:0;font-size:24px;background:transparent}}\n{safe_css}"
+                    "@import \"../../view.wxss\";\npage{{height:100%;overflow:hidden}}\n.w-modal-bar{{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 16px}}\n.w-modal-close{{margin:0;font-size:24px;background:transparent}}\n.w-modal-close::after{{border:none}}\n{safe_css}"
                 ),
             });
         }
