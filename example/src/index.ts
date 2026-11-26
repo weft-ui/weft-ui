@@ -8,24 +8,22 @@ const props = Object.fromEntries(manifest.flatMap(({ props }) => Object.entries(
 const app = new Showcase({ ...props, safeArea: platform.safeArea });
 platform.onChange(() => Object.assign(app.model.safeArea, platform.safeArea));
 
-// The native catalogs omit this pending page, so register by event name rather
-// than depending on methods generated only for the web and WeChat catalogs.
 const showResult = (result: string) => {
-  (app.model as Model & { overlayResult: readonly string[] }).overlayResult = [result];
+  app.model.overlayResult = [result];
 };
-app.$on("OverlayAlert", async () => {
+app.onOverlayAlert(async () => {
   await ui.alert({ title: "Alert", message: "This is an alert." });
   showResult("Alert dismissed.");
 });
-app.$on("OverlayConfirm", async () => {
+app.onOverlayConfirm(async () => {
   const confirmed = await ui.confirm({ title: "Confirm", message: "Continue?" });
   showResult(confirmed ? "Confirmed." : "Cancelled.");
 });
-app.$on("OverlayActionSheet", async () => {
+app.onOverlayActionSheet(async () => {
   const selected = await ui.actionSheet({ title: "Choose an option", options: ["First", "Second", "Third"] });
   showResult(selected === null ? "Action sheet cancelled." : `Selected option ${selected + 1}.`);
 });
-app.$on("OverlayToast", () => {
+app.onOverlayToast(() => {
   ui.toast("This is a toast.");
   showResult("Toast shown.");
 });
