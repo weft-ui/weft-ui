@@ -38,7 +38,7 @@ void capture(GtkWidget *window, const std::filesystem::path &path) {
   const int height = gtk_widget_get_height(window);
   if (width != kViewportWidth || height != kViewportHeight) {
     fail("Expected a 390x844 GTK viewport, got " + std::to_string(width) + "x" + std::to_string(height) +
-         "; make sure the desktop work area can fit the showcase window");
+         "; make sure the desktop work area can fit the example window");
   }
   auto *snapshot = gtk_snapshot_new();
   auto *paintable = gtk_widget_paintable_new(window);

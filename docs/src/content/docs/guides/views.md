@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-A `.weft` file describes what to render and which events to send. Use typed parameters to receive data from the logic layer and local `state` for details that belong to a single view. The [example app](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft) uses both layout and events to build a todo list.
+A `.weft` file describes what to render and which events to send. Use typed parameters to receive data from the logic layer and local `state` for details that belong to a single view. See the [example pages](https://github.com/weft-ui/weft-ui/tree/master/example/src/pages) for complete `.weft` views.
 
 ## Declare models, events, and components
 

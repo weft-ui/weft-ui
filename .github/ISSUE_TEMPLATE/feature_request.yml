@@ -13,7 +13,7 @@ body:
     id: proposal
     attributes:
       label: Proposal
-      description: How you would like to write it in `.weft` or TypeScript. ROADMAP.md may already plan it; link the milestone if so.
+      description: How you would like to write it in `.weft` or TypeScript. docs/ROADMAP.md may already plan it; link the milestone if so.
     validations:
       required: true
   - type: dropdown

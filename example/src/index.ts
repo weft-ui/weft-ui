@@ -1,42 +1,10 @@
-import { App } from "./App.weft";
-// Platform APIs share one signature everywhere; unsupported ones reject with PlatformError.
-import { run, storage } from "@weft-ui/platform";
+import { platform, run } from "@weft-ui/platform";
+import manifest from "../pages.json" with { type: "json" };
+import { Showcase } from "./App.weft";
 
-/** Longest todo name; the input refuses longer drafts. */
-const MAX_LENGTH = 12;
-
-const app = new App({
-  clicked: false,
-  draft: "",
-  todos: [],
-});
-let nextId = 1;
-
-app.onMount(async (model) => {
-  model.clicked = (await storage.get("clicked")) === "true";
-});
-
-app.onClick((model) => {
-  model.clicked = true;
-  void storage.set("clicked", "true");
-});
-
-app.onDraft((model, { value }) => {
-  if (value.length <= MAX_LENGTH) model.draft = value;
-});
-
-app.onAdd((model) => {
-  model.todos = [...model.todos, { id: nextId++, name: model.draft.trim(), done: false }];
-  model.draft = "";
-});
-
-app.onToggle((model, { id }) => {
-  const todo = model.todos.find((t) => t.id === id);
-  if (todo) todo.done = !todo.done;
-});
-
-app.onRemove((model, { id }) => {
-  model.todos = model.todos.filter((t) => t.id !== id);
-});
-
+// The catalog generator validates these keys and declares the matching model fields.
+type Model = ConstructorParameters<typeof Showcase>[0];
+const props = Object.fromEntries(manifest.flatMap(({ props }) => Object.entries(props ?? {}))) as Record<Exclude<keyof Model, "safeArea">, string[]>;
+const app = new Showcase({ ...props, safeArea: platform.safeArea });
+platform.onChange(() => Object.assign(app.model.safeArea, platform.safeArea));
 run(app);

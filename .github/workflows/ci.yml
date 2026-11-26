@@ -1,5 +1,5 @@
 # Checks of every pull request, on every platform. The commands follow the
-# check codes of PLAN.md (C-rust, C-ts, C-core, C-linux, C-apple, C-android,
+# check codes of docs/PLAN.md (C-rust, C-ts, C-core, C-linux, C-apple, C-android,
 # C-windows); CONTRIBUTING.md describes them. The UI flows run nightly
 # (nightly.yml).
 name: CI
@@ -88,11 +88,11 @@ jobs:
               - pnpm-workspace.yaml
               - tests/**
               - example/**
-              - showcase/**
             docs:
               - .github/workflows/ci.yml
               - .github/actions/**
               - docs/**
+              - '!docs/*.md'
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
             tree_sitter:
@@ -111,7 +111,7 @@ jobs:
               - *kernel
               - native/apple/**
               - tests/vite/fixtures/assets/assets/**
-              - showcase/assets/fonts/**
+              - example/assets/fonts/**
             android:
               - *kernel
               - *compiler
@@ -205,7 +205,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       - run: pnpm -r --filter "./packages/*" build
-      - run: pnpm --filter showcase exec playwright install --with-deps chromium
+      - run: pnpm --filter example exec playwright install --with-deps chromium
       - run: pnpm typecheck
       - run: pnpm test
 

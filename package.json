@@ -7,7 +7,7 @@
     "build": "pnpm build:wasm && pnpm -r --filter \"./packages/*\" build",
     "build:wasm": "pnpm --filter @weft-ui/compiler build:wasm",
     "gen:protocol": "node protocol/generate.ts",
-    "typecheck": "pnpm --filter @weft-ui/runtime exec tsc -p . && pnpm --filter @weft-ui/platform exec tsc -p . && pnpm --filter @weft-ui/compiler exec tsc -p . && pnpm --filter @weft-ui/content-mapper exec tsc -p . && pnpm --filter @weft-ui/vite exec tsc -p . --runExternalCode && pnpm --filter example exec tsc -p . --runExternalCode && pnpm --filter showcase run typecheck && pnpm --filter @weft-ui/tests exec tsc -p . --runExternalCode",
+    "typecheck": "pnpm --filter @weft-ui/runtime exec tsc -p . && pnpm --filter @weft-ui/platform exec tsc -p . && pnpm --filter @weft-ui/compiler exec tsc -p . && pnpm --filter @weft-ui/content-mapper exec tsc -p . && pnpm --filter @weft-ui/vite exec tsc -p . --runExternalCode && pnpm --filter example run typecheck && pnpm --filter @weft-ui/tests exec tsc -p . --runExternalCode",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "test": "pnpm -r --if-present test"

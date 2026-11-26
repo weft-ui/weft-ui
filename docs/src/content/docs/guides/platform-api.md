@@ -11,7 +11,7 @@ Import from `@weft-ui/platform` in your entry point and [logic layer](/guides/lo
 
 `run(app: App): void` takes an instance of your generated root component. The package's `App` type describes the lifecycle of that instance: `mount(target: never): void` and `unmount(): void`. The host supplies the target, so don't call `mount` yourself when starting the app.
 
-In the [todo example](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts), the generated `App` comes from `App.weft`. Register any event handlers before calling `run`:
+In the [todo example](/guides/logic/), the generated `App` comes from `App.weft`. Register any event handlers before calling `run`:
 
 ```ts
 import { run } from "@weft-ui/platform";

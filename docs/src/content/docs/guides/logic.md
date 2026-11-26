@@ -9,7 +9,7 @@ The `.weft` view reads the app model to render. Its inline event handlers can ch
 
 ## Create the app
 
-This version of the [todo example](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft) binds a text input to `model.draft` and a checkbox to each todo's `done` field. Save the view as `App.weft`:
+This todo app binds a text input to `model.draft` and a checkbox to each todo's `done` field. Save the view as `App.weft`:
 
 ```weft
 model Todo {

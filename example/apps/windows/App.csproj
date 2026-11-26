@@ -8,7 +8,7 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>WeftMain</RootNamespace>
     <AssemblyName>App</AssemblyName>
-    <Product>Exp</Product>
+    <Product>Weft Showcase</Product>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWinUI>true</UseWinUI>
     <Nullable>enable</Nullable>
@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <!-- Names the app's data directory, e.g. for storage. -->
-    <AssemblyMetadata Include="WeftAppId" Value="net.mioyi.weftui" />
+    <AssemblyMetadata Include="WeftAppId" Value="net.mioyi.weftui.showcase" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.5" />
   </ItemGroup>
 

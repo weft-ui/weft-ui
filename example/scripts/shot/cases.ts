@@ -38,6 +38,6 @@ export function command(executable: string, args: string[], options: ExecFileSyn
 
 export function build(platform: Platform, env = process.env): void {
   const pnpm = process.env.npm_execpath;
-  if (!pnpm) throw new Error(`Run this driver with pnpm --filter showcase shot:${platform}`);
+  if (!pnpm) throw new Error(`Run this driver with pnpm --filter example shot:${platform}`);
   command(process.execPath, [pnpm, "run", `build:${platform}`], { env });
 }

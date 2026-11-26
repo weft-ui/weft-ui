@@ -4,11 +4,11 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": [],
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
     "strict": true,
     "noEmit": true
   },
-  "include": ["src"],
-  // Types of `.weft` imports; `tsc` needs `--runExternalCode` to start the mapper.
+  "include": ["src", "scripts", "vite.config.ts"],
   "contentMappers": [{ "package": "@weft-ui/content-mapper", "extensions": [".weft"] }]
 }

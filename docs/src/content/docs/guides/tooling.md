@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-The Weft UI language server helps you edit `.weft` files. The TypeScript content mapper lets TypeScript understand imports such as `import { App } from "./App.weft"` in the [todo example](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts). You can use both in the same project.
+The Weft UI language server helps you edit `.weft` files. The TypeScript content mapper lets TypeScript understand imports such as `import { Showcase } from "./App.weft"` in the [workspace example](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts). You can use both in the same project.
 
 ## Install the CLI
 
@@ -21,7 +21,7 @@ cargo install --path crates/cli
 
 ```sh
 weft fmt
-weft fmt example/src/App.weft
+weft fmt example/src/pages/Hello.weft
 weft fmt --check example/src
 ```
 
@@ -30,12 +30,12 @@ Use `--check` in CI: it prints the paths of files that would change without writ
 To format a buffer, read from stdin and write the result to stdout. `--path` is optional and only supplies the filename for diagnostics. Do not combine `--stdin` with `--check` or positional paths.
 
 ```sh
-weft fmt --stdin --path example/src/App.weft < example/src/App.weft
+weft fmt --stdin --path example/src/pages/Hello.weft < example/src/pages/Hello.weft
 ```
 
 ## Use the Weft UI language server
 
-`weft lsp` speaks the Language Server Protocol over stdin and stdout. Open [`App.weft`](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft) in a connected editor to try these features:
+`weft lsp` speaks the Language Server Protocol over stdin and stdout. Open [`Feed.weft`](https://github.com/weft-ui/weft-ui/blob/master/example/src/pages/Feed.weft) (or any `.weft` view, such as a todo component) in a connected editor to try these features:
 
 - **Diagnostics:** Weft UI reports syntax and semantic errors as you edit, for example if you replace `todo.name` with a field that `Todo` does not declare.
 - **Completion:** Type `todo.` inside the loop to see the model's fields. The server also suggests names and keywords in context, including named arguments you have not supplied yet.
@@ -76,7 +76,7 @@ Add `contentMappers` at the top level of `tsconfig.json`, outside `compilerOptio
 }
 ```
 
-Run the project's TypeScript compiler with `--runExternalCode` to let it start the mapper. From the repository root, `pnpm --filter example typecheck` runs the same command for the todo example.
+Run the project's TypeScript compiler with `--runExternalCode` to let it start the mapper. From the repository root, `pnpm --filter example typecheck` runs the same command for the example.
 
 ```sh
 tsc --runExternalCode
@@ -109,4 +109,4 @@ Remove the `contentMappers` entry for `.weft` if you previously added it. In `ts
 }
 ```
 
-Run Vite before type-checking so the plugin can generate the files. For example, the todo app's `pnpm --filter example build:web` command generates `src/App.d.weft.ts` next to `src/App.weft` once you enable `dts`. Keep your imports as `./App.weft`: TypeScript reads the sibling declaration for types, while Vite still compiles the Weft UI source. This fallback does not map TypeScript navigation back to `.weft`.
+Run Vite before type-checking so the plugin can generate the files. For example, the example app's `pnpm --filter example build:web` command generates `src/App.d.weft.ts` next to `src/App.weft` once you enable `dts`. Keep your imports as `./App.weft`: TypeScript reads the sibling declaration for types, while Vite still compiles the Weft UI source. This fallback does not map TypeScript navigation back to `.weft`.

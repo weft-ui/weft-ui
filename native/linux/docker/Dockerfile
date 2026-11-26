@@ -27,7 +27,7 @@ COPY desktop.sh /usr/local/bin/weft-desktop
 # Named volumes start with the ownership of their mount point in the image.
 RUN for dir in node_modules packages/compiler/node_modules packages/content-mapper/node_modules \
       packages/platform/node_modules packages/runtime/node_modules packages/vite/node_modules \
-      docs/node_modules example/node_modules showcase/node_modules tests/node_modules \
+      docs/node_modules example/node_modules tests/node_modules \
       native/apple/node_modules native/android/node_modules native/windows/node_modules \
       native/linux/node_modules; do mkdir -p "/workspace/$dir"; done \
     && mkdir -p /home/ubuntu/.local/share/pnpm \

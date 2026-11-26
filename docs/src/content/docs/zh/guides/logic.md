@@ -9,7 +9,7 @@ sidebar:
 
 ## 创建应用
 
-下面沿用[待办事项示例](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft)：输入框绑定 `model.draft`，每条待办的复选框绑定该项的 `done` 字段。将视图保存为 `App.weft`：
+下面的待办视图把输入框绑定到 `model.draft`，把每条待办的复选框绑定到该项的 `done` 字段。将视图保存为 `App.weft`：
 
 ```weft
 model Todo {

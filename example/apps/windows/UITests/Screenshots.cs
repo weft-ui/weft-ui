@@ -22,7 +22,7 @@ public sealed class Screenshots
         var directory = Environment.GetEnvironmentVariable("WEFT_SHOT_DIR");
         if (pages is null || directory is null)
         {
-            Assert.Inconclusive("Run pnpm --filter showcase shot:windows");
+            Assert.Inconclusive("Run pnpm --filter example shot:windows");
             return;
         }
 

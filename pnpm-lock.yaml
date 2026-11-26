@@ -39,6 +39,12 @@ importers:
         specifier: workspace:*
         version: link:../packages/vite
     devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      '@types/pngjs':
+        specifier: ^6.0.5
+        version: 6.0.5
       '@weft-ui/content-mapper':
         specifier: workspace:*
         version: link:../packages/content-mapper
@@ -54,6 +60,18 @@ importers:
       '@weft-ui/native-windows':
         specifier: workspace:*
         version: link:../native/windows
+      miniprogram-automator:
+        specifier: ^0.13.0
+        version: 0.13.0(supports-color@5.5.0)
+      pixelmatch:
+        specifier: ^8.0.0
+        version: 8.0.0
+      playwright:
+        specifier: 1.65.1
+        version: 1.65.1
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
       typescript:
         specifier: 7.1.0-beta
         version: 7.1.0-beta
@@ -181,55 +199,6 @@ importers:
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(yaml@2.9.1))
-
-  showcase:
-    dependencies:
-      '@weft-ui/platform':
-        specifier: workspace:*
-        version: link:../packages/platform
-      '@weft-ui/vite':
-        specifier: workspace:*
-        version: link:../packages/vite
-    devDependencies:
-      '@types/node':
-        specifier: ^26.6.6
-        version: 26.6.6
-      '@types/pngjs':
-        specifier: ^6.0.5
-        version: 6.0.5
-      '@weft-ui/content-mapper':
-        specifier: workspace:*
-        version: link:../packages/content-mapper
-      '@weft-ui/native-android':
-        specifier: workspace:*
-        version: link:../native/android
-      '@weft-ui/native-apple':
-        specifier: workspace:*
-        version: link:../native/apple
-      '@weft-ui/native-linux':
-        specifier: workspace:*
-        version: link:../native/linux
-      '@weft-ui/native-windows':
-        specifier: workspace:*
-        version: link:../native/windows
-      miniprogram-automator:
-        specifier: ^0.13.0
-        version: 0.13.0(supports-color@5.5.0)
-      pixelmatch:
-        specifier: ^8.0.0
-        version: 8.0.0
-      playwright:
-        specifier: 1.65.1
-        version: 1.65.1
-      pngjs:
-        specifier: ^7.0.0
-        version: 7.0.0
-      typescript:
-        specifier: 7.1.0-beta
-        version: 7.1.0-beta
-      vite:
-        specifier: ^8.3.8
-        version: 8.3.8(@types/node@26.6.6)(yaml@2.9.1)
 
   tests:
     devDependencies:

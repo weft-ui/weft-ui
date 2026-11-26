@@ -6,8 +6,8 @@
 
 namespace {
 
-constexpr const char *kAppId = "net.mioyi.weftui";
-constexpr const char *kAppName = "Exp";
+constexpr const char *kAppId = "net.mioyi.weftui.showcase";
+constexpr const char *kAppName = "Weft Showcase";
 
 void activate(GtkApplication *app) {
   GtkWidget *window = gtk_application_window_new(app);

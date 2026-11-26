@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-编辑 `.weft` 文件时，可以用 Weft UI 语言服务器查看错误、补全代码。[待办示例](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts)中的 `import { App } from "./App.weft"` 则由 TypeScript 内容映射器提供类型信息。同一个项目可以同时使用这两种工具。
+编辑 `.weft` 文件时，可以用 Weft UI 语言服务器查看错误、补全代码。[仓库示例](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts)中的 `import { Showcase } from "./App.weft"` 则由 TypeScript 内容映射器提供类型信息。同一个项目可以同时使用这两种工具。
 
 ## 安装 CLI
 
@@ -21,7 +21,7 @@ cargo install --path crates/cli
 
 ```sh
 weft fmt
-weft fmt example/src/App.weft
+weft fmt example/src/pages/Hello.weft
 weft fmt --check example/src
 ```
 
@@ -30,12 +30,12 @@ weft fmt --check example/src
 要格式化一段输入，可以从标准输入读取，再把结果写到标准输出。`--path` 可省略，只用于指定错误信息里显示的文件名。`--stdin` 不能与 `--check` 或位置参数一起使用。
 
 ```sh
-weft fmt --stdin --path example/src/App.weft < example/src/App.weft
+weft fmt --stdin --path example/src/pages/Hello.weft < example/src/pages/Hello.weft
 ```
 
 ## 使用 Weft UI 语言服务器
 
-`weft lsp` 通过标准输入和输出与编辑器通信，使用语言服务器协议（LSP）。在已接入的编辑器里打开 [`App.weft`](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft)，就可以试用以下功能：
+`weft lsp` 通过标准输入和输出与编辑器通信，使用语言服务器协议（LSP）。在已接入的编辑器里打开 [`Feed.weft`](https://github.com/weft-ui/weft-ui/blob/master/example/src/pages/Feed.weft)（或任意 `.weft` 视图，比如待办组件），就可以试用以下功能：
 
 - **诊断：** 编辑时会报告语法或语义错误。比如把 `todo.name` 改成 `Todo` 中没有声明的字段，就会看到错误提示。
 - **补全：** 在循环体内输入 `todo.`，可以看到模型的字段。服务器还会根据当前位置提示可用的名称和关键字，包括尚未填写的具名参数。
@@ -76,7 +76,7 @@ Weft UI 语言服务器不提供查找引用或重命名。下文介绍的 TypeS
 }
 ```
 
-运行项目的 TypeScript 编译器时加上 `--runExternalCode`，允许它启动映射器。在仓库根目录运行 `pnpm --filter example typecheck`，会用同样的命令检查待办示例。
+运行项目的 TypeScript 编译器时加上 `--runExternalCode`，允许它启动映射器。在仓库根目录运行 `pnpm --filter example typecheck`，会用同样的命令检查示例应用。
 
 ```sh
 tsc --runExternalCode
@@ -109,4 +109,4 @@ export default defineConfig({
 }
 ```
 
-类型检查前先运行 Vite，让插件生成声明文件。比如待办示例启用 `dts` 后，运行 `pnpm --filter example build:web` 会在 `src/App.weft` 旁生成 `src/App.d.weft.ts`。导入路径仍然写 `./App.weft`：TypeScript 从相邻的声明文件读取类型，Vite 仍然编译 Weft UI 源文件。这种方式不会把 TypeScript 的跳转位置映射回 `.weft`。
+类型检查前先运行 Vite，让插件生成声明文件。比如示例应用启用 `dts` 后，运行 `pnpm --filter example build:web` 会在 `src/App.weft` 旁生成 `src/App.d.weft.ts`。导入路径仍然写 `./App.weft`：TypeScript 从相邻的声明文件读取类型，Vite 仍然编译 Weft UI 源文件。这种方式不会把 TypeScript 的跳转位置映射回 `.weft`。

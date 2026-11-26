@@ -11,7 +11,7 @@ sidebar:
 
 `run(app: App): void` 接收生成的根组件实例。包导出的 `App` 类型描述了实例的生命周期：`mount(target: never): void` 和 `unmount(): void`。宿主负责提供挂载目标，启动应用时无需自己调用 `mount`。
 
-[待办事项示例](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts)中的 `App` 由 `App.weft` 生成。先注册需要的事件处理器，再调用 `run`：
+在[待办事项示例](/zh/guides/logic/)中，`App` 由 `App.weft` 生成。先注册需要的事件处理器，再调用 `run`：
 
 ```ts
 import { run } from "@weft-ui/platform";

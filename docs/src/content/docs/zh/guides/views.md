@@ -5,7 +5,7 @@ sidebar:
   order: 2
 ---
 
-`.weft` 文件描述要渲染的内容和要发出的事件。视图通过类型明确的参数接收逻辑层的数据，用局部 `state` 保存只属于当前视图的状态。[示例应用](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft)用布局和事件实现了一个待办清单。
+`.weft` 文件描述要渲染的内容和要发出的事件。视图通过类型明确的参数接收逻辑层的数据，用局部 `state` 保存只属于当前视图的状态。完整的 `.weft` 视图例子见[示例页面](https://github.com/weft-ui/weft-ui/tree/master/example/src/pages)。
 
 ## 声明模型、事件和组件
 

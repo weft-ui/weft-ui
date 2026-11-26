@@ -1,11 +1,11 @@
 ---
 title: Getting started
-description: Build and run the Weft UI todo example in your browser.
+description: Build and run the Weft UI workspace example in your browser.
 sidebar:
   order: 1
 ---
 
-With Weft UI, you write the view in `.weft` and share one JavaScript or TypeScript codebase across platforms. Weft UI compiles the view to browser DOM on Web, WXML in WeChat Mini Programs, and native UI on iOS, macOS, Android, Windows, and Linux. Start with the Web build of the example todo app; you won't need any native platform SDKs.
+With Weft UI, you write the view in `.weft` and share one JavaScript or TypeScript codebase across platforms. Weft UI compiles the view to browser DOM on Web, WXML in WeChat Mini Programs, and native UI on iOS, macOS, Android, Windows, and Linux. Start with the Web build of the workspace example app; you won't need any native platform SDKs.
 
 ## Set up the workspace
 
@@ -34,21 +34,22 @@ pnpm --filter example build:web
 pnpm --filter example exec vite preview --outDir apps/web
 ```
 
-The build writes `example/apps/web/`. Open the local URL Vite prints, type `Buy milk` into **New todo**, and click **Add**. The new item should appear and the count should increase to `1 todos`.
+The build writes `example/apps/web/`. Open the local URL Vite prints to see the catalog of example pages (`page:hello`, `page:feed`, and more). Click any button to open that page.
 
 When editing the source, use `pnpm --filter example exec vite` instead of building and previewing each time. The Vite plugin compiles `.weft` imports for Web in the dev server too.
 
 ## Find your way around the example
 
-- [`src/App.weft`](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft) declares the data model, events, and view.
-- [`src/index.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts) initializes the model, handles events, and starts the app.
+- [`pages.json`](https://github.com/weft-ui/weft-ui/blob/master/example/pages.json) lists the example pages; [`scripts/catalog.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/scripts/catalog.ts) generates `src/App.weft` from it during builds.
+- [`src/pages/`](https://github.com/weft-ui/weft-ui/tree/master/example/src/pages) holds the `.weft` views for each page.
+- [`src/index.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts) initializes the model and starts the app.
 - [`vite.config.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/vite.config.ts) registers `@weft-ui/vite`.
 - [`index.html`](https://github.com/weft-ui/weft-ui/blob/master/example/index.html) is the Web entry point. It loads `src/index.ts` and provides the `#app` mount element.
 - `apps/` holds platform projects and build output.
 
 ## Follow the Add button
 
-In `App.weft`, the `Input` displays `model.draft` and emits `Draft` when the user types. The button emits `Add` and is disabled when the draft is empty after trimming:
+In a todo view (`App.weft`), the `Input` displays `model.draft` and emits `Draft` when the user types. The button emits `Add` and is disabled when the draft is empty after trimming:
 
 ```weft
 Row(gap = 8) {

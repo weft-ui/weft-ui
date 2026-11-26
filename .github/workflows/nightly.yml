@@ -1,4 +1,4 @@
-# Run the example's Android and iOS UI flows and the showcase's Web, iOS and
+# Run the example's Android and iOS UI flows and Web, iOS and
 # Android screenshot regressions nightly and on demand. WeChat and desktop
 # screenshots, and the Windows and Linux UI flows, run only locally; see
 # CONTRIBUTING.md.
@@ -135,14 +135,14 @@ jobs:
           name: compiler-wasm
           path: packages/compiler/wasm
       # Root, because the checkout belongs to the runner's user.
-      - run: docker compose -f native/linux/docker/compose.yaml run --rm --user root web sh -c 'pnpm install --frozen-lockfile && pnpm --filter showcase shot:web'
+      - run: docker compose -f native/linux/docker/compose.yaml run --rm --user root web sh -c 'pnpm install --frozen-lockfile && pnpm --filter example shot:web'
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: web-shots
           path: |
-            showcase/screenshots/actual
-            showcase/screenshots/diff
+            example/screenshots/actual
+            example/screenshots/diff
           retention-days: 7
 
   ios-shots:
@@ -170,14 +170,14 @@ jobs:
           udid=$(xcrun simctl list devices available -j | jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-27-2"][] | select(.name == "iPhone 17") | .udid' | head -n 1)
           test -n "$udid"
           echo "WEFT_IOS_DEVICE=$udid" >> "$GITHUB_ENV"
-      - run: pnpm --filter showcase shot:ios
+      - run: pnpm --filter example shot:ios
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: ios-shots
           path: |
-            showcase/screenshots/actual
-            showcase/screenshots/diff
+            example/screenshots/actual
+            example/screenshots/diff
           retention-days: 7
 
   android-shots:
@@ -208,10 +208,10 @@ jobs:
           WEFT_ANDROID_ABIS: x86_64
       # Build before the emulator starts: compiling next to it starves the
       # emulator until its system services restart.
-      - run: pnpm --filter showcase build:android
+      - run: pnpm --filter example build:android
         env:
           WEFT_NATIVE: "0"
-      - run: showcase/apps/android/gradlew -p showcase/apps/android :app:assembleDebug :app:assembleDebugAndroidTest
+      - run: example/apps/android/gradlew -p example/apps/android :app:assembleDebug :app:assembleDebugAndroidTest
       # The Google API images crash SurfaceFlinger on the runner's software
       # renderer; the ATD image, which has no system bars, does not. The
       # runner's avdmanager predates the pixel_10 profile, so give the default
@@ -229,12 +229,12 @@ jobs:
           pre-emulator-launch-script: printf 'hw.lcd.width=1080\nhw.lcd.height=2424\nhw.lcd.density=420\n' >> "${ANDROID_AVD_HOME:-$HOME/.android/avd}/test.avd/config.ini"
           script: |
             for i in $(seq 150); do adb shell 'ls /sdcard/Android && pm path android' >/dev/null 2>&1 && break; sleep 2; done
-            pnpm --filter showcase shot:android
+            pnpm --filter example shot:android
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: android-shots
           path: |
-            showcase/screenshots/actual
-            showcase/screenshots/diff
+            example/screenshots/actual
+            example/screenshots/diff
           retention-days: 7

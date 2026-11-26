@@ -1,6 +1,7 @@
 {
   "pages": ["weft/index"],
+  "darkmode": true,
   "window": {
-    "navigationBarTitleText": "Exp"
+    "navigationBarTitleText": "Weft Showcase"
   }
 }

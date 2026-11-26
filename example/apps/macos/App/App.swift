@@ -6,9 +6,14 @@ import WeftApp
 @main
 struct WeftMain: App {
     var body: some Scene {
+        let appearance = ProcessInfo.processInfo.environment["WEFT_SHOT_APPEARANCE"]
+        // Match the Windows capture size so Layout fits without root scrolling.
+        let captureHeight: CGFloat = 760
         WindowGroup {
             WeftAppView()
+                .frame(minHeight: appearance == nil ? nil : captureHeight)
+                .preferredColorScheme(appearance.map { $0 == "dark" ? .dark : .light })
         }
-        .defaultSize(width: 480, height: 640)
+        .defaultSize(width: 480, height: appearance == nil ? 640 : captureHeight)
     }
 }

@@ -1,11 +1,11 @@
 ---
 title: 快速上手
-description: 构建 Weft UI 待办示例，并在浏览器中运行。
+description: 构建 Weft UI 工作区示例，并在浏览器中运行。
 sidebar:
   order: 1
 ---
 
-用 Weft UI 开发时，视图写在 `.weft` 文件里，各平台共用一套 JavaScript 或 TypeScript 逻辑。Weft UI 会把视图编译为 Web 上的 DOM、微信小程序里的 WXML，以及 iOS、macOS、Android、Windows 和 Linux 上的原生界面。先运行待办示例的 Web 版本，不需要安装原生平台的 SDK。
+用 Weft UI 开发时，视图写在 `.weft` 文件里，各平台共用一套 JavaScript 或 TypeScript 逻辑。Weft UI 会把视图编译为 Web 上的 DOM、微信小程序里的 WXML，以及 iOS、macOS、Android、Windows 和 Linux 上的原生界面。先运行工作区示例的 Web 版本，不需要安装原生平台的 SDK。
 
 ## 准备工作区
 
@@ -34,21 +34,22 @@ pnpm --filter example build:web
 pnpm --filter example exec vite preview --outDir apps/web
 ```
 
-构建产物位于 `example/apps/web/`。打开 Vite 打印的本地网址，在 **New todo** 输入框里输入 `Buy milk`，然后点击 **Add**。列表中应出现这条待办，计数变为 `1 todos`。
+构建产物位于 `example/apps/web/`。打开 Vite 打印的本地网址，会看到示例页面目录（`page:hello`、`page:feed` 等），点击任意按钮即可打开对应页面。
 
 修改源码时，可以用 `pnpm --filter example exec vite` 启动开发服务器，不用每次都重新构建和预览。Vite 插件在开发服务器里也会把导入的 `.weft` 文件编译为 Web 版本。
 
 ## 示例目录
 
-- [`src/App.weft`](https://github.com/weft-ui/weft-ui/blob/master/example/src/App.weft) 声明数据模型、事件和视图。
-- [`src/index.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts) 初始化模型、处理事件并启动应用。
+- [`pages.json`](https://github.com/weft-ui/weft-ui/blob/master/example/pages.json) 列出示例页面；构建时由 [`scripts/catalog.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/scripts/catalog.ts) 据此生成 `src/App.weft`。
+- [`src/pages/`](https://github.com/weft-ui/weft-ui/tree/master/example/src/pages) 存放各页面的 `.weft` 视图。
+- [`src/index.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/src/index.ts) 初始化模型并启动应用。
 - [`vite.config.ts`](https://github.com/weft-ui/weft-ui/blob/master/example/vite.config.ts) 注册 `@weft-ui/vite` 插件。
 - [`index.html`](https://github.com/weft-ui/weft-ui/blob/master/example/index.html) 是 Web 入口，负责加载 `src/index.ts`，并提供挂载点 `#app`。
 - `apps/` 存放各平台的项目和构建产物。
 
 ## 点击 Add 后发生了什么
 
-在 `App.weft` 中，`Input` 显示 `model.draft` 的值，输入时发出 `Draft` 事件。按钮触发 `Add` 事件；如果草稿去掉首尾空白后为空，按钮就不可点击：
+在待办视图（`App.weft`）中，`Input` 显示 `model.draft` 的值，输入时发出 `Draft` 事件。按钮触发 `Add` 事件；如果草稿去掉首尾空白后为空，按钮就不可点击：
 
 ```weft
 Row(gap = 8) {

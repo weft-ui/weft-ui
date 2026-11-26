@@ -1,6 +1,9 @@
+using System;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Weft.Generated;
 using Weft.WinUI;
+using Windows.Graphics;
 
 namespace WeftMain;
 
@@ -9,16 +12,47 @@ namespace WeftMain;
 public partial class App : Application
 {
     private Window? window;
+    private readonly string? shotAppearance = Environment.GetEnvironmentVariable("WEFT_SHOT_APPEARANCE");
 
     public App()
     {
+        if (shotAppearance is not null)
+            RequestedTheme = shotAppearance == "dark" ? ApplicationTheme.Dark : ApplicationTheme.Light;
         InitializeComponent();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        window = new Window { Title = "Exp", Content = WeftApp.Start() };
-        WeftWindow.Resize(window, 480, 640);
+        var root = (FrameworkElement)WeftApp.Start();
+        window = new Window { Title = "Weft Showcase", Content = root };
+        var page = Environment.GetEnvironmentVariable("WEFT_SHOT_PAGE");
+        if (page is "feed" or "detail" or "profile" or "form" or "settings" or "empty")
+            root.Loaded += ResizeReferenceWindow;
+        else
+        {
+            // Match the Web width for typography, and fit the taller native controls in the capture.
+            var width = page == "text" ? 390 : 480;
+            var height = shotAppearance is null ? 640 : page == "controls" ? 800 : 760;
+            WeftWindow.Resize(window, width, height);
+        }
         window.Activate();
+    }
+
+    private void ResizeReferenceWindow(object sender, RoutedEventArgs args)
+    {
+        var root = (FrameworkElement)sender;
+        root.Loaded -= ResizeReferenceWindow;
+        var appWindow = window!.AppWindow;
+        var display = DisplayArea.GetFromWindowId(appWindow.Id, DisplayAreaFallback.Nearest);
+        var work = display.WorkArea;
+        var scale = root.XamlRoot.RasterizationScale;
+        var outer = appWindow.Size;
+        var client = appWindow.ClientSize;
+        // The Web capture is 390×844 with an 8 DIP browser body margin. Match
+        // its content viewport, keeping the whole window inside the desktop capture.
+        var width = Math.Min(work.Width, (int)Math.Round(374 * scale) + outer.Width - client.Width);
+        var height = Math.Min(work.Height, (int)Math.Round(828 * scale) + outer.Height - client.Height);
+        appWindow.MoveAndResize(new RectInt32(work.X + (work.Width - width) / 2,
+            work.Y + (work.Height - height) / 2, width, height), display);
     }
 }

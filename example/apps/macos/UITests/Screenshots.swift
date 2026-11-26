@@ -5,7 +5,7 @@ final class Screenshots: XCTestCase {
     func testPages() throws {
         continueAfterFailure = false
         let env = ProcessInfo.processInfo.environment
-        guard let cases = env["WEFT_PAGES"] else { throw XCTSkip("Run pnpm --filter showcase shot:macos") }
+        guard let cases = env["WEFT_PAGES"] else { throw XCTSkip("Run pnpm --filter example shot:macos") }
         let pages = cases.split(separator: ",")
 
         for page in pages {
@@ -21,7 +21,7 @@ final class Screenshots: XCTestCase {
 
             let window = app.windows.firstMatch
             if !window.exists { app.typeKey("n", modifierFlags: .command) }
-            XCTAssertTrue(window.waitForExistence(timeout: 5), "No showcase window")
+            XCTAssertTrue(window.waitForExistence(timeout: 5), "No example window")
             let button = window.buttons["page:\(id)"]
             XCTAssertTrue(button.waitForExistence(timeout: 5), "No catalog button page:\(id)")
             let catalog = window.scrollViews.firstMatch

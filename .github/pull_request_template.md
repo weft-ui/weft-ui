@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- What the change does and the problem it solves. Link the issue or the plan task (e.g. PLAN-M0.md F1). -->
+<!-- What the change does and the problem it solves. Link the issue or the plan task (e.g. docs/PLAN-M0.md F1). -->
 
 ## Checks
 

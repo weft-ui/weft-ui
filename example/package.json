@@ -7,27 +7,40 @@
     "@weft-ui/vite": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/pngjs": "^6.0.5",
     "@weft-ui/content-mapper": "workspace:*",
     "@weft-ui/native-android": "workspace:*",
     "@weft-ui/native-apple": "workspace:*",
     "@weft-ui/native-linux": "workspace:*",
     "@weft-ui/native-windows": "workspace:*",
+    "miniprogram-automator": "^0.13.0",
+    "pixelmatch": "^8.0.0",
+    "playwright": "1.65.1",
+    "pngjs": "^7.0.0",
     "typescript": "7.1.0-beta",
     "vite": "^8.3.8"
   },
   "scripts": {
-    "build:android": "WEFT_PLATFORM=android vite build",
-    "build:ios": "WEFT_PLATFORM=ios vite build",
-    "build:linux": "WEFT_PLATFORM=linux vite build",
-    "build:macos": "WEFT_PLATFORM=macos vite build",
-    "build:web": "WEFT_PLATFORM=web vite build",
-    "build:wechat": "WEFT_PLATFORM=wechat vite build",
-    "build:windows": "WEFT_PLATFORM=windows vite build",
+    "build:android": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=android vite build",
+    "build:ios": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=ios vite build",
+    "build:linux": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=linux vite build",
+    "build:macos": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=macos vite build",
+    "build:web": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=web vite build",
+    "build:wechat": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=wechat vite build",
+    "build:windows": "node --experimental-strip-types scripts/catalog.ts && WEFT_PLATFORM=windows vite build",
+    "shot:android": "node --experimental-strip-types scripts/shot/android.ts",
+    "shot:ios": "node --experimental-strip-types scripts/shot/ios.ts",
+    "shot:linux": "node --experimental-strip-types scripts/shot/linux.ts",
+    "shot:macos": "node --experimental-strip-types scripts/shot/macos.ts",
+    "shot:web": "node --experimental-strip-types scripts/shot/web.ts",
+    "shot:wechat": "node --experimental-strip-types scripts/shot/wechat.ts",
+    "shot:windows": "node --experimental-strip-types scripts/shot/windows.ts",
     "test:android": "apps/android/gradlew -p apps/android connectedDebugAndroidTest",
     "test:ios": "xcodebuild test -project apps/ios/App.xcodeproj -scheme App -destination \"platform=iOS Simulator,name=${WEFT_IOS_DEVICE:-iPhone 17}\" -derivedDataPath apps/ios/build",
     "test:linux": "ctest --test-dir apps/linux/build --output-on-failure",
     "test:macos": "xcodebuild test -project apps/macos/App.xcodeproj -scheme App -destination platform=macOS -derivedDataPath apps/macos/build",
     "test:windows": "dotnet test apps/windows/UITests",
-    "typecheck": "tsc --runExternalCode"
+    "typecheck": "node --experimental-strip-types scripts/catalog.ts && tsc -p . --runExternalCode"
   }
 }

@@ -5,18 +5,21 @@ sidebar:
   order: 5
 ---
 
-Use the same `.weft` files and TypeScript logic to build for the browser, WeChat, or a native platform. If you’re following the todo example, complete the [workspace setup](/guides/getting-started/) first. Run `pnpm --filter example` commands from the workspace root. The `apps/` paths below are relative to the Vite project root (`example/` for the todo app).
+Use the same `.weft` files and TypeScript logic to build for the browser, WeChat, or a native platform. If you’re following the workspace example, complete the [workspace setup](/guides/getting-started/) first. Run `pnpm --filter example` commands from the workspace root. The `apps/` paths below are relative to the Vite project root (`example/` for the workspace example).
 
 ## Configure Vite
 
-Register `@weft-ui/vite` in `vite.config.ts`, as in the [todo example](https://github.com/weft-ui/weft-ui/blob/master/example/vite.config.ts):
+Register `@weft-ui/vite` in `vite.config.ts`, as in the [workspace example](https://github.com/weft-ui/weft-ui/blob/master/example/vite.config.ts):
 
 ```ts
 import { defineConfig } from "vite";
 import weft from "@weft-ui/vite";
 
 export default defineConfig({
-  plugins: [weft({ app: { id: "net.mioyi.weftui", name: "Exp" } })],
+  plugins: [weft({
+    app: { id: "net.mioyi.weftui.showcase", name: "Weft Showcase" },
+    include: "src/App.weft",
+  })],
 });
 ```
 
@@ -73,7 +76,7 @@ pnpm --filter example build:web
 
 Include `viewport-fit=cover` in your viewport meta tag so mobile browsers expose the safe-area insets. The app adds those insets as padding on the mount element by default. If you set `safeArea: false`, you can still read the insets from [`platform.safeArea`](/guides/platform-api/#read-the-window-environment).
 
-To check the UI in the browser, add a todo, tick its checkbox, then remove it.
+To check the UI in the browser, open pages from the example catalog such as `page:hello` or `page:feed`.
 
 ## WeChat Mini Program
 
@@ -85,7 +88,7 @@ Open `example/apps/wechat/` in WeChat DevTools, not its `weft/` subdirectory. Th
 
 By default, Weft pads the bottom of the page by the safe-area inset. The mini program navigation bar handles the top. `safeArea: false` removes the bottom padding without changing the navigation bar.
 
-In the simulator, try the same add, check, and remove flow. The workspace also has [automated Web and Mini Program tests](https://github.com/weft-ui/weft-ui/blob/master/tests/vite/platforms.test.ts) that run without WeChat DevTools:
+In the simulator, open pages from the catalog to check the UI. The workspace also has [automated Web and Mini Program tests](https://github.com/weft-ui/weft-ui/blob/master/tests/vite/platforms.test.ts) that run without WeChat DevTools:
 
 ```sh
 pnpm --filter @weft-ui/tests test

@@ -7,7 +7,7 @@ android {
     namespace = "net.mioyi.weftui.app"
     compileSdk = 37
     defaultConfig {
-        applicationId = "net.mioyi.weftui"
+        applicationId = "net.mioyi.weftui.showcase"
         minSdk = 24
         targetSdk = 37
         versionCode = 1

@@ -5,18 +5,21 @@ sidebar:
   order: 5
 ---
 
-同一套 `.weft` 文件和 TypeScript 逻辑可以构建成网页、微信小程序或原生应用。如果你在使用待办示例，先按[快速开始](/zh/guides/getting-started/)准备工作区，再在工作区根目录运行 `pnpm --filter example` 命令。下文中的 `apps/` 路径相对于 Vite 项目根目录；待办示例的项目根目录是 `example/`。
+同一套 `.weft` 文件和 TypeScript 逻辑可以构建成网页、微信小程序或原生应用。如果你在使用仓库示例，先按[快速开始](/zh/guides/getting-started/)准备工作区，再在工作区根目录运行 `pnpm --filter example` 命令。下文中的 `apps/` 路径相对于 Vite 项目根目录；仓库示例的项目根目录是 `example/`。
 
 ## 配置 Vite
 
-在 `vite.config.ts` 中注册 `@weft-ui/vite`。下面是[待办示例](https://github.com/weft-ui/weft-ui/blob/master/example/vite.config.ts)的配置：
+在 `vite.config.ts` 中注册 `@weft-ui/vite`。下面是[仓库示例](https://github.com/weft-ui/weft-ui/blob/master/example/vite.config.ts)的配置：
 
 ```ts
 import { defineConfig } from "vite";
 import weft from "@weft-ui/vite";
 
 export default defineConfig({
-  plugins: [weft({ app: { id: "net.mioyi.weftui", name: "Exp" } })],
+  plugins: [weft({
+    app: { id: "net.mioyi.weftui.showcase", name: "Weft Showcase" },
+    include: "src/App.weft",
+  })],
 });
 ```
 
@@ -73,7 +76,7 @@ pnpm --filter example build:web
 
 在 viewport 元标签中加入 `viewport-fit=cover`，让移动浏览器提供安全区内边距。应用默认将这些内边距加到挂载元素上。即使设置了 `safeArea: false`，仍可以通过 [`platform.safeArea`](/zh/guides/platform-api/#读取窗口环境) 读取各边的值。
 
-可以在浏览器中添加一条待办，勾选它，再将它删除，检查界面是否正常更新。
+可以在浏览器里打开目录中的页面（例如 `page:hello` 或 `page:feed`），检查界面是否正常更新。
 
 ## 微信小程序
 
@@ -85,7 +88,7 @@ pnpm --filter example build:wechat
 
 Weft 默认按安全区给页面底部留出内边距，顶部由小程序导航栏处理。设置 `safeArea: false` 可移除底部内边距，不影响导航栏。
 
-在模拟器里也可以试一次添加、勾选和删除。工作区还有[Web 和小程序的自动化测试](https://github.com/weft-ui/weft-ui/blob/master/tests/vite/platforms.test.ts)，不需要启动微信开发者工具：
+在模拟器里也可以打开目录中的页面检查界面。工作区还有[Web 和小程序的自动化测试](https://github.com/weft-ui/weft-ui/blob/master/tests/vite/platforms.test.ts)，不需要启动微信开发者工具：
 
 ```sh
 pnpm --filter @weft-ui/tests test

@@ -5,7 +5,7 @@ final class Screenshots: XCTestCase {
     func testPages() throws {
         continueAfterFailure = false
         let env = ProcessInfo.processInfo.environment
-        guard let cases = env["WEFT_PAGES"] else { throw XCTSkip("Run pnpm --filter showcase shot:ios") }
+        guard let cases = env["WEFT_PAGES"] else { throw XCTSkip("Run pnpm --filter example shot:ios") }
         let pages = cases.split(separator: ",")
         let directory = URL(fileURLWithPath: try XCTUnwrap(env["WEFT_SHOT_DIR"]), isDirectory: true)
         let suffix = env["WEFT_APPEARANCE"] == "dark" ? "-dark" : ""

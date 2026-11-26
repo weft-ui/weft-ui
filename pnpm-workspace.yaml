@@ -6,7 +6,6 @@ packages:
   - native/windows
   - native/linux
   - example
-  - showcase
   - tests
 
 # Scripts such as `WEFT_PLATFORM=windows vite build` also run on Windows hosts.

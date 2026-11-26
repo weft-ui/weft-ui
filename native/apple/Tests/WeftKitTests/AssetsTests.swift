@@ -72,7 +72,7 @@ import Testing
         let fonts = try #require(bundle.resourceURL).appendingPathComponent("fonts", isDirectory: true)
         try FileManager.default.createDirectory(at: fonts, withIntermediateDirectories: true)
         for file in ["Inter-Regular.ttf", "Inter-SemiBold.ttf", "Inter-Bold.ttf"] {
-            try FileManager.default.copyItem(at: fixture("fonts/\(file)", showcase: true), to: fonts.appendingPathComponent(file))
+            try FileManager.default.copyItem(at: fixture("fonts/\(file)", example: true), to: fonts.appendingPathComponent(file))
         }
         try Data(#"""
         [
@@ -99,10 +99,10 @@ import Testing
     #expect(WeftProposal(width: .atMost(32)).imageIdeal(intrinsic: intrinsic) == CGSize(width: 32, height: 20))
 }
 
-private func fixture(_ path: String, showcase: Bool = false) -> URL {
+private func fixture(_ path: String, example: Bool = false) -> URL {
     var root = URL(fileURLWithPath: #filePath)
     for _ in 0..<5 { root.deleteLastPathComponent() }
-    return root.appendingPathComponent(showcase ? "showcase/assets/\(path)" : "tests/vite/fixtures/assets/assets/\(path)")
+    return root.appendingPathComponent(example ? "example/assets/\(path)" : "tests/vite/fixtures/assets/assets/\(path)")
 }
 
 private func withAssetBundle(_ body: (Bundle, URL) throws -> Void) throws {
