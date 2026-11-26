@@ -247,23 +247,28 @@ export const storage = {
   },
 };
 
+// WeChat rejects a call whose optional parameters are present but undefined.
+function defined<T extends Record<string, unknown>>(values: T): Partial<T> {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
 export const ui = createUI({
   alert(options) {
     const { promise, resolve, reject } = Promise.withResolvers<void>();
     if (!isSupported("ui")) return Promise.reject(new PlatformError("ui", "wechat"));
-    wx.showModal({ title: options.title, content: options.message, showCancel: false, confirmText: options.confirmText ?? "OK", success: () => resolve(), fail: (error) => reject(new Error(error.errMsg)) });
+    wx.showModal({ ...defined({ title: options.title, content: options.message }), showCancel: false, confirmText: options.confirmText ?? "OK", success: () => resolve(), fail: (error) => reject(new Error(error.errMsg)) });
     return promise;
   },
   confirm(options) {
     const { promise, resolve, reject } = Promise.withResolvers<boolean>();
     if (!isSupported("ui")) return Promise.reject(new PlatformError("ui", "wechat"));
-    wx.showModal({ title: options.title, content: options.message, showCancel: true, confirmText: options.confirmText ?? "OK", cancelText: options.cancelText ?? "Cancel", confirmColor: options.destructive ? "#d22" : undefined, success: (result) => resolve(result.confirm), fail: (error) => error.errMsg.includes("cancel") ? resolve(false) : reject(new Error(error.errMsg)) });
+    wx.showModal({ ...defined({ title: options.title, content: options.message, confirmColor: options.destructive ? "#d22" : undefined }), showCancel: true, confirmText: options.confirmText ?? "OK", cancelText: options.cancelText ?? "Cancel", success: (result) => resolve(result.confirm), fail: (error) => error.errMsg.includes("cancel") ? resolve(false) : reject(new Error(error.errMsg)) });
     return promise;
   },
   actionSheet(options) {
     const { promise, resolve, reject } = Promise.withResolvers<number | null>();
     if (!isSupported("ui")) return Promise.reject(new PlatformError("ui", "wechat"));
-    wx.showActionSheet({ alertText: options.title, itemList: [...options.options], success: (result) => resolve(result.tapIndex), fail: (error) => error.errMsg.includes("cancel") ? resolve(null) : reject(new Error(error.errMsg)) });
+    wx.showActionSheet({ ...defined({ alertText: options.title }), itemList: [...options.options], success: (result) => resolve(result.tapIndex), fail: (error) => error.errMsg.includes("cancel") ? resolve(null) : reject(new Error(error.errMsg)) });
     return promise;
   },
   toast(message, options) {

@@ -62,16 +62,26 @@ test("web renders modal dialogs, handles dismissal and replaces toast", async ()
 });
 
 test("WeChat maps modal, sheet, cancellation and toast options", async () => {
-  const showModal = vi.fn((options: { success(result: { confirm: boolean }): void }) => options.success({ confirm: true }));
-  const showActionSheet = vi.fn((options: { fail(error: { errMsg: string }): void }) => options.fail({ errMsg: "showActionSheet:fail cancel" }));
+  // Like WeChat, fail a call that passes an optional parameter as undefined.
+  type Callbacks = { success(result: object): void; fail(error: { errMsg: string }): void };
+  const validated = (name: string, result: object) => vi.fn((options: Callbacks) => {
+    const missing = Object.keys(options).find((key) => options[key as keyof Callbacks] === undefined);
+    if (missing) options.fail({ errMsg: `${name}:fail parameter error: parameter.${missing} should be String instead of Undefined;` });
+    else options.success(result);
+  });
+  const showModal = validated("showModal", { confirm: true });
+  const showActionSheet = validated("showActionSheet", { tapIndex: 0 });
   const showToast = vi.fn();
   vi.stubGlobal("wx", { showModal, showActionSheet, showToast });
   await wechatUI.alert({ message: "Hello" });
   expect(showModal).toHaveBeenLastCalledWith(expect.objectContaining({ content: "Hello", showCancel: false, confirmText: "OK" }));
+  expect(await wechatUI.confirm({ message: "Continue?" })).toBe(true);
   expect(await wechatUI.confirm({ destructive: true })).toBe(true);
   expect(showModal).toHaveBeenLastCalledWith(expect.objectContaining({ showCancel: true, cancelText: "Cancel", confirmColor: "#d22" }));
+  expect(await wechatUI.actionSheet({ options: ["A"] })).toBe(0);
+  showActionSheet.mockImplementationOnce((options: Callbacks) => options.fail({ errMsg: "showActionSheet:fail cancel" }));
   expect(await wechatUI.actionSheet({ title: "Choose", options: ["A"] })).toBeNull();
-  expect(showActionSheet).toHaveBeenCalledWith(expect.objectContaining({ alertText: "Choose", itemList: ["A"] }));
+  expect(showActionSheet).toHaveBeenLastCalledWith(expect.objectContaining({ alertText: "Choose", itemList: ["A"] }));
   wechatUI.toast("Done", { icon: "success", duration: "long" });
   expect(showToast).toHaveBeenCalledWith({ title: "Done", icon: "success", duration: 3000 });
 });
