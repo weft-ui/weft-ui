@@ -134,6 +134,34 @@ import UniformTypeIdentifiers
     #expect(session.userNavigationPath([3]) == nil)
 }
 
+@Test @MainActor func navigationModalPresentAndDismiss() {
+    let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true) { _, id, session in
+        WeftScope(id: id, session: session)
+    }
+    var bytes: [UInt8] = [WeftProtocol.version]
+    func word(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { bytes.append(contentsOf: $0) } }
+    func nav(_ modal: UInt32, _ style: UInt32) {
+        bytes.append(OpCode.nav.rawValue)
+        word(0); word(1); word(1); word(1); word(2); word(modal); word(style)
+        bytes.withUnsafeBytes { session.commit($0) }
+        bytes = [WeftProtocol.version]
+    }
+    for id: UInt32 in [1, 2, 3, 4] {
+        bytes.append(OpCode.create.rawValue); word(id); word(0)
+    }
+    nav(3, 0)
+    #expect(session.navigationModal == NavigationModal(id: 3, style: 0))
+    nav(0, 0)
+    #expect(session.navigationModal == nil)
+    #expect(session.page(3) == nil)
+    nav(4, 1)
+    #expect(session.navigationModal == NavigationModal(id: 4, style: 1))
+    #expect(session.userDismissModal(3) == nil)
+    #expect(session.userDismissModal(4) == #"{"tab":0,"stack":[2],"modal":0}"#)
+    #expect(session.page(4) == nil)
+    #expect(session.userDismissModal(4) == nil)
+}
+
 @Test @MainActor func navigationTabSwitchAndBadges() throws {
     let tab = WeftTab(title: "Home", icon: "home", activeIcon: "home-on")
     let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true, tabs: [tab, tab]) { _, id, session in

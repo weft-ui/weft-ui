@@ -184,7 +184,7 @@ public struct WeftRoot: View {
     private func content(size: CGSize) -> some View {
         Group {
             if let root = session.navigationRoot, session.failure == nil {
-                navigation(root: root)
+                navigation(root: root, size: size)
             } else {
                 weftLinear(axis: .vertical) {
                     if let failure = session.failure {
@@ -202,7 +202,7 @@ public struct WeftRoot: View {
     }
 
     @ViewBuilder
-    private func navigation(root: WeftScope) -> some View {
+    private func navigation(root: WeftScope, size: CGSize) -> some View {
         Group {
             if usesSingleStack {
                 navigationStack(root: root, tab: nil)
@@ -238,7 +238,19 @@ public struct WeftRoot: View {
                 }
             }
         }
-        #if os(macOS)
+        #if os(iOS)
+        .sheet(item: modalBinding(style: 0)) { modal in
+            modalPage(modal).presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(item: modalBinding(style: 1)) { modal in
+            modalPage(modal)
+        }
+        #else
+        .sheet(item: modalBinding(style: nil)) { modal in
+            modalPage(modal)
+                .frame(width: modal.style == 1 ? size.width : nil,
+                       height: modal.style == 1 ? size.height : nil)
+        }
         .background {
             Button("Back") {
                 session.userNavigationPath(Array(session.navigationPath.dropLast()))
@@ -249,6 +261,36 @@ public struct WeftRoot: View {
             .accessibilityHidden(true)
         }
         #endif
+    }
+
+    private func modalBinding(style: UInt32?) -> Binding<NavigationModal?> {
+        Binding(
+            get: {
+                guard let modal = session.navigationModal, style == nil || modal.style == style else { return nil }
+                return modal
+            },
+            set: { value in
+                if value == nil, let modal = session.navigationModal, style == nil || modal.style == style {
+                    session.userDismissModal(modal.id)
+                }
+            }
+        )
+    }
+
+    private func modalPage(_ modal: NavigationModal) -> some View {
+        NavigationStack {
+            if let page = session.page(modal.id) {
+                page.view.id(modal.id)
+                    .modifier(WeftInlineTitle())
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close", systemImage: "xmark") {
+                                session.userDismissModal(modal.id)
+                            }
+                        }
+                    }
+            }
+        }
     }
 
     private var usesSingleStack: Bool {

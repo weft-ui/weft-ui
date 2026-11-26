@@ -18,6 +18,11 @@ public struct WeftTab {
     }
 }
 
+struct NavigationModal: Identifiable, Equatable {
+    let id: UInt32
+    let style: UInt32
+}
+
 enum NavigationTransition { case push, pop, replace }
 
 func navigationTransition(from old: [UInt32], to new: [UInt32]) -> NavigationTransition {
@@ -48,7 +53,7 @@ public final class WeftSession {
     private(set) var navigationTabs: [UInt32] = []
     let tabs: [WeftTab]
     private(set) var badges: [Int: String] = [:]
-    private var navigationModal: UInt32 = 0
+    private(set) var navigationModal: NavigationModal?
 
     let overlays = WeftOverlays()
     let assets: WeftAssets
@@ -190,18 +195,19 @@ public final class WeftSession {
         case let .attach(scope, point, child):
             mount(scope, point, [child])
             return true
-        case let .nav(tab, tabs, stack, modal, _):
-            guard Int(tab) < tabs.count, tabs[Int(tab)] != 0, let root = scopes[tabs[Int(tab)]], stack.allSatisfy({ $0 != 0 && scopes[$0] != nil }) else {
+        case let .nav(tab, tabs, stack, modal, style):
+            guard Int(tab) < tabs.count, tabs[Int(tab)] != 0, let root = scopes[tabs[Int(tab)]], stack.allSatisfy({ $0 != 0 && scopes[$0] != nil }),
+                  modal == 0 || scopes[modal] != nil else {
                 fail("weft: navigation references a missing page scope")
                 return false
             }
-            let previous = Set(navigationTabs + navigationPath + [navigationModal])
+            let previous = Set(navigationTabs + navigationPath + [navigationModal?.id ?? 0])
             let retained = Set(tabs + stack + [modal])
             let transition = navigationRoot?.id == root.id
                 ? navigationTransition(from: navigationPath, to: stack) : .replace
             navigationTab = tab
             navigationTabs = tabs
-            navigationModal = modal
+            navigationModal = modal == 0 ? nil : NavigationModal(id: modal, style: style)
             let update = {
                 self.navigationRoot = root
                 self.navigationPath = stack
@@ -234,7 +240,18 @@ public final class WeftSession {
             if let scope = scopes[id] { destroy(scope) }
         }
         let stack = path.map(String.init).joined(separator: ",")
-        let json = "{\"tab\":\(navigationTab),\"stack\":[\(stack)],\"modal\":\(navigationModal)}"
+        let json = "{\"tab\":\(navigationTab),\"stack\":[\(stack)],\"modal\":\(navigationModal?.id ?? 0)}"
+        signal(name: "navigation", json: json)
+        return json
+    }
+
+    @discardableResult
+    func userDismissModal(_ id: UInt32) -> String? {
+        guard navigationModal?.id == id else { return nil }
+        navigationModal = nil
+        if let scope = scopes[id] { destroy(scope) }
+        let stack = navigationPath.map(String.init).joined(separator: ",")
+        let json = "{\"tab\":\(navigationTab),\"stack\":[\(stack)],\"modal\":0}"
         signal(name: "navigation", json: json)
         return json
     }
