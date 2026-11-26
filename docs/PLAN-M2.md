@@ -833,12 +833,12 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 
 | 任务 | 状态 | 提交 | 备注 |
 | --- | --- | --- | --- |
-| B0 | ☐ | | |
-| S1 | ☐ | | |
-| P1 | ☐ | | |
-| P2 | ☐ | | |
-| P3 | ☐ | | |
-| L1 | ☐ | | |
+| B0 | ☑ | — | C-rust、C-ts（`pnpm typecheck` 0 错误）、C-core 22、C-apple 31、C-android、C-windows（内核 13、WinUI 42、FlaUI）、C-linux 9 与 Linux、iOS、Android C-ui 通过；macOS C-ui 见执行中发现；C-shot web 通过、wechat ≤0.018%；小程序 `apps/wechat` 共 1989.4 KiB（不含 `project*.json`）；夜间工作流 11-22 已手动触发并成功，之后每日定时运行成功 |
+| S1 | ☑ | 0e6ed2e | |
+| P1 | ☑ | 40345fa | 模拟器日志 `weft: protocol mismatch: kernel speaks 3, shell speaks 2` 已确认 |
+| P2 | ☑ | ef5f8e0 | |
+| P3 | ☑ | 4c861c8 | |
+| L1 | ☑ | e28e65a、9211773 | 后者把 DOM 测试用的 `Pages.weft` 移出 conformance 夹具目录 |
 | R1.w | ☐ | | |
 | R1.a | ☐ | | |
 | R1.d | ☐ | | |
@@ -855,7 +855,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R3.d | ☐ | | |
 | R3.n | ☐ | | |
 | R3.g | ☐ | | |
-| R4.w | ☐ | | |
+| R4.w | ☑ | 4081f7f | 截图待维护者确认；微信开发者工具里四个按钮的人工确认待维护者 |
 | R4.a | ☐ | | |
 | R4.d | ☐ | | |
 | R4.n | ☐ | | |
@@ -893,3 +893,12 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 ## 执行中发现
 
 执行者把计划没有预料到的情况记在这里：现象、原因、处理方式、是否需要维护者决定。
+
+- [B0] `/tmp/weft-m1` 已被清理，按会话记录重建了 `/tmp/weft-m2` 的脚本；最初漏了 `signing.xcconfig` 的 `ENABLE_HARDENED_RUNTIME = NO`，macOS C-ui 启动的 App 因库验证（Team ID 不同）在启动时崩溃，已补上并中止该次运行。`wasm-bindgen` 所在的 `~/.local/share/cargo/bin` 不在工具的 PATH 里，检查脚本改为先 `source /tmp/weft-m2/env.sh`。结论：本机环境问题，仓库无改动；macOS C-ui 在第一个原生波次结束时补跑
+- [B0] `showcase` 改名为 `example` 后，`example/apps/{linux,android}/build` 里残留的 CMake 缓存与 Gradle 中间产物仍指向旧路径，Linux UI 测试找不到可执行文件、Android 构建在 dex 合并失败；删除这两个被忽略的构建目录后通过。`WeftCore.xcframework` 只有 macOS 切片，重新运行 `native/apple/build-core.sh` 后 iOS 通过。Windows 镜像残留的 `node_modules` 让 `pnpm install` 失败，按附录清理后通过。Android 模拟器无窗口运行时 Vulkan 初始化失败，改加 `-gpu swiftshader_indirect`。结论：本机环境问题
+- [B0] `tests/vite/assets.test.ts` 的「dev server reloads after a variant is added」在并行负载下失败一次，单独重跑 3 次均通过。结论：计时敏感的测试，记录在案
+- [B0] 本地 `shot:android` 的深色截图在 `theme`、`settings` 页 `performScrollTo()` 失败；本机只有 `Pixel_10_API_37.2`，没有 CONTRIBUTING 要求的 ATD 镜像 `Weft_Shots`，iOS、Android 截图以夜间 CI 为准。结论：不处理（环境差异）
+- [P1] Windows 检查第一次因 Parallels 报错失败，重试通过。结论：偶发
+- [P3] 小程序 `js/index.js` 也变化（计划只写了原生平台）：远程会话新增的 `window` 回调同样打进小程序 bundle。结论：接受，已重新录制 C-apps 基线
+- [L1] 执行者用旧版 tree-sitter CLI 生成 `parser.c`，`tree_sitter/array.h` 被降级；改用 CI 使用的 tree-sitter 0.27.2 重新生成后提交（`array.h` 仍与此前略有差异，来自 0.27.2 本身）。DOM 测试用的 `Pages.weft` 原先放在 `tests/fixtures/`，原生 conformance 构建把它当作夹具目录而失败（`conformance.build`），另提交 9211773 移到 `tests/layout/`。结论：已修复
+- [L1、R4.w] 两个任务在独立 worktree 中执行：iOS、macOS 生成的 `Package.swift` 含检出目录的绝对路径，在 worktree 里比对 C-apps 时只有这一行不同；合并回主工作区后重新运行检查并录制了基线。结论：接受
