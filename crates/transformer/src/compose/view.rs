@@ -18,8 +18,89 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
     out.open(format_args!("private fun V{index}(s: S{index}) {{"));
     let body = Body { template };
     for &root in &template.roots {
+        if matches!(
+            &template.nodes[root as usize].kind,
+            ViewNodeKind::Element {
+                element: Element::NavBar,
+                ..
+            }
+        ) {
+            continue;
+        }
         body.node(out, root);
     }
+    out.close("}");
+}
+
+pub(crate) fn has_navigation_bar(template: &Template) -> bool {
+    template.roots.iter().any(|&node| {
+        matches!(
+            &template.nodes[node as usize].kind,
+            ViewNodeKind::Element {
+                element: Element::NavBar,
+                ..
+            }
+        )
+    })
+}
+
+/// Writes the page's navigation bar separately from its content.
+pub(crate) fn navigation_bar(out: &mut Code, index: usize, template: &Template) {
+    let Some((&node, props, children)) =
+        template
+            .roots
+            .iter()
+            .find_map(|node| match &template.nodes[*node as usize].kind {
+                ViewNodeKind::Element {
+                    element: Element::NavBar,
+                    props,
+                    children,
+                } => Some((node, props, children)),
+                _ => None,
+            })
+    else {
+        unreachable!("navigation_bar requires a NavBar root");
+    };
+    let prop = |name| template.prop(node, props, name);
+    out.writer.line("@Composable");
+    out.open(format_args!(
+        "private fun Bar{index}(s: S{index}, onBack: (() -> Unit)?) {{"
+    ));
+    let title = prop("title")
+        .map(|value| format!("{}", KotlinProp(value, None)))
+        .unwrap_or_else(|| "\"\"".to_owned());
+    let hidden = prop("hidden")
+        .map(|value| format!("{}", KotlinProp(value, None)))
+        .unwrap_or_else(|| "false".to_owned());
+    out.open(format_args!(
+        "WeftNavigationBar(title = {title}, hidden = {hidden}, onBack = onBack) {{"
+    ));
+    for &child in children {
+        let ViewNodeKind::Element {
+            element: Element::BarButton,
+            props,
+            ..
+        } = &template.nodes[child as usize].kind
+        else {
+            unreachable!("NavBar children are BarButtons");
+        };
+        let prop = |name| template.prop(child, props, name);
+        let label = KotlinProp(prop("label").expect("BarButton has a label"), None);
+        let icon = prop("icon")
+            .map(|value| format!("{}", KotlinProp(value, None)))
+            .unwrap_or_else(|| "null".to_owned());
+        let enabled = prop("disabled")
+            .map(|value| format!("!({})", KotlinProp(value, None)))
+            .unwrap_or_else(|| "true".to_owned());
+        let action = template
+            .event(child, "onTap")
+            .map(|slot| format!("s.dispatch({slot})"))
+            .unwrap_or_default();
+        out.writer.line(format_args!(
+            "WeftBarButton(title = {label}, icon = {icon}, enabled = {enabled}, onClick = {{ {action} }})"
+        ));
+    }
+    out.close("}");
     out.close("}");
 }
 

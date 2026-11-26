@@ -66,6 +66,7 @@ private class S1(id: Int, session: WeftSession) : WeftScope(id, session) {
         }
     }
 
+    override val isPage: Boolean get() = true
     @Composable
     override fun Content() = V1(this)
 }
@@ -89,6 +90,7 @@ private class S2(id: Int, session: WeftSession) : WeftScope(id, session) {
         }
     }
 
+    override val isPage: Boolean get() = true
     @Composable
     override fun Content() = V2(this)
 }

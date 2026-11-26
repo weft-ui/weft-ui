@@ -16,7 +16,7 @@ mod view;
 use std::fmt;
 
 use crate::transform::{Context, OutputFile};
-use crate::view::{PointKind, Template, ValueType, ViewLayout, ViewNodeKind};
+use crate::view::{PointKind, Template, TemplateKind, ValueType, ViewLayout, ViewNodeKind};
 
 use kotlin::Code;
 
@@ -101,6 +101,10 @@ fn generate(layout: &ViewLayout) -> String {
         scope(&mut out, index, template);
         out.writer.blank();
         view::view(&mut out, index, template);
+        if view::has_navigation_bar(template) {
+            out.writer.blank();
+            view::navigation_bar(&mut out, index, template);
+        }
     }
     out.writer.finish()
 }
@@ -184,6 +188,15 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
     if !template.values.is_empty() || !template.points.is_empty() {
         out.writer.blank();
     }
+    if template.kind == TemplateKind::Page {
+        out.writer.line("override val isPage: Boolean get() = true");
+        if view::has_navigation_bar(template) {
+            out.writer.line("@Composable");
+            out.writer.line(format_args!(
+                "override fun NavigationBar(onBack: (() -> Unit)?) = Bar{index}(this, onBack)"
+            ));
+        }
+    }
     out.writer.line("@Composable");
     out.writer
         .line(format_args!("override fun Content() = V{index}(this)"));
@@ -224,6 +237,45 @@ mod tests {
                 view.contents
             );
         }
+    }
+
+    #[test]
+    fn page_navigation_bar_uses_live_slots_and_is_not_content() {
+        let mut loader = MemoryLoader::new();
+        loader.insert(
+            "App.weft",
+            r#"
+                event Action()
+                app Notes { start = Home }
+                page Home() { Text("home") }
+                page Detail(title: String, disabled: Bool) {
+                    NavBar(title = title) {
+                        BarButton(label = "Action", disabled = disabled, onTap = Action())
+                    }
+                    Text("body")
+                }
+            "#,
+        );
+        let compilation = crate::check(weft_ui_parser::load(&["App.weft"], &mut loader));
+        let Some(program) = &compilation.program else {
+            panic!("{}", compilation.render_diagnostics());
+        };
+        let code = generate(&ViewLayout::new(program));
+        assert!(
+            code.contains("override val isPage: Boolean get() = true"),
+            "{code}"
+        );
+        assert!(
+            code.contains("override fun NavigationBar(onBack: (() -> Unit)?)"),
+            "{code}"
+        );
+        assert!(
+            code.contains("WeftNavigationBar(title = s.v0, hidden = false, onBack = onBack)"),
+            "{code}"
+        );
+        assert!(code.contains("WeftBarButton(title = \"Action\", icon = null, enabled = !(s.v1), onClick = { s.dispatch(0) })"), "{code}");
+        assert!(code.contains("WeftText(\"body\")"), "{code}");
+        assert!(!code.contains("WeftNavBar"), "{code}");
     }
 
     #[test]

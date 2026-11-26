@@ -50,11 +50,13 @@ fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.
         WeftLinear(WeftAxis.VERTICAL, rootModifier.clipToBounds()) {
             val failure = session.failure
             val root = session.root
+            val navigation = session.navigation
             if (failure != null) {
                 Text(failure, Modifier.padding(16.dp), color = Color.Red)
-            } else if (root != null) {
+            } else {
                 CompositionLocalProvider(LocalWeftTheme provides theme, LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    key(root.id) { root.Content() }
+                    if (navigation != null) WeftNavigationHost(session, navigation)
+                    else if (root != null) key(root.id) { root.Content() }
                 }
             }
         }

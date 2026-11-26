@@ -182,19 +182,20 @@ public struct WeftRoot: View {
                                 page.view.id(id).modifier(WeftInlineTitle())
                             }
                         }
-                        #if os(macOS)
-                        .toolbar {
-                            if !session.navigationPath.isEmpty {
-                                ToolbarItem(placement: .navigation) {
-                                    Button("Back", systemImage: "chevron.left") {
-                                        session.userNavigationPath(Array(session.navigationPath.dropLast()))
-                                    }
-                                    .keyboardShortcut("[", modifiers: .command)
-                                }
-                            }
-                        }
-                        #endif
                 }
+                #if os(macOS)
+                // The stack's toolbar back button belongs to the pushed page and disappears with a hidden
+                // navigation bar; ⌘[ lives outside the toolbar so it works in both cases.
+                .background {
+                    Button("Back") {
+                        session.userNavigationPath(Array(session.navigationPath.dropLast()))
+                    }
+                    .keyboardShortcut("[", modifiers: .command)
+                    .disabled(session.navigationPath.isEmpty)
+                    .opacity(0)
+                    .accessibilityHidden(true)
+                }
+                #endif
                 .frame(width: size.width, height: size.height)
             } else if let root = session.root {
                 root.view.id(root.id)

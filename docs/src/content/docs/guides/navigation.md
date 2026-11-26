@@ -80,4 +80,8 @@ Back gestures, browser Back, and the mini program back button return to the prec
 
 - **Web:** navigation uses History API paths, not hash routes. Configure static hosting to serve `index.html` for unknown paths. Refreshing a page restores the start page and current route; browser Back uses saved history routes. Transitions respect `prefers-reduced-motion`.
 - **WeChat:** each Weft page has its own mini program page. The platform page stack is limited to 10 pages; a push beyond the limit throws. When launched directly into a non-start page, that page is the only stack entry and the platform offers a return-home control. Dynamic titles update the native bar. `BarButton` is ignored, so put essential actions in page content too.
-- **Native:** application navigation is being enabled per platform; consult the [element reference](/reference/elements/) for current support.
+- **iOS:** a SwiftUI `NavigationStack` with an inline title; swipe from the leading edge goes back. `BarButton`s appear as primary toolbar actions.
+- **macOS:** the window toolbar shows the title, a back button, and `BarButton`s; ⌘[ also goes back, even when the bar is hidden.
+- **Android:** a Navigation 3 back stack with a Material top app bar. System Back and predictive back return to the preceding page.
+- **Windows:** a title row with a back button, the title, and `BarButton`s as app bar buttons; Alt+Left and the mouse back button also go back.
+- **Linux:** a GTK header with a back button, the title, and `BarButton`s; Alt+Left and the mouse back button also go back.

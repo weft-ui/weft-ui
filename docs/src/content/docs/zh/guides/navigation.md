@@ -80,4 +80,8 @@ run(new Notes({
 
 - **Web**：导航使用 History API 路径，不使用 hash 路由。静态托管需要将未知路径回退到 `index.html`。刷新会恢复起始页和当前路由；浏览器后退使用历史条目中保存的路由。转场遵守 `prefers-reduced-motion`。
 - **微信小程序**：每个 Weft 页面对应一个小程序页面。平台页面栈最多 10 层，超过时 push 抛错。直接启动到非起始页时，栈中只有该页，平台提供返回首页入口。动态标题会更新原生标题栏。`BarButton` 被忽略，因此必要操作也要放在页面内容中。
-- **原生平台**：应用导航按平台逐步启用；当前支持情况见[元素参考](/zh/reference/elements/)。
+- **iOS**：SwiftUI `NavigationStack`，标题内联显示；从前沿边缘滑动返回。`BarButton` 显示为工具栏的主要操作。
+- **macOS**：窗口工具栏显示标题、返回按钮和 `BarButton`；⌘[ 也能返回，标题栏隐藏时同样有效。
+- **Android**：Navigation 3 返回栈加 Material 顶部应用栏。系统返回与预测性返回回到上一页。
+- **Windows**：标题行包含返回按钮、标题，`BarButton` 显示为应用栏按钮；Alt+Left 与鼠标后退键也能返回。
+- **Linux**：GTK 标题区包含返回按钮、标题和 `BarButton`；Alt+Left 与鼠标后退键也能返回。

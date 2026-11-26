@@ -38,6 +38,7 @@ class S0 final : public weft::Scope {
 class S1 final : public weft::Scope {
  public:
   S1(uint32_t id, weft::Session &session) : Scope(id, session, 1) {
+    init_page();
     auto &n0 = make<weft::Linear>(weft::Axis::Vertical);
     roots().add(n0);
     n0.children().point(*this, 0);
@@ -61,6 +62,7 @@ class S1 final : public weft::Scope {
 class S2 final : public weft::Scope {
  public:
   S2(uint32_t id, weft::Session &session) : Scope(id, session, 1) {
+    init_page();
     roots().point(*this, 0);
   }
 };

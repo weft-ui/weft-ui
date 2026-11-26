@@ -303,7 +303,21 @@ mod tests {
 
     #[test]
     fn pages_route_navigation_bar_slots_to_the_header() {
-        let code = cpp(include_str!("../../tests/fixtures/Navigation.weft"));
+        let code = cpp(r#"event Action()
+
+app Notes { start = Home }
+
+page Home() {
+    NavBar(title = "Home")
+    Text("Home")
+}
+
+page Detail(id: String) {
+    NavBar(title = "Note ${id}") {
+        BarButton(label = "Action", onTap = Action())
+    }
+    Text(id)
+}"#);
         for expected in [
             "Session::start(kLayoutHash, safe_area, make_scope, true)",
             "init_page();",

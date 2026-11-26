@@ -171,12 +171,12 @@ fn app_layout_and_platform_support() {
         &Default::default(),
     );
     assert!(
-        output
-            .compilation
-            .diagnostics
-            .iter()
-            .any(|d| d.message.contains("apps are not supported on ios"))
+        output.compilation.diagnostics.is_empty(),
+        "{:?}",
+        output.compilation.diagnostics
     );
+    let layout = output.layout.expect("iOS has a layout").to_json();
+    assert!(layout.contains("\"app\": {\"start\": 0}"), "{layout}");
 }
 
 #[test]

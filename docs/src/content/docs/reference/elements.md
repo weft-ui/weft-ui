@@ -11,8 +11,6 @@ All elements also accept `onMount` and `onUnmount`, which have no payload.
 
 Describes the page navigation bar; it must be the first top-level page node.
 
-**Platform exceptions:** Unsupported: `ios`; Unsupported: `macos`; Unsupported: `android`; Unsupported: `windows`; Unsupported: `linux`.
-
 Only these direct child elements are accepted: `BarButton`.
 
 Must be the first top-level node of a page, outside conditional and loop blocks.
@@ -26,7 +24,7 @@ Must be the first top-level node of a page, outside conditional and loop blocks.
 
 An accessible navigation bar action; ignored on WeChat.
 
-**Platform exceptions:** Ignored: `wechat`; Unsupported: `ios`; Unsupported: `macos`; Unsupported: `android`; Unsupported: `windows`; Unsupported: `linux`.
+**Platform exceptions:** Ignored: `wechat`.
 
 **Children:** None.
 

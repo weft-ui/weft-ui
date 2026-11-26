@@ -119,8 +119,20 @@ const TAP: Fixture = Fixture {
 const NAVIGATION: Fixture = Fixture {
     name: "Navigation",
     source: include_str!("fixtures/Navigation.weft"),
-    natives: &[],
-    diverges: &[],
+    natives: &[
+        Platform::Ios,
+        Platform::Macos,
+        Platform::Android,
+        Platform::Windows,
+        Platform::Linux,
+    ],
+    diverges: &[
+        Platform::Ios,
+        Platform::Macos,
+        Platform::Android,
+        Platform::Windows,
+        Platform::Linux,
+    ],
 };
 
 const PAGES: Fixture = Fixture {

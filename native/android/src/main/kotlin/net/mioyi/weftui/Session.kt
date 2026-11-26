@@ -29,6 +29,24 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     var root: WeftScope? by mutableStateOf(null)
         internal set
 
+    internal var navigation: NavigationState? by mutableStateOf(null)
+        private set
+
+    internal var navigationChange = NavigationChange.REPLACE
+        private set
+
+    internal fun page(id: Int): WeftScope? = scopes[id]
+
+    internal fun back() {
+        val old = navigation ?: return
+        val next = old.back() ?: return
+        navigationChange = next.changeFrom(old)
+        navigation = next
+        val kept = next.pages().toSet()
+        for (id in old.pages()) if (id !in kept) scopes[id]?.let(::destroy)
+        signal("navigation", next.signal())
+    }
+
     /** Why the app failed to start or render, shown instead of its views. */
     var failure: String? by mutableStateOf(null)
         private set
@@ -142,8 +160,8 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
         committing = true
         try {
             val batch = OpReader.readAll(ops)
-            if (batch.any { it is Op.Splice || it is Op.Bind || it is Op.Nav }) {
-                fail("weft: cannot apply ops (lazy lists and app navigation are not supported by these views)")
+            if (batch.any { it is Op.Splice || it is Op.Bind }) {
+                fail("weft: cannot apply ops (lazy lists are not supported by these views)")
                 return
             }
             for (op in batch) {
@@ -172,7 +190,20 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
             is Op.Branch -> mount(op.scope, op.point, if (op.child == 0) IntArray(0) else intArrayOf(op.child))
             is Op.Rows -> mount(op.scope, op.point, op.children)
             is Op.Attach -> mount(op.scope, op.point, intArrayOf(op.child))
-            is Op.Splice, is Op.Bind, is Op.Nav -> error("unsupported op")
+            is Op.Nav -> {
+                val next = NavigationState(op.tab, op.tabs, op.stack, op.modal, op.style)
+                if (op.tab !in op.tabs.indices || op.tabs[op.tab] == 0 ||
+                    next.pages().any { scopes[it]?.isPage != true }) {
+                    fail("weft: invalid navigation state")
+                    return false
+                }
+                val old = navigation
+                navigationChange = next.changeFrom(old)
+                navigation = next
+                val kept = next.pages().toSet()
+                old?.pages()?.forEach { if (it !in kept) scopes[it]?.let(::destroy) }
+            }
+            is Op.Splice, is Op.Bind -> error("unsupported op")
         }
         return true
     }

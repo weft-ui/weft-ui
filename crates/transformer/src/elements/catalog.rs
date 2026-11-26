@@ -14,16 +14,7 @@ pub(crate) enum Level {
 }
 
 /// Platform support exceptions for language features.
-pub(crate) const FEATURES: &[(&str, &[(Platform, Level)])] = &[(
-    "navigation",
-    &[
-        (Platform::Ios, Level::No),
-        (Platform::Macos, Level::No),
-        (Platform::Android, Level::No),
-        (Platform::Windows, Level::No),
-        (Platform::Linux, Level::No),
-    ],
-)];
+pub(crate) const FEATURES: &[(&str, &[(Platform, Level)])] = &[("navigation", &[])];
 
 /// Built-in elements available in Weft views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -4608,13 +4599,7 @@ pub(crate) const ELEMENTS: [ElementSpec; 20] = [
         page_root: true,
         parents: &[],
         content: None,
-        support: &[
-            (Platform::Ios, Level::No),
-            (Platform::Macos, Level::No),
-            (Platform::Android, Level::No),
-            (Platform::Windows, Level::No),
-            (Platform::Linux, Level::No),
-        ],
+        support: &[],
     },
     ElementSpec {
         element: Element::BarButton,
@@ -4624,14 +4609,7 @@ pub(crate) const ELEMENTS: [ElementSpec; 20] = [
         page_root: false,
         parents: &[Element::NavBar],
         content: None,
-        support: &[
-            (Platform::Wechat, Level::Ignored),
-            (Platform::Ios, Level::No),
-            (Platform::Macos, Level::No),
-            (Platform::Android, Level::No),
-            (Platform::Windows, Level::No),
-            (Platform::Linux, Level::No),
-        ],
+        support: &[(Platform::Wechat, Level::Ignored)],
     },
     ElementSpec {
         element: Element::Column,

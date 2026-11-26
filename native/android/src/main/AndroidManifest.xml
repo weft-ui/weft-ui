@@ -4,4 +4,6 @@
     <!-- The fetch platform module and Image. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <application android:enableOnBackInvokedCallback="true" />
+
 </manifest>

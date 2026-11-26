@@ -110,7 +110,8 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
             }
             match element {
                 Element::NavBar => {
-                    out.writer.line(format_args!("NavigationBar = n{index}.Element;"));
+                    out.writer
+                        .line(format_args!("NavigationBar = n{index}.Element;"));
                     for &child in children {
                         node(out, template, has_theme, child, Some(index));
                     }
@@ -121,7 +122,8 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                 }
                 Element::Span => {}
                 _ => {
-                    out.writer.line(format_args!("{region}.Add(n{index}.Element);"));
+                    out.writer
+                        .line(format_args!("{region}.Add(n{index}.Element);"));
                     for &child in children {
                         node(out, template, has_theme, child, Some(index));
                     }

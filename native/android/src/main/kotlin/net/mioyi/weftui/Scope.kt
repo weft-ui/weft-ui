@@ -24,6 +24,15 @@ abstract class WeftScope(
      */
     open fun mount(point: Int, children: List<WeftScope>) {}
 
+    /** Page scopes are roots referenced by navigation rather than attach. */
+    open val isPage: Boolean get() = false
+
+    /** Page title bar; generated page scopes override this when a NavBar is present. */
+    @Composable
+    open fun NavigationBar(onBack: (() -> Unit)?) {
+        WeftNavigationBar(title = "", hidden = false, onBack = onBack) {}
+    }
+
     /** The Compose UI of this scope. */
     @Composable
     abstract fun Content()

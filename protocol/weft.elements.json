@@ -1,6 +1,6 @@
 {
   "features": {
-    "navigation": { "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" }
+    "navigation": {}
   },
   "unions": {
     "CrossAlign": ["start", "center", "end", "stretch"],
@@ -207,7 +207,6 @@
       "doc": { "en": "Describes the page navigation bar; it must be the first top-level page node.", "zh": "描述页面导航栏；必须是页面的第一个顶层节点。" },
       "pageRoot": true,
       "children": ["BarButton"],
-      "support": { "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" },
       "members": [
         { "name": "title", "type": "String", "doc": { "en": "The navigation bar title.", "zh": "导航栏标题。" } },
         { "name": "hidden", "type": "Bool", "constant": true, "default": false, "doc": { "en": "Hides the navigation bar.", "zh": "隐藏导航栏。" } }
@@ -217,7 +216,7 @@
       "name": "BarButton",
       "doc": { "en": "An accessible navigation bar action; ignored on WeChat.", "zh": "无障碍导航栏操作；小程序忽略此元素。" },
       "parents": ["NavBar"],
-      "support": { "wechat": "ignored", "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" },
+      "support": { "wechat": "ignored" },
       "members": [
         { "name": "icon", "type": "String", "doc": { "en": "A bundled asset icon.", "zh": "打包资源图标。" } },
         { "name": "label", "type": "String", "required": true, "doc": { "en": "The accessible action label.", "zh": "操作的无障碍标签。" } },
