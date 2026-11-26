@@ -1,0 +1,37 @@
+{
+  "hash": "0cb287c33f80ecd6",
+  "app": {"start": 0},
+  "safeArea": true,
+  "templates": [
+    {
+      "label": "Home",
+      "kind": "page",
+      "roots": [0, 1],
+      "nodes": [
+        {"element": "NavBar", "props": {"title": "Home"}, "children": []},
+        {"element": "Text", "props": {"value": "Home"}, "children": []}
+      ],
+      "values": [],
+      "events": [],
+      "points": []
+    },
+    {
+      "label": "Detail",
+      "kind": "page",
+      "roots": [0, 2],
+      "nodes": [
+        {"element": "NavBar", "props": {}, "children": [1]},
+        {"element": "BarButton", "props": {"label": "Action"}, "children": []},
+        {"element": "Text", "props": {}, "children": []}
+      ],
+      "values": [
+        {"node": 0, "prop": "title", "type": "String"},
+        {"node": 2, "prop": "value", "type": "String"}
+      ],
+      "events": [
+        {"node": 1, "event": "onTap", "payload": null, "controls": null}
+      ],
+      "points": []
+    }
+  ]
+}

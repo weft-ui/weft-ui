@@ -96,6 +96,36 @@ import UniformTypeIdentifiers
     #expect(!WeftImageContent.withinPixelLimit(Data()))
 }
 
+@Test func navigationTransitions() {
+    #expect(navigationTransition(from: [1], to: [1, 2]) == .push)
+    #expect(navigationTransition(from: [1, 2], to: [1]) == .pop)
+    #expect(navigationTransition(from: [1, 2], to: [1, 3]) == .replace)
+    #expect(navigationTransition(from: [1], to: [1]) == .replace)
+}
+
+@Test @MainActor func navigationBackReportsRetainedStack() {
+    let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true) { _, id, session in
+        WeftScope(id: id, session: session)
+    }
+    var bytes: [UInt8] = [WeftProtocol.version]
+    func word(_ value: UInt32) {
+        withUnsafeBytes(of: value.littleEndian) { bytes.append(contentsOf: $0) }
+    }
+    for id: UInt32 in [1, 2, 3] {
+        bytes.append(OpCode.create.rawValue)
+        word(id)
+        word(0)
+    }
+    bytes.append(OpCode.nav.rawValue)
+    word(0); word(1); word(1); word(2); word(2); word(3); word(0); word(0)
+    bytes.withUnsafeBytes { session.commit($0) }
+    #expect(session.navigationPath == [2, 3])
+    #expect(session.userNavigationPath([2]) == #"{"tab":0,"stack":[2],"modal":0}"#)
+    #expect(session.navigationPath == [2])
+    #expect(session.page(3) == nil)
+    #expect(session.userNavigationPath([3]) == nil)
+}
+
 @Test @MainActor func sessionCommitStopsAfterMissingTemplateOp() {
     var requestedTemplates: [UInt32] = []
     let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true) { template, id, session in

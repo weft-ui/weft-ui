@@ -15,8 +15,75 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
     out.writer.blank();
     out.open("var body: some View {");
     let body = Body { template };
+    let navbar =
+        template
+            .roots
+            .iter()
+            .find_map(|&root| match &template.nodes[root as usize].kind {
+                ViewNodeKind::Element {
+                    element: Element::NavBar,
+                    props,
+                    children,
+                } => Some((root, props, children)),
+                _ => None,
+            });
+    if navbar.is_some() {
+        out.open("Group {");
+    }
     for &root in &template.roots {
-        body.node(out, root);
+        if !matches!(
+            &template.nodes[root as usize].kind,
+            ViewNodeKind::Element {
+                element: Element::NavBar,
+                ..
+            }
+        ) {
+            body.node(out, root);
+        }
+    }
+    if navbar.is_some() {
+        out.close("}");
+    }
+    if let Some((node, props, children)) = navbar {
+        let title = with_default(template.prop(node, props, "title"), "\"\"");
+        let hidden = with_default(template.prop(node, props, "hidden"), "false");
+        out.writer.line(format_args!(".navigationTitle({title})"));
+        out.writer.line("#if os(iOS)");
+        out.writer.line(".navigationBarTitleDisplayMode(.inline)");
+        out.writer.line(format_args!(
+            ".toolbar({hidden} ? .hidden : .visible, for: .navigationBar)"
+        ));
+        out.writer.line("#endif");
+        if !children.is_empty() {
+            out.open(".toolbar {");
+            for &child in children {
+                if let ViewNodeKind::Element { props, .. } = &template.nodes[child as usize].kind {
+                    let label = with_default(template.prop(child, props, "label"), "\"\"");
+                    let disabled = with_default(template.prop(child, props, "disabled"), "false");
+                    let action = template.event(child, "onTap").map_or_else(
+                        || "{}".to_owned(),
+                        |slot| format!("{{ _ = s.dispatch({slot}) }}"),
+                    );
+                    out.open("ToolbarItem(placement: .primaryAction) {");
+                    if let Some(icon) = template.prop(child, props, "icon") {
+                        out.open(format_args!("Button(action: {action}) {{"));
+                        out.writer.line(format_args!(
+                            "WeftImage(src: {}).frame(width: 24, height: 24)",
+                            Argument::Property(icon)
+                        ));
+                        out.close("}");
+                        out.writer
+                            .line(format_args!(".accessibilityLabel({label})"));
+                    } else {
+                        out.writer
+                            .line(format_args!("Button({label}, action: {action})"));
+                    }
+                    out.writer.line(format_args!(".disabled({disabled})"));
+                    out.close("}");
+                }
+            }
+            out.close("}");
+        }
     }
     out.close("}");
     out.close("}");

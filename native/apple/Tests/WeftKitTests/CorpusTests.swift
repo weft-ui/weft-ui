@@ -109,7 +109,7 @@ private func decode(_ bytes: [UInt8]) throws -> [Op] {
 
 @Test @MainActor func unsupportedOpsRejectTheWholeBatch() throws {
     let cases = try #require(corpus("ops")["cases"] as? [JSONObject])
-    for name in ["splice-rows", "bind", "nav-start"] {
+    for name in ["splice-rows", "bind"] {
         let test = try #require(cases.first { $0["name"] as? String == name })
         let encoded = try hexBytes(test)
         let bytes: [UInt8] = [WeftProtocol.version, OpCode.create.rawValue, 1, 0, 0, 0, 1, 0, 0, 0] + encoded.dropFirst()

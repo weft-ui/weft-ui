@@ -1,9 +1,18 @@
 import Foundation
+import SwiftUI
 import Observation
 import WeftCore
 import os
 
 let logger = Logger(subsystem: "net.mioyi.weftui", category: "weft")
+
+enum NavigationTransition { case push, pop, replace }
+
+func navigationTransition(from old: [UInt32], to new: [UInt32]) -> NavigationTransition {
+    if new.count > old.count && new.starts(with: old) { return .push }
+    if new.count < old.count && old.starts(with: new) { return .pop }
+    return .replace
+}
 
 /// One Weft app running in the native kernel: owns the kernel runtime and
 /// the scope tree its ops build.
@@ -21,6 +30,11 @@ public final class WeftSession {
     public internal(set) var root: WeftScope?
     /// Why the app failed to start or render, shown instead of its views.
     public private(set) var failure: String?
+    private(set) var navigationRoot: WeftScope?
+    private(set) var navigationPath: [UInt32] = []
+    private var navigationTab: UInt32 = 0
+    private var navigationTabs: [UInt32] = []
+    private var navigationModal: UInt32 = 0
 
     let overlays = WeftOverlays()
     let assets: WeftAssets
@@ -126,8 +140,8 @@ public final class WeftSession {
             let ops = try OpReader.readAll(bytes)
             for op in ops {
                 switch op {
-                case .splice, .bind, .nav:
-                    fail("weft: cannot apply ops (lazy lists and app navigation are not supported by these views)")
+                case .splice, .bind:
+                    fail("weft: cannot apply ops (lazy lists are not supported by these views)")
                     return
                 default: break
                 }
@@ -161,10 +175,53 @@ public final class WeftSession {
         case let .attach(scope, point, child):
             mount(scope, point, [child])
             return true
-        case .splice, .bind, .nav:
-            fail("weft: cannot apply ops (lazy lists and app navigation are not supported by these views)")
+        case let .nav(tab, tabs, stack, modal, _):
+            guard Int(tab) < tabs.count, let root = scopes[tabs[Int(tab)]], stack.allSatisfy({ scopes[$0] != nil }) else {
+                fail("weft: navigation references a missing page scope")
+                return false
+            }
+            let previous = Set(navigationTabs + navigationPath + [navigationModal])
+            let retained = Set(tabs + stack + [modal])
+            let transition = navigationRoot?.id == root.id
+                ? navigationTransition(from: navigationPath, to: stack) : .replace
+            navigationTab = tab
+            navigationTabs = tabs
+            navigationModal = modal
+            let update = {
+                self.navigationRoot = root
+                self.navigationPath = stack
+            }
+            if transition == .replace {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction, update)
+            } else {
+                update()
+            }
+            for id in previous.subtracting(retained) {
+                if let scope = scopes[id], id != 0 { destroy(scope) }
+            }
+            return true
+        case .splice, .bind:
+            fail("weft: cannot apply ops (lazy lists are not supported by these views)")
             return false
         }
+    }
+
+    func page(_ id: UInt32) -> WeftScope? { scopes[id] }
+
+    @discardableResult
+    func userNavigationPath(_ path: [UInt32]) -> String? {
+        guard path.count < navigationPath.count, navigationPath.starts(with: path) else { return nil }
+        let removed = navigationPath.dropFirst(path.count)
+        navigationPath = path
+        for id in removed {
+            if let scope = scopes[id] { destroy(scope) }
+        }
+        let stack = path.map(String.init).joined(separator: ",")
+        let json = "{\"tab\":\(navigationTab),\"stack\":[\(stack)],\"modal\":\(navigationModal)}"
+        signal(name: "navigation", json: json)
+        return json
     }
 
     /// Mounts the scopes `ids` at `point` of `parent`; children no longer

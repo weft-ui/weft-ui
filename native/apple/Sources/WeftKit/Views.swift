@@ -123,6 +123,16 @@ private struct WeftOverlayModifier: ViewModifier {
     }
 }
 
+private struct WeftInlineTitle: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.navigationBarTitleDisplayMode(.inline)
+        #else
+        content
+        #endif
+    }
+}
+
 /// Renders the root component or startup failure, respecting the safe area by default.
 public struct WeftRoot: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -160,6 +170,32 @@ public struct WeftRoot: View {
                 Text(verbatim: failure)
                     .foregroundStyle(.red)
                     .padding()
+            } else if let root = session.navigationRoot {
+                NavigationStack(path: Binding(
+                    get: { session.navigationPath },
+                    set: { _ = session.userNavigationPath($0) }
+                )) {
+                    root.view.id(root.id)
+                        .modifier(WeftInlineTitle())
+                        .navigationDestination(for: UInt32.self) { id in
+                            if let page = session.page(id) {
+                                page.view.id(id).modifier(WeftInlineTitle())
+                            }
+                        }
+                        #if os(macOS)
+                        .toolbar {
+                            if !session.navigationPath.isEmpty {
+                                ToolbarItem(placement: .navigation) {
+                                    Button("Back", systemImage: "chevron.left") {
+                                        session.userNavigationPath(Array(session.navigationPath.dropLast()))
+                                    }
+                                    .keyboardShortcut("[", modifiers: .command)
+                                }
+                            }
+                        }
+                        #endif
+                }
+                .frame(width: size.width, height: size.height)
             } else if let root = session.root {
                 root.view.id(root.id)
             }
