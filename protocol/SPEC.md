@@ -187,14 +187,18 @@ Image `src` values stay as strings in the layout and ops. The mini program view 
 
 On native platforms, the JS bundle runs in the kernel in `native/core`. The kernel embeds Hermes, executes `bundle.hbc`, and communicates with the platform shell through the C ABI ([`native/core/include/weft/runtime.h`](../native/core/include/weft/runtime.h)). The platform shell is WeftKit in `native/apple` for iOS / macOS, the Kotlin module in `native/android` for Android (loads `libweft.so` through JNI), Weft.WinUI in `native/windows` for Windows (loads `weft_core.dll` through P/Invoke), and the C++ library in `native/linux` for Linux (links against `libweft_core.so`). The kernel does not create threads. All functions are called on the UI thread and must not be called reentrantly from a `weft_host` callback.
 
+The shell supplies initial launch options in `weft_host.launch`, a NUL-terminated UTF-8 JSON string copied during startup; NULL means `{}`. The shell calls `weft_runtime_window(rt, scope, point, start, end)` for a lazy point's half-open window, and `weft_runtime_signal(rt, name, json, len)` for a host event. Unknown signal names are ignored. Signals include `navigation` (`tab`, `stack`, `modal`), `lifecycle` (`state`), `memory` (`{}`), and `link` (`url`).
+
 ### The `__weft` global
 
 The kernel installs this global before running the bundle. The native implementations of `@weft-ui/runtime/native` and `@weft-ui/platform` use it:
 
 | Member                            | Meaning |
 | --------------------------------- | ------- |
-| `open(hash, dispatch, protocol)`  | The sink's `open`. Checks the bundle protocol before the layout hash; throws on mismatch or if an app is already open. |
+| `open(hash, dispatch, protocol, window)` | Opens the sink; `window` receives scope, point, start and end. Checks protocol before layout hash; throws on mismatch or if an app is already open. |
 | `protocol`                        | The kernel's protocol version. |
+| `launch`                          | Startup options as a JSON string; defaults to `{}`. |
+| `on(name, callback)`              | Registers one signal callback per name, replacing the previous callback; receives a JSON string. |
 | `commit(buffer, offset, length)`  | A batch of ops. The kernel passes this byte range directly to `weft_host.commit` without copying it. |
 | `close()`                         | The sink's `close`. Subsequent events are ignored. |
 | `supports(module)`                | Whether the platform shell implements the platform module `module`. |
@@ -224,13 +228,13 @@ When any field changes, the shell calls `weft_runtime_environment(rt, json, len)
 
 ### Event loop
 
-- `weft_runtime_new` executes the bundle, which mounts the app. Every entry point that executes JS (`new`, `tick`, `dispatch`, `resolve`, `environment`) drains the microtask queue before returning. The first batch of ops has therefore been committed by the time `weft_runtime_new` returns.
+- `weft_runtime_new` executes the bundle, which mounts the app. Every entry point that executes JS (`new`, `tick`, `dispatch`, `resolve`, `environment`, `window`, `signal`) drains the microtask queue before returning. The first batch of ops has therefore been committed by the time `weft_runtime_new` returns.
 - Timers run in order of expiration, with ties broken by the order in which they were set. The microtask queue is drained after each timer. Timers set during a `tick` are deferred to the next one. The kernel requests the next `tick` with `weft_host.schedule(delay)`. The platform shell may coalesce requests; early or redundant calls to `tick` are harmless.
 - Uncaught exceptions in the bundle, timers, microtasks, event handlers, or the environment callback are reported as `WEFT_LOG_ERROR` without terminating the runtime. If the bundle itself throws (including on a layout hash mismatch), `weft_runtime_new` returns `NULL`.
 
 ### Event payloads
 
-The `payload` in `weft_runtime_dispatch(rt, scope, slot, payload, len)` is a value in the [binary encoding](#binary-encoding-version-2) (tag byte followed by data). String arrays are only used for view values, never as event payloads. Pass an empty payload for an event with no payload. The return value is that of `Session.dispatch`.
+The `payload` in `weft_runtime_dispatch(rt, scope, slot, payload, len)` is a value in the [binary encoding](#binary-encoding-version-3) (tag byte followed by data). String arrays are only used for view values, never as event payloads. Pass an empty payload for an event with no payload. The return value is that of `Session.dispatch`.
 
 For an `Input` or `TextArea` with `maxLength`, the host truncates a user edit to the limit in UTF-16 code units before dispatching `onChange`. The kernel receives the already truncated payload.
 

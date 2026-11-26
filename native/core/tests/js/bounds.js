@@ -7,7 +7,7 @@ function expectThrows(label, fn) {
   throw new Error(`expected throw: ${label}`);
 }
 
-__weft.open("00000000000000ab", () => true, 3);
+__weft.open("00000000000000ab", () => true, 3, () => {});
 
 const buf = new ArrayBuffer(8);
 expectThrows("commit NaN offset", () => __weft.commit(buf, NaN, 2));

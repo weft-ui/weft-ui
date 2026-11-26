@@ -25,6 +25,7 @@ internal static unsafe partial class Native
         public delegate* unmanaged<nint, int, byte*, nuint, void> Log;
         public byte* Version;
         public byte* Environment;
+        public byte* Launch;
     }
 
     [LibraryImport(Library, EntryPoint = "weft_runtime_new")]
@@ -35,6 +36,12 @@ internal static unsafe partial class Native
 
     [LibraryImport(Library, EntryPoint = "weft_runtime_dispatch")]
     public static partial byte RuntimeDispatch(nint runtime, uint scope, uint handler, byte* payload, nuint len);
+
+    [LibraryImport(Library, EntryPoint = "weft_runtime_window")]
+    public static partial void RuntimeWindow(nint runtime, uint scope, uint point, uint start, uint end);
+
+    [LibraryImport(Library, EntryPoint = "weft_runtime_signal")]
+    public static partial void RuntimeSignal(nint runtime, byte* name, byte* json, nuint len);
 
     [LibraryImport(Library, EntryPoint = "weft_runtime_resolve")]
     public static partial void RuntimeResolve(nint runtime, uint id, byte ok, byte* result, nuint len);

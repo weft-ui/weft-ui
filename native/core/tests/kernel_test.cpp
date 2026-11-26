@@ -97,10 +97,11 @@ struct Shell {
     return h;
   }
 
-  weft_runtime *start(const std::string &bundle, uint64_t hash = 0, const char *environment = nullptr) {
+  weft_runtime *start(const std::string &bundle, uint64_t hash = 0, const char *environment = nullptr, const char *launch = nullptr) {
     bytecode = read_file(dir + "/" + bundle + ".hbc");
     weft_host h = host();
     h.environment = environment;
+    h.launch = launch;
     rt = weft_runtime_new(&h, bytecode.data(), bytecode.size(), hash);
     return rt;
   }
@@ -350,6 +351,31 @@ void protocol() {
     Shell shell;
     CHECK(shell.start("session", 0xab));
   }
+}
+
+void window() {
+  Shell shell;
+  CHECK(shell.start("host-events", 0xab));
+  weft_runtime_window(shell.rt, 7, 2, 3, 15);
+  CHECK_EQ(shell.lines(), (std::vector<std::string>{"launch {}", "window 7 2 3 15", "window microtask"}));
+}
+
+void signal() {
+  Shell shell;
+  CHECK(shell.start("host-events", 0xab));
+  weft_runtime_signal(shell.rt, "unknown", "{}", 2);
+  const std::string json = R"({"state":"background"})";
+  weft_runtime_signal(shell.rt, "lifecycle", json.data(), json.size());
+  CHECK_EQ(shell.lines(), (std::vector<std::string>{"launch {}", "signal " + json, "signal microtask"}));
+}
+
+void launch() {
+  Shell default_shell;
+  CHECK(default_shell.start("host-events", 0xab));
+  CHECK_EQ(default_shell.lines(), (std::vector<std::string>{"launch {}"}));
+  Shell custom_shell;
+  CHECK(custom_shell.start("host-events", 0xab, nullptr, R"({"url":"weft://notes/1"})"));
+  CHECK_EQ(custom_shell.lines(), (std::vector<std::string>{R"(launch {"url":"weft://notes/1"})"}));
 }
 
 void stable_rows() {
@@ -624,7 +650,8 @@ const std::map<std::string, std::function<void()>> kCases = {
     {"text", text},       {"calls", calls},             {"session", session},
     {"refused", refused}, {"stable_rows", stable_rows}, {"ops", ops},
     {"corpus", corpus},   {"unicode", unicode},         {"environment", environment},
-    {"bounds", bounds},   {"protocol", protocol},
+    {"bounds", bounds},   {"protocol", protocol},       {"window", window},
+    {"signal", signal},   {"launch", launch},
 };
 
 }  // namespace

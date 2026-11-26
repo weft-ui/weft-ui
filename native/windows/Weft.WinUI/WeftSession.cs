@@ -130,6 +130,7 @@ public sealed class WeftSession
                     Log = &OnLog,
                     Version = versionBytes,
                     Environment = jsonBytes,
+                    Launch = null,
                 };
                 runtime = Native.RuntimeNew(&host, bytecode, (nuint)data.Length, layoutHash);
             }
@@ -206,6 +207,32 @@ public sealed class WeftSession
         fixed (byte* data = CollectionsMarshal.AsSpan(bytes))
         {
             return Native.RuntimeDispatch(runtime, scope, slot, data, (nuint)bytes.Count) != 0;
+        }
+    }
+
+    internal void Window(uint scope, uint point, uint start, uint end)
+    {
+        if (committing)
+        {
+            Debug.Fail("weft: a window was requested while ops were applied");
+            return;
+        }
+        if (runtime != 0) Native.RuntimeWindow(runtime, scope, point, start, end);
+    }
+
+    internal unsafe void Signal(string name, string json)
+    {
+        if (committing)
+        {
+            Debug.Fail("weft: a signal was sent while ops were applied");
+            return;
+        }
+        if (runtime == 0) return;
+        byte[] nameBytes = Encoding.UTF8.GetBytes(name + "\0");
+        byte[] jsonBytes = Encoding.UTF8.GetBytes(json + "\0");
+        fixed (byte* namePtr = nameBytes, jsonPtr = jsonBytes)
+        {
+            Native.RuntimeSignal(runtime, namePtr, jsonPtr, (nuint)(jsonBytes.Length - 1));
         }
     }
 

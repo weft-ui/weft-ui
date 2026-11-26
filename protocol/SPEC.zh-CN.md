@@ -187,14 +187,18 @@ WXML 只渲染 `{{key}}`，`setData` 的路径就是块数据树中的路径（`
 
 原生平台的 JS bundle 跑在 `native/core` 的内核里：内核嵌入 Hermes，执行 `bundle.hbc`，通过 C ABI（[`native/core/include/weft/runtime.h`](../native/core/include/weft/runtime.h)）和平台壳通信。iOS / macOS 的平台壳是 `native/apple` 的 WeftKit，Android 的是 `native/android` 的 Kotlin 模块（通过 JNI 加载 `libweft.so`），Windows 的是 `native/windows` 的 Weft.WinUI（通过 P/Invoke 加载 `weft_core.dll`），Linux 的是 `native/linux` 的 C++ 库（链接 `libweft_core.so`）。内核不开线程，所有函数都在 UI 线程上调用，且不能在 `weft_host` 回调里重入。
 
+平台壳通过 `weft_host.launch` 提供以 NUL 结尾的 UTF-8 JSON 启动参数，内核在启动时复制，NULL 表示 `{}`。壳以 `weft_runtime_window(rt, scope, point, start, end)` 请求惰性挂载点的半开窗口，以 `weft_runtime_signal(rt, name, json, len)` 发送宿主事件，未知名称被忽略。信号包括 `navigation`（`tab`、`stack`、`modal`）、`lifecycle`（`state`）、`memory`（`{}`）和 `link`（`url`）。
+
 ### `__weft` 全局
 
 内核在 bundle 运行前安装，`@weft-ui/runtime/native` 和 `@weft-ui/platform` 的原生实现通过它工作：
 
 | 成员                              | 含义                                                         |
 | --------------------------------- | ------------------------------------------------------------ |
-| `open(hash, dispatch, protocol)`  | sink 的 `open`。先检查 bundle 协议版本，再检查布局哈希；不一致或已有 app 打开时抛错 |
+| `open(hash, dispatch, protocol, window)` | 打开 sink；`window` 接收 scope、point、start、end。先检查协议再检查布局哈希；不一致或已有 app 打开时抛错 |
 | `protocol`                        | 内核的协议版本 |
+| `launch`                          | 启动参数 JSON 字符串，默认为 `{}` |
+| `on(name, callback)`              | 每个名称注册一个信号回调，再次注册替换前一个；回调接收 JSON 字符串 |
 | `commit(buffer, offset, length)`  | 一批 ops。内核把这段字节直接交给 `weft_host.commit`，不复制  |
 | `close()`                         | sink 的 `close`；之后的事件被忽略                            |
 | `supports(module)`                | 平台壳是否实现平台模块 `module`                              |
@@ -224,13 +228,13 @@ WXML 只渲染 `{{key}}`，`setData` 的路径就是块数据树中的路径（`
 
 ### 事件循环
 
-- `weft_runtime_new` 执行 bundle（bundle 在其中挂载 app），之后每个会执行 JS 的入口（`new`、`tick`、`dispatch`、`resolve`、`environment`）返回前都清空微任务队列。所以 `weft_runtime_new` 返回时第一批 ops 已经提交。
+- `weft_runtime_new` 执行 bundle（bundle 在其中挂载 app），之后每个会执行 JS 的入口（`new`、`tick`、`dispatch`、`resolve`、`environment`、`window`、`signal`）返回前都清空微任务队列。所以 `weft_runtime_new` 返回时第一批 ops 已经提交。
 - 定时器按到期时间、同一时间按设置顺序执行，每个定时器之后清空一次微任务；在一次 `tick` 里新设的定时器留到下一次。内核用 `weft_host.schedule(delay)` 请求下一次 `tick`，平台壳可以合并请求，提前或多余的 `tick` 无害。
 - 未捕获的异常（bundle、定时器、微任务、事件处理函数或环境变化回调中）以 `WEFT_LOG_ERROR` 报告，不终止运行时。bundle 本身抛错（包括布局哈希不一致）时 `weft_runtime_new` 返回 `NULL`。
 
 ### 事件载荷
 
-`weft_runtime_dispatch(rt, scope, slot, payload, len)` 的 `payload` 是一个按[二进制编码](#二进制编码版本-2)的值（标签字节加数据）。字符串数组只用作视图值，不能作为事件载荷。无载荷的事件传空。返回值即 `Session.dispatch` 的返回值。
+`weft_runtime_dispatch(rt, scope, slot, payload, len)` 的 `payload` 是一个按[二进制编码](#二进制编码版本-3)的值（标签字节加数据）。字符串数组只用作视图值，不能作为事件载荷。无载荷的事件传空。返回值即 `Session.dispatch` 的返回值。
 
 若 `Input` 或 `TextArea` 设置了 `maxLength`，宿主在派发 `onChange` 前按 UTF-16 码元数截断用户编辑后的文本。内核收到的是截断后的载荷。
 

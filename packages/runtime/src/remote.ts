@@ -66,6 +66,8 @@ export interface Session {
    * controlled value slot of the event to the last value it received.
    */
   dispatch(scope: number, slot: number, payload: unknown): boolean;
+  /** Requests materialization of the lazy point's half-open item range. */
+  window(scope: number, point: number, start: number, end: number): void;
   /** Releases the app without calling the sink again, e.g. when the view went away. */
   detach(): void;
 }
@@ -422,6 +424,9 @@ export class App extends AppBase {
     sink.open({
       hash: this.$hash,
       dispatch: (scope, slot, payload) => this.#dispatch(scope, slot, payload),
+      window: (scope, point, start, end) => {
+        console.error(`weft: lazy window requested for scope ${scope}, point ${point}, range [${start}, ${end}), but lazy points are not implemented`);
+      },
       detach: () => this.$detach(),
     });
     this.$sink = sink;

@@ -6,6 +6,8 @@
     weft_runtime_dispatch;
     weft_runtime_resolve;
     weft_runtime_environment;
+    weft_runtime_window;
+    weft_runtime_signal;
     weft_stable_rows;
   local:
     *;

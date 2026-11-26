@@ -165,6 +165,7 @@ void Session::open(const std::string &bundle, uint64_t layout_hash) {
       .log = on_log,
       .version = version.c_str(),
       .environment = environment,
+      .launch = nullptr,
   };
   runtime_ = weft_runtime_new(&host, reinterpret_cast<const uint8_t *>(g_mapped_file_get_contents(bytecode_)),
                               g_mapped_file_get_length(bytecode_), layout_hash);
@@ -222,6 +223,22 @@ bool Session::dispatch(uint32_t scope, uint32_t slot, const std::string &payload
   if (!runtime_) return true;
   return weft_runtime_dispatch(runtime_, scope, slot, reinterpret_cast<const uint8_t *>(payload.data()),
                                payload.size());
+}
+
+void Session::window(uint32_t scope, uint32_t point, uint32_t start, uint32_t end) {
+  if (committing_) {
+    write_log(WEFT_LOG_ERROR, "weft: a window was requested while ops were applied");
+    return;
+  }
+  if (runtime_) weft_runtime_window(runtime_, scope, point, start, end);
+}
+
+void Session::signal(const std::string &name, std::string_view json) {
+  if (committing_) {
+    write_log(WEFT_LOG_ERROR, "weft: a signal was sent while ops were applied");
+    return;
+  }
+  if (runtime_) weft_runtime_signal(runtime_, name.c_str(), json.empty() ? "" : json.data(), json.size());
 }
 
 void Session::commit(const uint8_t *ops, size_t len) {

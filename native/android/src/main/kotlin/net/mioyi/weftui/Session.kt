@@ -104,6 +104,22 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
         return Native.dispatch(runtime, scope, slot, payload?.encode())
     }
 
+    internal fun window(scope: Int, point: Int, start: Int, end: Int) {
+        if (committing) {
+            WeftLog.error("weft: a window was requested while ops were applied")
+            return
+        }
+        if (runtime != 0L) Native.window(runtime, scope, point, start, end)
+    }
+
+    internal fun signal(name: String, json: String) {
+        if (committing) {
+            WeftLog.error("weft: a signal was sent while ops were applied")
+            return
+        }
+        if (runtime != 0L) Native.signal(runtime, name.toByteArray(Charsets.UTF_8), json.toByteArray(Charsets.UTF_8))
+    }
+
     @MainThread
     internal fun close() {
         val handle = runtime

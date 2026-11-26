@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { flushSync, hold, restoreAfterFlush, schedule, tick } from "../../packages/runtime/src/core.ts";
 import { CSS_PROPS } from "../../packages/runtime/src/elements.ts";
 import { render } from "../../packages/runtime/src/testing.ts";
@@ -25,6 +25,31 @@ test.each(["splice", "bind", "nav"] as const)("headless rejects %s before applyi
   expect(() => renderer.commit()).toThrow(`weft protocol: unsupported ${op}`);
   expect(renderer.tree()[0].props.text).toBe("before");
   expect(renderer.batches).toHaveLength(1);
+});
+
+test("remote sessions report and ignore lazy window requests before lazy points exist", () => {
+  const renderer = render({
+    hash: "test",
+    templates: [{
+      label: "root", kind: "component", roots: [0],
+      nodes: [{ element: "Text", props: { text: "root" }, children: [] }],
+      values: [], events: [], points: [],
+    }],
+  });
+  const open = vi.spyOn(renderer, "open");
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const app = new RemoteApp((app, args, children, depth) =>
+    new RemoteInstance(app, 0, 0, depth, args, children), [], "test");
+  try {
+    app.mount(renderer);
+    open.mock.calls[0]![0].window(1, 2, 3, 4);
+    expect(error).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("scope 1, point 2, range [3, 4)"));
+  } finally {
+    app.unmount();
+    error.mockRestore();
+    open.mockRestore();
+  }
 });
 
 test("theme() populates webThemeColors even when a theme style tag already exists", () => {

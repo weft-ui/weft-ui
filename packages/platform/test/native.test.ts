@@ -1,4 +1,4 @@
-import type { Kernel } from "@weft-ui/runtime/native";
+import { onSignal, type Kernel } from "@weft-ui/runtime/native";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import type * as Native from "../src/native.ts";
 
@@ -24,6 +24,8 @@ function installKernel(modules: string[], reply: (call: Call) => Uint8Array | st
     protocol: 3,
     version: "17.4",
     environment: "{}",
+    launch: "{}",
+    on: vi.fn(),
     listen: vi.fn(),
     open: vi.fn(),
     commit: vi.fn(),
@@ -55,6 +57,32 @@ function frame(head: unknown, body: string): Uint8Array {
 
 afterEach(() => {
   delete globalThis.__weft;
+});
+
+test("native signal subscriptions share kernel callbacks and unsubscribe independently", () => {
+  const { kernel } = installKernel([], () => "");
+  const first = vi.fn();
+  const second = vi.fn();
+  const other = vi.fn();
+  const offFirst = onSignal("lifecycle", first);
+  const offSecond = onSignal("lifecycle", second);
+  const offOther = onSignal("memory", other);
+  expect(kernel.on).toHaveBeenCalledTimes(2);
+  const registrations = vi.mocked(kernel.on).mock.calls;
+  const lifecycle = registrations[0]![1];
+  const memory = registrations[1]![1];
+  lifecycle('{"state":"background"}');
+  expect(first).toHaveBeenCalledWith('{"state":"background"}');
+  expect(second).toHaveBeenCalledWith('{"state":"background"}');
+  expect(other).not.toHaveBeenCalled();
+  offFirst();
+  lifecycle('{"state":"foreground"}');
+  expect(first).toHaveBeenCalledTimes(1);
+  expect(second).toHaveBeenCalledTimes(2);
+  memory("{}");
+  expect(other).toHaveBeenCalledWith("{}");
+  offSecond();
+  offOther();
 });
 
 test("storage sends JSON arguments to the storage module", async () => {
@@ -99,6 +127,13 @@ test("platform reports the OS version of the shell, run mounts through the kerne
   const app = { mount: vi.fn(), unmount: vi.fn() };
   native.run(app);
   const sink = app.mount.mock.calls[0]![0] as { open(session: object): void };
-  sink.open({ hash: "abc", dispatch: () => true, detach() {} });
-  expect(kernel.open).toHaveBeenCalledWith("abc", expect.any(Function), 3);
+  const dispatch = vi.fn(() => false);
+  const window = vi.fn();
+  sink.open({ hash: "abc", dispatch, window, detach() {} });
+  expect(kernel.open).toHaveBeenCalledWith("abc", expect.any(Function), 3, expect.any(Function));
+  const [, dispatchCallback, , windowCallback] = vi.mocked(kernel.open).mock.calls[0]!;
+  expect(dispatchCallback(1, 2, "value")).toBe(false);
+  expect(dispatch).toHaveBeenCalledWith(1, 2, "value");
+  windowCallback(3, 4, 5, 6);
+  expect(window).toHaveBeenCalledWith(3, 4, 5, 6);
 });

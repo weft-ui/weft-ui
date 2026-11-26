@@ -26,6 +26,10 @@ internal object Native {
     /** [payload] is one encoded value, or null for events without payload. */
     external fun dispatch(runtime: Long, scope: Int, slot: Int, payload: ByteArray?): Boolean
 
+    external fun window(runtime: Long, scope: Int, point: Int, start: Int, end: Int)
+
+    external fun signal(runtime: Long, name: ByteArray, json: ByteArray)
+
     external fun resolve(runtime: Long, id: Int, ok: Boolean, result: ByteArray)
 
     external fun free(runtime: Long)

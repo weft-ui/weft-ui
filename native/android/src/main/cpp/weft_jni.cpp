@@ -223,6 +223,7 @@ JNIEXPORT jlong JNICALL Java_net_mioyi_weftui_Native_create(JNIEnv *e, jobject, 
       .log = log,
       .version = os.c_str(),
       .environment = json,
+      .launch = nullptr,
   };
   session->runtime = weft_runtime_new(&callbacks, session->bytecode.get(), len,
                                       static_cast<uint64_t>(layout_hash));
@@ -258,6 +259,26 @@ JNIEXPORT jboolean JNICALL Java_net_mioyi_weftui_Native_dispatch(JNIEnv *e, jobj
   return weft_runtime_dispatch(s->runtime, static_cast<uint32_t>(scope),
                                static_cast<uint32_t>(slot),
                                bytes.empty() ? nullptr : bytes.data(), bytes.size());
+}
+
+JNIEXPORT void JNICALL Java_net_mioyi_weftui_Native_window(JNIEnv *, jobject, jlong handle,
+                                                           jint scope, jint point, jint start, jint end) {
+  Session *s = from(handle);
+  if (s == nullptr || s->runtime == nullptr) return;
+  weft_runtime_window(s->runtime, static_cast<uint32_t>(scope), static_cast<uint32_t>(point),
+                      static_cast<uint32_t>(start), static_cast<uint32_t>(end));
+}
+
+JNIEXPORT void JNICALL Java_net_mioyi_weftui_Native_signal(JNIEnv *e, jobject, jlong handle,
+                                                           jbyteArray name, jbyteArray json) {
+  Session *s = from(handle);
+  if (s == nullptr || s->runtime == nullptr || name == nullptr || json == nullptr) return;
+  auto name_bytes = copy(e, name);
+  name_bytes.push_back(0);
+  const auto json_bytes = copy(e, json);
+  weft_runtime_signal(s->runtime, reinterpret_cast<const char *>(name_bytes.data()),
+                      json_bytes.empty() ? "" : reinterpret_cast<const char *>(json_bytes.data()),
+                      json_bytes.size());
 }
 
 JNIEXPORT void JNICALL Java_net_mioyi_weftui_Native_resolve(JNIEnv *e, jobject, jlong handle,

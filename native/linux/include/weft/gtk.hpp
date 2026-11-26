@@ -655,6 +655,11 @@ class Session {
   /// Reports event slot `slot` of `scope` with an encoded payload; see `Scope::dispatch`.
   bool dispatch(uint32_t scope, uint32_t slot, const std::string &payload);
 
+  /// Requests the half-open item window of a lazy mount point.
+  void window(uint32_t scope, uint32_t point, uint32_t start, uint32_t end);
+  /// Delivers a host signal with a UTF-8 JSON payload.
+  void signal(const std::string &name, std::string_view json);
+
  private:
   friend class Scope;
 

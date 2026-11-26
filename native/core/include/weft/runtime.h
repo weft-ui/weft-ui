@@ -65,6 +65,8 @@ typedef struct {
   /* Initial environment as NUL-terminated UTF-8 JSON; NULL means {}.
      Copied by `weft_runtime_new`. */
   const char *environment;
+  /* Initial launch options as NUL-terminated UTF-8 JSON; NULL means {}. Copied at startup. */
+  const char *launch;
 } weft_host;
 
 /*
@@ -99,6 +101,13 @@ WEFT_API bool weft_runtime_dispatch(weft_runtime *rt, uint32_t scope, uint32_t h
  */
 WEFT_API void weft_runtime_resolve(weft_runtime *rt, uint32_t id, bool ok, const uint8_t *result,
                                    size_t len);
+
+/* Requests materialization of the half-open window [start, end). */
+WEFT_API void weft_runtime_window(weft_runtime *rt, uint32_t scope, uint32_t point,
+                                  uint32_t start, uint32_t end);
+
+/* Delivers a named host signal with `len` UTF-8 JSON bytes. Unknown names are ignored. */
+WEFT_API void weft_runtime_signal(weft_runtime *rt, const char *name, const char *json, size_t len);
 
 /* Publishes a changed environment as `len` UTF-8 JSON bytes and notifies the bundle. */
 WEFT_API void weft_runtime_environment(weft_runtime *rt, const char *json, size_t len);

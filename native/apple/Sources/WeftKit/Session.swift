@@ -95,6 +95,29 @@ public final class WeftSession {
         }
     }
 
+    func window(scope: UInt32, point: UInt32, start: UInt32, end: UInt32) {
+        guard !committing else {
+            assertionFailure("weft: a window was requested while ops were applied")
+            return
+        }
+        guard let runtime else { return }
+        weft_runtime_window(runtime, scope, point, start, end)
+    }
+
+    func signal(name: String, json: String) {
+        guard !committing else {
+            assertionFailure("weft: a signal was sent while ops were applied")
+            return
+        }
+        guard let runtime else { return }
+        let length = json.utf8.count
+        name.withCString { name in
+            json.withCString { json in
+                weft_runtime_signal(runtime, name, json, length)
+            }
+        }
+    }
+
     func commit(_ bytes: UnsafeRawBufferPointer) {
         committing = true
         defer { committing = false }
@@ -253,7 +276,8 @@ private final class Host {
                 }
             },
             version: version,
-            environment: environment
+            environment: environment,
+            launch: nil
         )
     }
 }
