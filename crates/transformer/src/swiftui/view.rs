@@ -39,8 +39,10 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
                 _ => None,
             });
     if navbar.is_some_and(|(_, _, children)| !children.is_empty()) {
-        out.writer.line("@Environment(\\.weftModalPage) private var weftModalPage");
-        out.writer.line(format_args!("init(s: S{index}) {{ self.s = s }}"));
+        out.writer
+            .line("@Environment(\\.weftModalPage) private var weftModalPage");
+        out.writer
+            .line(format_args!("init(s: S{index}) {{ self.s = s }}"));
         out.writer.blank();
     }
     out.open("var body: some View {");
@@ -109,10 +111,12 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
         let title = with_default(template.prop(node, props, "title"), "\"\"");
         let hidden = with_default(template.prop(node, props, "hidden"), "false");
         out.writer.line("#if os(macOS)");
-        out.writer.line(format_args!("var modalBarHidden: Bool {{ {hidden} }}"));
+        out.writer
+            .line(format_args!("var modalBarHidden: Bool {{ {hidden} }}"));
         out.open("var modalBar: some View {");
         out.open("HStack {");
-        out.writer.line(format_args!("Text({title}).font(.headline)"));
+        out.writer
+            .line(format_args!("Text({title}).font(.headline)"));
         out.writer.line("Spacer()");
         for &child in children {
             if let ViewNodeKind::Element { props, .. } = &template.nodes[child as usize].kind {
@@ -129,9 +133,11 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
                         Argument::Property(icon)
                     ));
                     out.close("}");
-                    out.writer.line(format_args!(".accessibilityLabel({label})"));
+                    out.writer
+                        .line(format_args!(".accessibilityLabel({label})"));
                 } else {
-                    out.writer.line(format_args!("Button({label}, action: {action})"));
+                    out.writer
+                        .line(format_args!("Button({label}, action: {action})"));
                 }
                 out.writer.line(format_args!(".disabled({disabled})"));
             }
