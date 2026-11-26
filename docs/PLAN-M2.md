@@ -847,16 +847,16 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R1.n | ☑ | 667ec77 | |
 | R1.g | ☑ | 0422523 | |
 | T1 | ☐ | | |
-| R2.w | ⏸ | 1d8e701 | 微信开发者工具里的 Tab 检查两次超时，待维护者 |
+| R2.w | ☑ | 1d8e701 | 修正 4e9f9df（去掉 Tab 后残留的 `tabBar`）；开发者工具里切换 Tab、`switchTab` 清空栈、角标由编排者用 automator 验证 |
 | R2.a | ☑ | 28a6abc | 修正 1b547b6（Tab 根页标题、Tab 栏被裁切）、48f4b6b（macOS 角标）；macOS 临时两 Tab 应用由编排者运行通过 |
 | R2.d | ☑ | 8798267 | |
 | R2.n | ☑ | 4256345 | |
 | R2.g | ☑ | cb019ae | |
-| R3.w | ⏸ | 3f9b7fb | 微信开发者工具里的呈现与下滑关闭待维护者 |
-| R3.a | ☐ | | |
-| R3.d | ☐ | | |
-| R3.n | ☐ | | |
-| R3.g | ☐ | | |
+| R3.w | ⏸ | 3f9b7fb | 开发者工具里 sheet 与 fullScreen 呈现、关闭按钮、模态内推入报错由编排者用 automator 验证；下滑关闭手势待维护者 |
+| R3.a | ☑ | 16a40d3 | 修正 d367946（macOS 模态标题栏）、20f71ad（浮层显示在模态上、macOS 模态内容布局）、89f38cb（rustfmt）；macOS 临时应用（sheet、fullScreen、Esc、关闭按钮、模态内推入报错）由编排者运行通过 |
+| R3.d | ☑ | ce89778 | 顺带修正只有文字的 BarButton 被裁切 |
+| R3.n | ☑ | e201d90 | |
+| R3.g | ☑ | 09dfa29 | |
 | R4.w | ☑ | 4081f7f | 截图待维护者确认；微信开发者工具里四个按钮的人工确认待维护者 |
 | R4.a | ☑ | 03f1196 | iOS `overlays` 基线待维护者确认；macOS C-ui 与 `overlays` 浮层操作由编排者运行通过 |
 | R4.d | ☑ | 6418daa | Android `overlays` 基线待维护者确认 |
@@ -885,7 +885,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R9.w | ☐ | | |
 | R9.a | ☐ | | |
 | R9.d | ☐ | | |
-| W1 | ⏸ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告），字体 1630 KiB；开发者工具里分包夹具的包大小待维护者 |
+| W1 | ⏸ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告），字体 1630 KiB；开发者工具里推入分包页面（`notes/weft/pages/detail/index`）由编排者验证；开发者工具「详情」面板里的包大小待维护者 |
 | T2 | ☐ | | |
 | B1 | ☐ | | |
 | X1 | ☐ | | |
@@ -920,6 +920,12 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R2.a] iOS 上 Tab 根页不显示标题、Tab 栏底部被裁切，由代理自查截图发现并修正（1b547b6）；macOS 的 `TabView` 呈现为工具栏里的分段控件，不显示图标与根页标题，`.badge` 不显示——角标改为写进 Tab 标题（`Home 3`、空串为 `Home •`），指南注明（48f4b6b）。结论：已修正
 - [R2.g] GTK 的 `GtkStackPage:needs-attention` 只能显示圆点，文字角标在 Linux 上也显示为圆点，指南注明。结论：接受（计划已预见）
 - [R2.n] Windows 虚拟机重启后 `prlctl exec` 需要等控制台用户登录；`weft-interactive` 计划任务曾经由 ssh（提升权限）注册，之后控制台会话无法覆盖它（Access denied），删除后恢复。交互式 UI 步骤只经 `prlctl exec --current-user` 运行。结论：环境问题，已处理
-- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时（新项目路径需要在开发者工具里信任），三项的开发者工具检查标 ⏸。结论：待维护者
+- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时，三项的开发者工具检查先标 ⏸。R3 原生波次结束后，编排者关闭残留的开发者工具实例，在主工作区用临时应用（两个 Tab、角标、推入分包页面、两种模态、模态内推入）以 automator 运行通过。剩下的下滑关闭手势与「详情」面板里的包大小需要人工操作。结论：部分待维护者
 - [W1、R3.w] 预期变化写 C-apps 只有 web、wechat 变化，实际五个原生平台的 `js/index.js` 也变化：W1 的分包路由与 R3.w 的模态都改了共用的运行时。结论：接受，已重新录制 C-apps 基线
 - [R3.w] 代理顺带在 C++ conformance 宿主实现了 `dismiss` 动作（原属 R3.g），因此合并后 `navigation` 不必再放回 `pending.json`。结论：接受
+- [R2.w、W1] 开发者工具检查后把 example 改回组件根重新构建，`app.json` 残留只有颜色、没有 `list` 的 `tabBar`（开发者工具会拒绝）；组件根构建也不会删除旧的 `subPackages`。原因：去掉 Tab 时只删除 `list`，而默认颜色是 Weft 写入的。修正：程序不声明 Tab 时删除整个 `tabBar`，组件根构建同时删除 `subPackages`（4e9f9df，含测试）。结论：已修正
+- [R3.a] macOS 的模态沿用 iOS 的 `NavigationStack` 与工具栏：sheet 的关闭按钮落在底部，fullScreen 超出窗口、关闭按钮不可见，内容垂直居中。修正：macOS 上模态顶部显示一行标题栏（左侧关闭按钮、标题、BarButton），内容靠上（d367946，20f71ad）。编排者在同一检查里发现浮层（alert、actionSheet、toast）挂在窗口根上，模态呈现时被遮住；SwiftUI 也不能从被 sheet 覆盖的视图弹出 alert。修正：模态呈现时由模态页承载浮层（20f71ad，iOS 同样适用）。结论：已修正
+- [R3.d] 只有文字的 BarButton 在 Android 顶栏被裁切，代理顺带修正（ce89778）。结论：已修正
+- [R3.g] GTK 在模态覆盖层测量时打印零宽高的警告，渲染与交互正常。结论：记录
+- [R3.a–R3.g] 预期的原生 `Navigation` 快照变化只出现在 Apple（d367946 新增 macOS 模态标题栏的生成代码）；其他平台族的模态完全在宿主里实现，快照不变。结论：接受
+- [R4] example 的 `overlays` 页已在所有平台启用，`index.ts` 里按事件名注册的过渡写法改为生成的 `onOverlay*` 方法（5bb3e39）。结论：已清理
