@@ -16,8 +16,8 @@ use weft_ui_ast::{Diagnostic, FileId, ParsedFile, ParsedProgram, SourceMap, Span
 use crate::deps;
 use crate::elements::{self, LIFECYCLE as CALL_HOOKS};
 use crate::ir::{
-    Component, ComponentId, Event, EventId, Expr, Field, Model, ModelId, Module, Param, ParamKind,
-    Program, Type, type_display,
+    Component, ComponentId, Event, EventId, Expr, Field, Model, ModelId, Module, PageInfo, Param,
+    ParamKind, Program, Type, type_display,
 };
 use lower::{Instance, Lowerer};
 use record::{AliasSymbol, ProbeContext, RawCall, RawProbe, Recorder, StyleSymbol, Target};
@@ -481,16 +481,23 @@ fn check(
     // Component signatures, then bodies.
     let mut bodies = Vec::new();
     for (file, item, id) in items() {
-        if let (ast::Item::Component(c), DeclKind::Component(id)) = (item, id) {
-            let (params, uses_theme) = signature(&cx, file, c, diags);
-            for (index, param) in params.iter().enumerate() {
-                cx.record(param.span, || Target::ComponentParam(id, index));
-            }
-            cx.components[id.index()].params = params;
-            cx.components[id.index()].uses_theme = uses_theme;
-            bodies.push((file, c, id));
+        let (c, id, page) = match (item, id) {
+            (ast::Item::Component(c), DeclKind::Component(id)) => (c, id, None),
+            (ast::Item::Page(page), DeclKind::Component(id)) => (&page.component, id, Some(page)),
+            _ => continue,
+        };
+        let (params, uses_theme) = signature(&cx, file, c, diags);
+        if let Some(page) = page {
+            check_page(page, &params, diags);
         }
+        for (index, param) in params.iter().enumerate() {
+            cx.record(param.span, || Target::ComponentParam(id, index));
+        }
+        cx.components[id.index()].params = params;
+        cx.components[id.index()].uses_theme = uses_theme;
+        bodies.push((file, c, id));
     }
+    report_page_overlaps(&cx.components, diags);
     let mut instances: Vec<Vec<Instance>> = vec![Vec::new(); cx.components.len()];
     let mut lowered = Vec::with_capacity(bodies.len());
     for &(file, decl, id) in &bodies {
@@ -513,6 +520,20 @@ fn check(
     report_unguarded_recursion(&cx.components, &instances, diags);
     let reachable = reachable_events(&cx.components, &instances);
     for (component, events) in cx.components.iter_mut().zip(reachable) {
+        if component.page.is_some() {
+            for &event in &events {
+                let event = &cx.events[event.index()];
+                if matches!(event.name.as_str(), "Show" | "Hide") {
+                    diags.push(Diagnostic::error(
+                        event.span,
+                        format!(
+                            "event `{}` conflicts with the page method `on{}`",
+                            event.name, event.name
+                        ),
+                    ));
+                }
+            }
+        }
         component.reachable_events = events;
         deps::layout(component, &cx.models);
     }
@@ -643,8 +664,18 @@ fn declare<'a>(
             });
             DeclKind::Event(EventId(offset(cx.events.len() - 1)))
         }
-        ast::Item::Component(_) => {
+        ast::Item::Component(_) | ast::Item::Page(_) => {
+            let page = match item {
+                ast::Item::Page(page) => Some(PageInfo {
+                    path: page
+                        .path
+                        .as_ref()
+                        .map_or_else(|| default_page_path(&name.name), |(path, _)| path.clone()),
+                }),
+                _ => None,
+            };
             cx.components.push(Component {
+                page,
                 name: name.name.clone(),
                 file,
                 span: name.span,
@@ -819,6 +850,127 @@ fn signature(
         });
     }
     (params, uses_theme)
+}
+
+fn default_page_path(name: &str) -> String {
+    let chars: Vec<char> = name.chars().collect();
+    let mut path = String::from("/");
+    for (i, &ch) in chars.iter().enumerate() {
+        if i > 0
+            && ch.is_ascii_uppercase()
+            && (chars[i - 1].is_ascii_lowercase()
+                || chars[i - 1].is_ascii_digit()
+                || (chars[i - 1].is_ascii_uppercase()
+                    && chars.get(i + 1).is_some_and(char::is_ascii_lowercase)))
+        {
+            path.push('-');
+        }
+        path.push(ch.to_ascii_lowercase());
+    }
+    path
+}
+
+fn check_page(page: &ast::Page, params: &[Param], diags: &mut Vec<Diagnostic>) {
+    for (index, param) in params.iter().enumerate() {
+        match &param.kind {
+            ParamKind::Value(Type::Model(_)) if index == 0 => {}
+            ParamKind::Value(Type::Model(_)) => diags.push(Diagnostic::error(
+                param.span,
+                format!("the model parameter of page `{}` must come first", page.component.name.name),
+            )),
+            ParamKind::Value(ty) if route_type(ty) || ty.has_error() => {}
+            _ => diags.push(Diagnostic::error(
+                param.span,
+                format!("route parameter `{}` must be Int, Float, Bool, String or a string literal union", param.name),
+            )),
+        }
+        if let Some(default) = &param.default
+            && lower::expr::constant_kind(default.kind.clone()).is_none()
+            && !default.ty.has_error()
+        {
+            diags.push(Diagnostic::error(
+                default.span,
+                "route parameter default must be constant",
+            ));
+        }
+    }
+    let Some((path, span)) = &page.path else {
+        return;
+    };
+    if !path.starts_with('/') {
+        diags.push(Diagnostic::error(
+            *span,
+            format!("invalid path segment `{path}`"),
+        ));
+        return;
+    }
+    let mut seen = HashSet::new();
+    for segment in path[1..].split('/') {
+        if path == "/" {
+            break;
+        }
+        if let Some(name) = segment.strip_prefix('{').and_then(|s| s.strip_suffix('}')) {
+            let valid = params.iter().any(|p| {
+                p.name == name
+                    && p.default.is_none()
+                    && matches!(
+                        &p.kind,
+                        ParamKind::Value(Type::String | Type::Int | Type::Union(_))
+                    )
+            });
+            if !valid || !seen.insert(name) {
+                diags.push(Diagnostic::error(
+                    *span,
+                    format!("`{{{name}}}` is not a required String, Int or union route parameter"),
+                ));
+            }
+        } else if segment.is_empty()
+            || !segment.bytes().all(|c| {
+                c.is_ascii_lowercase()
+                    || c.is_ascii_digit()
+                    || matches!(c, b'.' | b'_' | b'~' | b'-')
+            })
+        {
+            diags.push(Diagnostic::error(
+                *span,
+                format!("invalid path segment `{segment}`"),
+            ));
+        }
+    }
+}
+
+fn route_type(ty: &Type) -> bool {
+    match ty {
+        Type::Int | Type::Float | Type::Bool | Type::String | Type::Union(_) => true,
+        Type::Optional(inner) => route_type(inner),
+        _ => false,
+    }
+}
+
+fn report_page_overlaps(components: &[Component], diags: &mut Vec<Diagnostic>) {
+    for (i, a) in components.iter().enumerate() {
+        let Some(a_page) = &a.page else { continue };
+        for b in &components[..i] {
+            let Some(b_page) = &b.page else { continue };
+            let a_segments: Vec<_> = a_page.path.trim_start_matches('/').split('/').collect();
+            let b_segments: Vec<_> = b_page.path.trim_start_matches('/').split('/').collect();
+            if a_segments.len() == b_segments.len()
+                && a_segments.iter().zip(&b_segments).all(|(a, b)| {
+                    a == b
+                        || (a.starts_with('{') && a.ends_with('}'))
+                        || (b.starts_with('{') && b.ends_with('}'))
+                })
+            {
+                diags.push(
+                    Diagnostic::error(
+                        a.span,
+                        format!("paths of `{}` and `{}` overlap", b.name, a.name),
+                    )
+                    .with_secondary(b.span, "other page declared here"),
+                );
+            }
+        }
+    }
 }
 
 /// Finds cycles in a directed graph given as adjacency lists of `(target, edge span)`.

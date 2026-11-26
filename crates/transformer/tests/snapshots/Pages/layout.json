@@ -1,0 +1,49 @@
+{
+  "hash": "215dc99bf436019e",
+  "safeArea": true,
+  "templates": [
+    {
+      "label": "Heading",
+      "kind": "component",
+      "roots": [0],
+      "nodes": [
+        {"element": "Text", "props": {}, "children": []}
+      ],
+      "values": [
+        {"node": 0, "prop": "value", "type": "String"}
+      ],
+      "events": [],
+      "points": []
+    },
+    {
+      "label": "Detail",
+      "kind": "page",
+      "roots": [0],
+      "nodes": [
+        {"element": "Column", "props": {}, "children": [1, 2]},
+        {"point": 0},
+        {"element": "Text", "props": {}, "children": []}
+      ],
+      "values": [
+        {"node": 2, "prop": "value", "type": "String"}
+      ],
+      "events": [],
+      "points": [
+        {"node": 1, "kind": "instance", "template": 0}
+      ]
+    },
+    {
+      "label": "About",
+      "kind": "page",
+      "roots": [0],
+      "nodes": [
+        {"point": 0}
+      ],
+      "values": [],
+      "events": [],
+      "points": [
+        {"node": 0, "kind": "instance", "template": 0}
+      ]
+    }
+  ]
+}

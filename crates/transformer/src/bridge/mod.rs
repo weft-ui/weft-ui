@@ -374,6 +374,20 @@ fn own_aliases(program: &Program, entry: &Module, with_events: bool) -> Vec<Stri
 fn dts(program: &Program, links: &Links<'_>) -> Code {
     let entry = links.entry;
     let mut out = Code::default();
+    if entry
+        .components
+        .iter()
+        .any(|&id| program.component(id).page.is_some())
+    {
+        let runtime = match links.mode {
+            Mode::Dom(..) => "@weft-ui/runtime",
+            Mode::Remote(_) => "@weft-ui/runtime/remote",
+        };
+        out.line(format!(
+            "import type {{ Page as $Page }} from {};",
+            js::string(runtime)
+        ));
+    }
 
     let mut used = BTreeSet::new();
     used_models(program, entry, &mut used);

@@ -71,6 +71,8 @@ pub struct Template {
 pub enum TemplateKind {
     /// The body of [`Template::component`].
     Component,
+    /// The body of a page.
+    Page,
     /// Branch `index` of the `if` node `node`.
     Branch { node: NodeId, index: u32 },
     /// One row of the `for` node `node`.

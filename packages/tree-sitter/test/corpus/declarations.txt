@@ -101,6 +101,29 @@ component App(model: Model, body: Children, title: String = "x") {
           (identifier))))))
 
 ========================================
+Pages with and without paths
+========================================
+
+page Detail(id: String) path "/notes/{id}" { Text(id) }
+page About() {}
+
+----------------------------------------
+
+(source_file
+  (page_declaration
+    (identifier)
+    (parameters
+      (parameter (identifier) (type_identifier)))
+    (string)
+    (component_body
+      (element (element_name (identifier))
+        (arguments (argument (identifier))))))
+  (page_declaration
+    (identifier)
+    (parameters)
+    (component_body)))
+
+========================================
 Type aliases and literal unions
 ========================================
 

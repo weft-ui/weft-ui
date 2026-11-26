@@ -11,10 +11,11 @@
 - 标识符：`[A-Za-z_][A-Za-z0-9_]*`。
 - 保留关键字：`if` `else` `for` `in` `true` `false` `null`。
 - 上下文关键字（其他位置是普通标识符，例如 Demo 中的参数 `model`）：
-  - `import`（后跟字符串）、`model` / `event` / `component` / `type` / `style`（后跟标识符）只在顶层开启声明；
+  - `import`（后跟字符串）、`model` / `event` / `component` / `page` / `type` / `style`（后跟标识符）只在顶层开启声明；
   - `theme`（后跟 `{`）开启顶层主题声明；`dark` 只在主题条目中引出第二个颜色；
   - `state`（后跟标识符）只在组件体内开启状态声明；
   - `let`（后跟标识符）在组件体或块的开头开启局部声明；
+  - `path` 只在页面参数表之后引出可选路径；
   - `key` 只在 `for` 头部出现。
 - 整数：`[0-9]+`，范围为 `i64`。浮点：`[0-9]+ "." [0-9]+ ([eE] [+-]? [0-9]+)?` 或 `[0-9]+ [eE] [+-]? [0-9]+`。
 - 字符串：`"..."`，转义 `\n` `\r` `\t` `\0` `\\` `\"` `\$` `\u{XXXX}`。
@@ -28,7 +29,7 @@ EBNF 记法：`X?` 可选，`X*` 零或多次，`X+` 一或多次，`"tok"` 为 
 ```text
 File        = Import* Item* EOF ;
 Import      = "import" STRING ;               (* 不允许插值 *)
-Item        = Model | Event | Component | TypeAlias | Style | Theme ;
+Item        = Model | Event | Component | Page | TypeAlias | Style | Theme ;
 TypeAlias   = "type" IDENT "=" Type ;
 Style       = "style" IDENT "{" ( StyleEntry ","? )* "}" ;
 StyleEntry  = IDENT "=" ConstValue ;
@@ -43,6 +44,7 @@ FieldList   = Field ( "," Field )* ","? ;
 Field       = IDENT ":" Type ;
 
 Component   = "component" IDENT "(" ParamList? ")" "{" StateDecl* LetDecl* Node* "}" ;
+Page        = "page" IDENT "(" ParamList? ")" ( "path" STRING )? "{" StateDecl* LetDecl* Node* "}" ; (* 路径不允许插值 *)
 ParamList   = Param ( "," Param )* ","? ;
 Param       = IDENT ":" Type ( "=" Expr )? ;
 StateDecl   = "state" IDENT ( ":" Type )? "=" Expr ;
@@ -103,7 +105,7 @@ Call        = IDENT "(" ArgList? ")" ;
 
 解析器在出错后继续解析，尽量报告所有错误：
 
-- 顶层：跳到下一个 `import` / `model` / `event` / `component` / `type`。
+- 顶层：跳到下一个 `import` / `model` / `event` / `component` / `page` / `app` / `type` / `style` / `theme`。
 - 节点块：跳过无法识别的 token（括号成对跳过），直到下一个节点起始 token 或 `}`。
 - 参数/字段列表：跳到下一个 `,` 或右括号。
 - 同一位置只报告第一个错误。
@@ -115,12 +117,18 @@ Call        = IDENT "(" ArgList? ")" ;
 ### 作用域与导入
 
 - 每个文件可见：本文件声明 + 直接 `import` 的文件声明。导入不传递。
-- 导入闭包内 `model`、`event`、`component`、`type`、`style` 共用一个命名空间，任何重名都报错；也不能与内置元素重名。
+- 导入闭包内 `model`、`event`、`component`、`page`、`type`、`style` 共用一个命名空间，任何重名都报错；也不能与内置元素重名。
 - 宿主侧的事件注册方法由事件名派生（`onFooBar` / `on_foo_bar`），因此忽略大小写和下划线后相同的两个事件名（如 `FooBar` 与 `foo_bar`）也报错。
 - 循环导入、找不到的文件都报错。
 - `theme` 是主题令牌的保留名，不能作为组件参数、`state`、`let`、`for` 循环变量或 lambda 参数的名字。
 - 组件内名称查找顺序：lambda 参数 → `let` 绑定（由内向外） → `for` 变量 → `state` → 组件参数。组件内不允许遮蔽已有名称。
 - `let` 声明不可变的表达式别名，在同一块内的声明之后可见，也可以在嵌套块和 lambda 中使用。省略类型标注时，类型由表达式推导。编译器在每个使用处内联表达式，因此依赖与直接写出表达式相同。
+
+### 页面
+
+- 页面体的语法和作用域与组件相同，但页面不能作为组件节点调用。第一个参数可以是模型；其余路由参数只能是 `Int`、`Float`、`Bool`、`String`、字符串字面量联合或这些类型的可空形式，可以有常量默认值。
+- 显式路径以 `/` 开头，由字面量段（`[a-z0-9._~-]+`）或 `{name}` 参数段组成。每个路径参数最多出现一次，且必须是必填的 `String`、`Int` 或联合路由参数；其他路由参数走查询字符串。省略路径时页面名转为 kebab-case 路径，例如 `/user-profile`。
+- 两条路径段数相同，且每对段要么是相同字面量、要么至少一侧为参数时，路径重叠并报错。页面事件不能命名为 `Show` 或 `Hide`，这两个名字留给页面方法。
 
 ### 类型
 

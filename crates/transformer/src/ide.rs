@@ -404,7 +404,16 @@ impl Resolver<'_> {
                 Symbol {
                     kind: SymbolKind::Component,
                     name: component.name.clone(),
-                    detail: format!("component {}({})", component.name, params.join(", ")),
+                    detail: format!(
+                        "{} {}({})",
+                        if component.page.is_some() {
+                            "page"
+                        } else {
+                            "component"
+                        },
+                        component.name,
+                        params.join(", ")
+                    ),
                     def: Some(component.span),
                 }
             }
@@ -529,6 +538,19 @@ component App() { Text("accent", style = Accent) }"##;
                 .collect::<Vec<_>>(),
             ["accent", "gap"]
         );
+    }
+
+    #[test]
+    fn page_declaration_has_a_page_signature_and_definition() {
+        let app = "page Detail(id: String) path \"/notes/{id}\" { Text(id) }";
+        let analysis = analyze_app(app, None);
+        let page = at(&analysis, app, "Detail(");
+        assert_eq!(page.detail, "page Detail(id: String)");
+        assert_eq!(
+            analysis.sources.snippet(page.def.expect("page definition")),
+            "Detail"
+        );
+        assert_eq!(at(&analysis, app, "id)").detail, "(parameter) id: String");
     }
 
     #[test]

@@ -8,6 +8,96 @@ use weft_ui_transformer::{Compilation, check, dependency_report};
 
 const DEMO: &str = include_str!("fixtures/TodoList.weft");
 
+#[test]
+fn pages_validate_routes_and_record_paths() {
+    let compilation = compile(&[(
+        "pages.weft",
+        r#"
+        model Note { title: String }
+        type Source = "feed" | "search"
+        page Detail(model: Note, id: String, from: Source = "feed", draft: Bool?) path "/notes/{id}" { }
+        page UserProfile() { }
+    "#,
+    )]);
+    assert!(
+        compilation.diagnostics.is_empty(),
+        "{:?}",
+        compilation.diagnostics
+    );
+    let program = compilation.program.expect("valid pages produce a program");
+    assert_eq!(
+        program
+            .component_named("Detail")
+            .unwrap()
+            .page
+            .as_ref()
+            .unwrap()
+            .path,
+        "/notes/{id}"
+    );
+    assert_eq!(
+        program
+            .component_named("UserProfile")
+            .unwrap()
+            .page
+            .as_ref()
+            .unwrap()
+            .path,
+        "/user-profile"
+    );
+}
+
+#[test]
+fn pages_reject_invalid_parameters_paths_calls_and_events() {
+    let cases = [
+        (
+            "page Bad(x: Color) {}",
+            "route parameter `x` must be Int, Float, Bool, String or a string literal union",
+        ),
+        (
+            "page Bad(x: Children) {}",
+            "route parameter `x` must be Int, Float, Bool, String or a string literal union",
+        ),
+        (
+            "page Bad(x: Event) {}",
+            "route parameter `x` must be Int, Float, Bool, String or a string literal union",
+        ),
+        (
+            "model M {} page Bad(x: Int, model: M) {}",
+            "the model parameter of page `Bad` must come first",
+        ),
+        ("page Bad() path \"bad\" {}", "invalid path segment `bad`"),
+        ("page Bad() path \"/Bad\" {}", "invalid path segment `Bad`"),
+        (
+            "page Bad(id: String?) path \"/{id}\" {}",
+            "`{id}` is not a required String, Int or union route parameter",
+        ),
+        (
+            "page Bad(id: String) path \"/{id}/{id}\" {}",
+            "`{id}` is not a required String, Int or union route parameter",
+        ),
+        (
+            "page A(id: String) path \"/notes/{id}\" {} page B() path \"/notes/new\" {}",
+            "paths of `A` and `B` overlap",
+        ),
+        (
+            "page Detail() {} component Root() { Detail() }",
+            "page `Detail` cannot be used as a component; open it with `navigation.push`",
+        ),
+        (
+            "event Show() page Detail() { Button(onClick = Show) { Text(\"show\") } }",
+            "event `Show` conflicts with the page method `onShow`",
+        ),
+    ];
+    for (source, expected) in cases {
+        let found = diagnostics(&[("pages.weft", source)]);
+        assert!(
+            found.iter().any(|d| d.contains(expected)),
+            "{source}: {found:?}"
+        );
+    }
+}
+
 fn compile(files: &[(&str, &str)]) -> Compilation {
     let mut loader = MemoryLoader::new();
     for (path, text) in files {

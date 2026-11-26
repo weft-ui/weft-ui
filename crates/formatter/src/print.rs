@@ -284,7 +284,10 @@ impl<'src> Printer<'src, '_> {
                     self.comma_group(&event.params, Self::field)
                 }
             }
-            Item::Component(component) => self.component(component),
+            Item::Component(component) => self.component(component, None),
+            Item::Page(page) => {
+                self.component(&page.component, page.path.as_ref().map(|(_, span)| *span))
+            }
             Item::TypeAlias(alias) => {
                 self.token(TokenKind::Ident)?;
                 self.operator_gap();
@@ -371,12 +374,18 @@ impl<'src> Printer<'src, '_> {
         self.close(TokenKind::RBrace, Line::Hard, gap)
     }
 
-    fn component(&mut self, component: &ComponentDecl) -> Printed {
+    fn component(&mut self, component: &ComponentDecl, path: Option<Span>) -> Printed {
         self.token(TokenKind::Ident)?;
         self.doc.text(" ");
         self.ident(&component.name)?;
         self.comma_group(&component.params, Self::param)?;
-        self.doc.text(" ");
+        if let Some(path) = path {
+            self.operator_gap();
+            self.token(TokenKind::Ident)?;
+            self.operator_gap();
+            self.spanned_token(TokenKind::Str, path)?;
+        }
+        self.operator_gap();
         self.token(TokenKind::LBrace)?;
         self.doc.indent();
         let mut gap = Gap::First;

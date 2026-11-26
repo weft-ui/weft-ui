@@ -145,6 +145,10 @@ impl<'cx> Lowerer<'cx, '_> {
             return Some(self.builtin_element(spec, e, span));
         }
         match self.cx.global(self.file, name, first.span, self.diags) {
+            Some(DeclKind::Component(id)) if self.cx.components[id.index()].page.is_some() => {
+                self.error(first.span, format!("page `{name}` cannot be used as a component; open it with `navigation.push`"));
+                None
+            }
             Some(DeclKind::Component(id)) => Some(self.component_call(id, e, span)),
             Some(kind) => {
                 self.error(

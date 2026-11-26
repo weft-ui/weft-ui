@@ -2,7 +2,7 @@
  * @file Tree-sitter grammar for Weft UI (`.weft`), following crates/parser/GRAMMAR.md.
  *
  * Used for syntax highlighting and structure in editors; the compiler has its
- * own parser. `import`, `model`, `event`, `component`, `type`, `style`, `theme`,
+ * own parser. `import`, `model`, `event`, `component`, `page`, `path`, `type`, `style`, `theme`,
  * `dark`, `state`, `let` and `key` are contextual: the grammar only treats them as keywords where it
  * expects them, so `model` still works as a parameter name.
  */
@@ -53,6 +53,7 @@ export default grammar({
       $.model_declaration,
       $.event_declaration,
       $.component_declaration,
+      $.page_declaration,
       $.type_alias,
       $.style_declaration,
       $.theme_declaration,
@@ -84,6 +85,14 @@ export default grammar({
       'component',
       field('name', $.identifier),
       field('parameters', $.parameters),
+      field('body', $.component_body),
+    ),
+
+    page_declaration: $ => seq(
+      'page',
+      field('name', $.identifier),
+      field('parameters', $.parameters),
+      optional(seq('path', field('path', alias($._constant_string, $.string)))),
       field('body', $.component_body),
     ),
 

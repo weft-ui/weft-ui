@@ -36,6 +36,7 @@ pub enum Item {
     Model(ModelDecl),
     Event(EventDecl),
     Component(ComponentDecl),
+    Page(Page),
     TypeAlias(TypeAlias),
     Style(StyleDecl),
     Theme(ThemeDecl),
@@ -49,6 +50,7 @@ impl Item {
             Item::Model(m) => &m.name,
             Item::Event(e) => &e.name,
             Item::Component(c) => &c.name,
+            Item::Page(page) => &page.component.name,
             Item::TypeAlias(alias) => &alias.name,
             Item::Style(style) => &style.name,
             Item::Theme(_) => return None,
@@ -136,6 +138,14 @@ pub struct ComponentDecl {
     pub lets: Vec<LetDecl>,
     pub body: Vec<Node>,
     pub span: Span,
+}
+
+/// A page shares its body and parameters with a component and may declare a route path.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Page {
+    pub component: ComponentDecl,
+    /// Decoded path and the span of its string literal, if explicitly declared.
+    pub path: Option<(String, Span)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

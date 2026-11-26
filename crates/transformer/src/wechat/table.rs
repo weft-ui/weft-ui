@@ -74,7 +74,9 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
 
     let mut fields = Vec::new();
     match template.kind {
-        TemplateKind::Component => fields.push(format!("n: {}", js::string(&comp.name))),
+        TemplateKind::Component | TemplateKind::Page => {
+            fields.push(format!("n: {}", js::string(&comp.name)));
+        }
         TemplateKind::SlotContent { node, param } => {
             fields.push(format!(
                 "t: {}",

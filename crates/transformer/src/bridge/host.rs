@@ -137,6 +137,10 @@ pub(crate) fn app_class(
     out: &mut Code,
 ) {
     let comp = program.component(id);
+    if comp.page.is_some() {
+        page_class(program, id, mode, conv, out);
+        return;
+    }
     out.open(format!("{} extends $.App {{", class_header(&comp.name)));
     let mut params = Vec::new();
     let mut args = Vec::new();
@@ -190,6 +194,138 @@ pub(crate) fn app_class(
         let name = &program.event(event).name;
         out.line(format!(
             "{}(h) {{ return this.$on({}, h); }}",
+            js::handler_method(name),
+            js::string(name)
+        ));
+    }
+    out.close("}");
+}
+
+fn page_model(comp: &crate::ir::Component) -> Option<(&Param, &Type)> {
+    comp.params.first().and_then(|param| match &param.kind {
+        ParamKind::Value(ty @ Type::Model(_)) => Some((param, ty)),
+        _ => None,
+    })
+}
+
+fn page_class(
+    program: &Program,
+    id: ComponentId,
+    mode: Mode<'_>,
+    conv: &mut Converters,
+    out: &mut Code,
+) {
+    let comp = program.component(id);
+    let page = comp.page.as_ref().expect("page class has page metadata");
+    let model = page_model(comp);
+    let routes = &comp.params[usize::from(model.is_some())..];
+    out.open(format!("{} extends $.Page {{", class_header(&comp.name)));
+    let path = page
+        .path
+        .split('/')
+        .skip(1)
+        .filter(|s| !s.is_empty())
+        .map(js::string)
+        .collect::<Vec<_>>()
+        .join(", ");
+    let mut metadata = Vec::new();
+    for param in routes {
+        let ParamKind::Value(ty) = &param.kind else {
+            unreachable!("page routes are values")
+        };
+        let (ty, nullable) = match ty {
+            Type::Optional(inner) => (inner.as_ref(), true),
+            ty => (ty, false),
+        };
+        let (kind, values) = match ty {
+            Type::Int => ("Int", None),
+            Type::Float => ("Float", None),
+            Type::Bool => ("Bool", None),
+            Type::String => ("String", None),
+            Type::Union(values) => ("Union", Some(values)),
+            _ => unreachable!("page route types are validated"),
+        };
+        let mut fields = format!(
+            "name: {}, type: {}, optional: {}",
+            js::string(&param.name),
+            js::string(kind),
+            nullable || param.default.is_some()
+        );
+        if let Some(values) = values {
+            let values = values
+                .iter()
+                .map(|v| js::string(v))
+                .collect::<Vec<_>>()
+                .join(", ");
+            fields.push_str(&format!(", values: [{values}]"));
+        }
+        if let Some(default) = &param.default {
+            fields.push_str(&format!(", default: {}", expr(default, Env::default())));
+        }
+        metadata.push(format!("{{ {fields} }}"));
+    }
+    out.line(format!(
+        "static $route = {{ name: {}, path: [{path}], params: [{}] }};",
+        js::string(&comp.name),
+        metadata.join(", ")
+    ));
+    if let Mode::Dom(_, options) = mode
+        && !options.safe_area
+    {
+        out.line("static safeArea = false;");
+    }
+    out.open(if model.is_some() {
+        "constructor($model, $params = {}) {"
+    } else {
+        "constructor($params = {}) {"
+    });
+    let mut args = Vec::new();
+    if let Some((_, ty)) = model {
+        args.push(conv.apply(program, ty, "$model"));
+    }
+    let mut values = Vec::new();
+    for (index, param) in routes.iter().enumerate() {
+        let ParamKind::Value(ty) = &param.kind else {
+            unreachable!("page routes are values")
+        };
+        let read = format!("$params[{}]", js::string(&param.name));
+        let value = if let Some(default) = &param.default {
+            format!(
+                "{read} === undefined ? {} : {read}",
+                expr(default, Env::default())
+            )
+        } else if matches!(ty, Type::Optional(_)) {
+            format!("{read} === undefined ? null : {read}")
+        } else {
+            read
+        };
+        out.line(format!("const $p{index} = {value};"));
+        args.push(format!("$p{index}"));
+        values.push(format!("[{}]: $p{index}", js::string(&param.name)));
+    }
+    let hash = match mode {
+        Mode::Dom(..) => String::new(),
+        Mode::Remote(layout) => format!(", \"{:016x}\"", layout.hash()),
+    };
+    out.line(format!(
+        "super({}$c, [{}]{hash}, {{ {} }});",
+        comp.name,
+        args.join(", "),
+        values.join(", ")
+    ));
+    out.close("}");
+    if model.is_none() {
+        out.line("get model() { return undefined; }");
+    }
+    for &event in &comp.reachable_events {
+        let name = &program.event(event).name;
+        let handler = if model.is_some() {
+            "h"
+        } else {
+            "(_, event) => h(undefined, event)"
+        };
+        out.line(format!(
+            "{}(h) {{ return this.$on({}, {handler}); }}",
             js::handler_method(name),
             js::string(name)
         ));
@@ -264,8 +400,67 @@ pub(crate) fn event_dts(program: &Program, id: EventId, out: &mut Code) {
     out.mapped_line(line.push(end));
 }
 
+fn page_dts(program: &Program, id: ComponentId, out: &mut Code) {
+    let comp = program.component(id);
+    let model = page_model(comp);
+    let routes = &comp.params[usize::from(model.is_some())..];
+    let params_name = format!("{}Params", comp.name);
+    out.open(format!("export interface {params_name} {{"));
+    for param in routes {
+        let ParamKind::Value(ty) = &param.kind else {
+            unreachable!("page routes are values")
+        };
+        let optional = param.default.is_some() || matches!(ty, Type::Optional(_));
+        out.mapped_line(
+            MappedLine::new()
+                .map(&param.name, param.span, MappingKind::Verbatim)
+                .push(&format!(
+                    "{}: {};",
+                    if optional { "?" } else { "" },
+                    ts_type(program, ty)
+                )),
+        );
+    }
+    out.close("}");
+    out.open_mapped(
+        declared("declare class", &comp.name, comp.span)
+            .push(&format!(" extends $Page<{params_name}> {{")),
+    );
+    let model_type = model.map_or_else(|| "undefined".to_owned(), |(_, ty)| ts_type(program, ty));
+    if let Some((param, _)) = model {
+        out.mapped_line(
+            MappedLine::new()
+                .push("constructor(")
+                .binding(&param.name, param.span)
+                .push(&format!(": {model_type}, params: {params_name});")),
+        );
+    } else {
+        out.line(format!("constructor(params: {params_name});"));
+    }
+    out.line(format!("get model(): {model_type};"));
+    out.line(format!("readonly params: Readonly<{params_name}>;"));
+    for &event in &comp.reachable_events {
+        let event = program.event(event);
+        let method = js::handler_method(&event.name);
+        let line = if event.file == comp.file {
+            MappedLine::new().map(&method, event.span, MappingKind::Atom)
+        } else {
+            MappedLine::new().push(&method)
+        };
+        out.mapped_line(line.push(&format!(
+            "(handler: (model: {model_type}, event: {}) => void): () => void;",
+            js::binding(&event.name)
+        )));
+    }
+    out.close("}");
+}
+
 pub(crate) fn app_dts(program: &Program, id: ComponentId, mode: Mode<'_>, out: &mut Code) {
     let comp = program.component(id);
+    if comp.page.is_some() {
+        page_dts(program, id, out);
+        return;
+    }
     out.open_mapped(declared("declare class", &comp.name, comp.span).push(" {"));
 
     let value_params: Vec<(&Param, &Type)> = comp

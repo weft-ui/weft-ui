@@ -3,6 +3,31 @@ import { CSS_PROPS } from "../../packages/runtime/src/elements.ts";
 import { Window } from "happy-dom";
 import { expect, test, vi } from "vitest";
 import { Layout } from "../../crates/transformer/tests/fixtures/Layout.weft";
+import { About, Detail } from "../fixtures/Pages.weft";
+
+test("generated pages mount as roots with route parameters", async () => {
+  const doc = new Window().document as unknown as Document;
+  vi.stubGlobal("document", doc);
+  const target = doc.createElement("main");
+  doc.body.append(target);
+  const page = new Detail({ title: "A note" }, { id: "42" });
+  const about = new About({});
+  try {
+    expect(page.params).toEqual({ id: "42", from: "feed", draft: null });
+    page.mount(target);
+    expect(target.textContent).toBe("A note42");
+    page.model.title = "Updated";
+    await tick();
+    expect(target.textContent).toBe("Updated42");
+    page.unmount();
+    about.mount(target);
+    expect(target.textContent).toBe("About");
+  } finally {
+    page.unmount();
+    about.unmount();
+    vi.unstubAllGlobals();
+  }
+});
 
 test("generated DOM applies layout styles and context through reactive updates", async () => {
   const doc = new Window().document as unknown as Document;

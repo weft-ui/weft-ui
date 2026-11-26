@@ -1,0 +1,4 @@
+<template name="Heading"><text class="w-text{{wParent}}">{{n0_0}}</text></template>
+<template name="Detail"><view class="w-column{{wParent}}"><template is="Heading" data="{{...c0, wParent: ''}}"/><text class="w-text">{{n1_0}}</text></view></template>
+<template name="About"><template is="Heading" data="{{...c0, wParent: wParent}}"/></template>
+<block wx:if="{{t}}"><template is="{{t}}" data="{{...r, wParent: ''}}"/></block>

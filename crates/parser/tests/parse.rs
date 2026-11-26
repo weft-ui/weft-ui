@@ -35,6 +35,39 @@ fn demo_parses_without_diagnostics() {
 }
 
 #[test]
+fn pages_preserve_paths_and_recover_at_declarations() {
+    let source = r#"page Detail(id: String) path "/notes/{id}" { state n = 1 let x = id Text(x) }
+page About() {}
+page Broken() path "${id}" {}
+component Broken(
+app Example { start = About }
+page Recovered() {}"#;
+    let (file, diagnostics) = parse(FileId(0), source);
+    let Item::Page(detail) = &file.items[0] else {
+        panic!("expected page")
+    };
+    let (path, span) = detail.path.as_ref().expect("explicit path");
+    assert_eq!(path, "/notes/{id}");
+    assert_eq!(
+        &source[span.start as usize..span.end as usize],
+        "\"/notes/{id}\""
+    );
+    assert_eq!(detail.component.states.len(), 1);
+    assert_eq!(detail.component.lets.len(), 1);
+    assert!(matches!(&file.items[1], Item::Page(page) if page.path.is_none()));
+    assert!(
+        diagnostics
+            .iter()
+            .any(|d| d.message.contains("page path cannot contain interpolation"))
+    );
+    assert!(
+        file.items
+            .iter()
+            .any(|item| item.name().is_some_and(|name| name.name == "Recovered"))
+    );
+}
+
+#[test]
 fn named_slot_fill_has_a_label_and_child_block() {
     let input = r#"component Screen() { Card { header: { let title = "Hi" Text(title) } } }"#;
     let (file, diagnostics) = parse(FileId(0), input);

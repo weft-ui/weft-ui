@@ -65,6 +65,7 @@ impl Template {
         out.key("kind");
         out.string(match self.kind {
             TemplateKind::Component => "component",
+            TemplateKind::Page => "page",
             TemplateKind::Branch { .. } => "branch",
             TemplateKind::Row { .. } => "row",
             TemplateKind::SlotContent { .. } => "slot",

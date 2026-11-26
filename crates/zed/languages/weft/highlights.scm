@@ -7,6 +7,7 @@
 (model_declaration name: (identifier) @type)
 (event_declaration name: (identifier) @constructor)
 (component_declaration name: (identifier) @tag)
+(page_declaration name: (identifier) @tag)
 (style_declaration name: (identifier) @constant)
 (style_entry name: (identifier) @property)
 
@@ -56,6 +57,8 @@
   "model"
   "event"
   "component"
+  "page"
+  "path"
   "style"
   "state"
   "key"

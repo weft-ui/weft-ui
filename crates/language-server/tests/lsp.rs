@@ -315,6 +315,24 @@ fn editor_session() {
         json!({ "line": 0, "character": 6 })
     );
 
+    let pages = "page Detail(id: String) path \"/notes/{id}\" { Text(id) }\n";
+    client.notify(
+        "textDocument/didChange",
+        json!({ "textDocument": { "uri": uri, "version": 8 }, "contentChanges": [{ "text": pages }] }),
+    );
+    assert!(client.diagnostics(&uri).is_empty());
+    let (line, col) = after(pages, "Det");
+    let hover = client.request("textDocument/hover", position(&uri, line, col));
+    assert_eq!(
+        hover["contents"]["value"],
+        "```weft\npage Detail(id: String)\n```"
+    );
+    let definition = client.request("textDocument/definition", position(&uri, line, col));
+    assert_eq!(
+        definition["range"]["start"],
+        json!({ "line": 0, "character": 5 })
+    );
+
     client.request("shutdown", Value::Null);
     client.notify("exit", Value::Null);
     handle.join().expect("server thread");

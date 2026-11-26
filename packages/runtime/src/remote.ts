@@ -475,3 +475,13 @@ export class App extends AppBase {
     return true;
   }
 }
+
+/** Base class of generated pages. */
+export class Page<P> extends App {
+  readonly params: Readonly<P>;
+
+  constructor(create: Create, args: unknown[], hash: string, params: P) {
+    super(create, args, hash);
+    this.params = params;
+  }
+}

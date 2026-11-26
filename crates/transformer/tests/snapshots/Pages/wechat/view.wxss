@@ -1,0 +1,52 @@
+.w-root{display:flex;flex-direction:column;align-items:flex-start;box-sizing:border-box;width:100%;height:100%;overflow:hidden}
+.w-column{display:flex;flex-direction:column;align-items:flex-start}
+.w-row{display:flex;flex-direction:row;align-items:flex-start}
+.w-stack{display:grid;position:relative;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:start start}
+.w-in-stack{grid-area:1/1/2/2;position:relative}
+.w-in-stack.w-fill{position:absolute;inset:0}
+.w-scroll-v,.w-scroll-h{display:flex;align-items:flex-start;flex:1 1 0px;align-self:stretch;min-width:0;min-height:0}
+/* A Scroll viewport must keep its scrolling axis even when clip is specified. */
+.w-scroll-v{flex-direction:column;overflow-x:hidden!important;overflow-y:auto!important}
+.w-scroll-h{flex-direction:row;overflow-x:auto!important;overflow-y:hidden!important}
+.w-in-scroll{flex-shrink:0}
+/* A percentage basis falls back to content when the main size is indefinite. */
+.w-grow{flex-basis:0%!important}
+.w-spacer{width:0;height:0;flex:1 1 0px}
+.w-text{display:inline-block;white-space:pre-wrap;overflow-wrap:anywhere}
+.w-span{}
+/* Clamp owns the inline display and overflow; keep hide and clip independent. */
+.w-text-hidden{display:none!important}
+.w-text-clip{overflow:hidden}
+.w-button.w-wx{margin:0}
+.w-input.w-wx{border:1px solid #ccc;padding:4px 8px}
+input.w-switch{appearance:none;display:inline-flex;align-items:center;box-sizing:border-box;width:51px;height:31px;margin:0;padding:2px;border:0;border-radius:999px;background:#78788052;cursor:pointer}
+input.w-switch::before{content:"";width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #00000026}
+input.w-switch:checked{justify-content:flex-end;background:#34c759}
+input.w-switch:disabled{opacity:.45;cursor:default}
+.w-textarea,.w-picker{font:inherit;color:inherit;border:1px solid #78788066;border-radius:6px;padding:4px 8px}
+.w-textarea{line-height:1.4}
+.w-textarea.w-wx{height:4.2em}
+.w-picker.w-wx{min-height:1.4em}
+.w-picker-disabled{opacity:.45}
+.w-spinner{box-sizing:border-box;width:20px;height:20px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:w-spin .8s linear infinite}
+@keyframes w-spin{to{transform:rotate(1turn)}}
+@media (prefers-reduced-motion:reduce){.w-spinner{animation:none}}
+.w-progress{align-self:stretch;height:4px;border-radius:2px;background:#0000001f;overflow:hidden}
+.w-progress-bar{height:100%;border-radius:inherit;background:#007aff}
+.w-divider,.w-divider-v{align-self:stretch;background-color:#0000001f}
+.w-divider{height:1px}
+.w-divider-v{width:1px}
+.w-tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* The filter multiplies the bound opacity, including any inline value. */
+.w-pressed{filter:opacity(.6)}
+.w-wx-tap-image{display:inline-block;width:320px;height:240px}
+.w-wx-tap-image-content{display:block;width:100%;height:100%;border-radius:inherit}
+/* The mini program scroll-view owns its viewport; its child owns the layout. */
+.w-scroll-content-v,.w-scroll-content-h{display:flex;align-items:flex-start;flex:none}
+.w-scroll-content-v{flex-direction:column;width:100%;min-height:100%}
+.w-scroll-content-h{flex-direction:row;width:max-content;min-width:100%;height:100%}
+.w-column,.w-row,.w-stack,.w-scroll-v,.w-scroll-h,.w-text,.w-image{border-color:#0000001f}
+@media (prefers-color-scheme:dark){
+  .w-column,.w-row,.w-stack,.w-scroll-v,.w-scroll-h,.w-text,.w-image{border-color:#ffffff26}
+  .w-divider,.w-divider-v,.w-progress{background-color:#ffffff26}
+}

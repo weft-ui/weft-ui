@@ -4,7 +4,7 @@ use weft_ui_ast::span::offset;
 use weft_ui_ast::{
     Arg, Assign, AssignOp, BinaryOp, Block, CallStmt, ComponentDecl, Diagnostic, ElementNode,
     EventDecl, Expr, ExprKind, Field, File, FileId, ForNode, Ident, IfBranch, IfNode, Import, Item,
-    Lambda, LambdaStmt, LetDecl, ModelDecl, Node, NodeKind, Param, SlotFill, Span, StateDecl,
+    Lambda, LambdaStmt, LetDecl, ModelDecl, Node, NodeKind, Page, Param, SlotFill, Span, StateDecl,
     StrPart, StyleDecl, StyleEntry, ThemeDecl, ThemeEntry, ThemeValue, TypeAlias, TypeExpr,
     TypeExprKind, UnaryOp,
 };
@@ -56,6 +56,8 @@ enum ItemKeyword {
     Model,
     Event,
     Component,
+    Page,
+    App,
     TypeAlias,
     Style,
     Theme,
@@ -158,6 +160,8 @@ impl<'src> Parser<'src> {
             "model" => ItemKeyword::Model,
             "event" => ItemKeyword::Event,
             "component" => ItemKeyword::Component,
+            "page" => ItemKeyword::Page,
+            "app" => ItemKeyword::App,
             "type" => ItemKeyword::TypeAlias,
             "style" => ItemKeyword::Style,
             "theme" => ItemKeyword::Theme,
@@ -336,7 +340,24 @@ impl<'src> Parser<'src> {
                 Some(ItemKeyword::Model) => items.extend(self.model().map(Item::Model)),
                 Some(ItemKeyword::Event) => items.extend(self.event().map(Item::Event)),
                 Some(ItemKeyword::Component) => {
-                    items.extend(self.component().map(Item::Component));
+                    items.extend(
+                        self.component(false)
+                            .map(|(component, _)| Item::Component(component)),
+                    );
+                }
+                Some(ItemKeyword::Page) => {
+                    items.extend(
+                        self.component(true)
+                            .map(|(component, path)| Item::Page(Page { component, path })),
+                    );
+                }
+                Some(ItemKeyword::App) => {
+                    self.error(self.token().span, "app declarations are not supported");
+                    self.bump();
+                    self.bump();
+                    if self.at(TokenKind::LBrace) {
+                        self.skip_balanced();
+                    }
                 }
                 Some(ItemKeyword::TypeAlias) => {
                     items.extend(self.type_alias().map(Item::TypeAlias));
@@ -346,7 +367,7 @@ impl<'src> Parser<'src> {
                 None if self.at(TokenKind::Eof) => break,
                 None => {
                     self.error_expected(
-                        "`model`, `event`, `component`, `type`, `style`, `theme` or `import`",
+                        "`model`, `event`, `component`, `page`, `type`, `style`, `theme` or `import`",
                     );
                     while self.item_keyword().is_none() && !self.at(TokenKind::Eof) {
                         self.skip_balanced();
@@ -570,13 +591,25 @@ impl<'src> Parser<'src> {
         })
     }
 
-    fn component(&mut self) -> Option<ComponentDecl> {
+    fn component(&mut self, page: bool) -> Option<(ComponentDecl, Option<(String, Span)>)> {
         let start = self.bump().span;
-        let name = self.ident("component name")?;
+        let name = self.ident(if page { "page name" } else { "component name" })?;
         let params = if self.expect(TokenKind::LParen).is_some() {
             self.comma_list(TokenKind::RParen, Self::param)
         } else {
             Vec::new()
+        };
+        let path = if page && self.at(TokenKind::Ident) && self.text_of(self.token().span) == "path"
+        {
+            self.bump();
+            if let Some(token) = self.expect(TokenKind::Str) {
+                self.literal_string(token.span, "page path cannot contain interpolation")
+                    .map(|value| (value, token.span))
+            } else {
+                None
+            }
+        } else {
+            None
         };
         let mut states = Vec::new();
         let mut lets = Vec::new();
@@ -603,14 +636,17 @@ impl<'src> Parser<'src> {
             }
             self.expect(TokenKind::RBrace);
         }
-        Some(ComponentDecl {
-            name,
-            params,
-            states,
-            lets,
-            body,
-            span: self.span_from(start),
-        })
+        Some((
+            ComponentDecl {
+                name,
+                params,
+                states,
+                lets,
+                body,
+                span: self.span_from(start),
+            },
+            path,
+        ))
     }
 
     fn param(&mut self) -> Option<Param> {

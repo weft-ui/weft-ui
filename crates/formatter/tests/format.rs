@@ -89,6 +89,15 @@ component C(foo: Int = 0007, bar: Float = 1.20E+02) {
 }
 
 #[test]
+fn page_declarations_format_and_round_trip() {
+    golden(
+        r#"page Detail(id:String) /* route */ path /* literal */ "/notes/{id}" {Text(id)} page About(){}"#,
+        "page Detail(id: String) /* route */ path /* literal */ \"/notes/{id}\" {\n    Text(id)\n}\n\npage About() {}\n",
+        Options::default(),
+    );
+}
+
+#[test]
 fn type_aliases_and_literal_unions() {
     golden(
         r#"type Kind="text"/* medium */| "image" |"\u{2603}"

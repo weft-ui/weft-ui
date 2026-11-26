@@ -10,6 +10,10 @@
   "component" @context
   name: (identifier) @name) @item
 
+(page_declaration
+  "page" @context
+  name: (identifier) @name) @item
+
 (field
   name: (identifier) @name) @item
 

@@ -116,6 +116,13 @@ const TAP: Fixture = Fixture {
     diverges: &[],
 };
 
+const PAGES: Fixture = Fixture {
+    name: "Pages",
+    source: include_str!("fixtures/Pages.weft"),
+    natives: ALL_NATIVES,
+    diverges: &[],
+};
+
 const ASSETS: Fixture = Fixture {
     name: "Assets",
     source: include_str!("fixtures/Assets.weft"),
@@ -247,6 +254,11 @@ fn tap() {
 #[test]
 fn assets() {
     check_fixture(&ASSETS);
+}
+
+#[test]
+fn pages() {
+    check_fixture(&PAGES);
 }
 
 fn check_fixture(fixture: &Fixture) {

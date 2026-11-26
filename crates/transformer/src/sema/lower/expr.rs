@@ -551,7 +551,7 @@ impl Lowerer<'_, '_> {
 }
 
 /// Folds literals and simple control flow in an expression with no reactive dependencies.
-pub(super) fn constant_kind(kind: ExprKind) -> Option<ExprKind> {
+pub(in crate::sema) fn constant_kind(kind: ExprKind) -> Option<ExprKind> {
     match kind {
         ExprKind::Int(_)
         | ExprKind::Float(_)

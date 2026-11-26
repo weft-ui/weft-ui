@@ -1,6 +1,6 @@
 //! Type checks one component body and lowers it to the view IR.
 
-mod expr;
+pub(super) mod expr;
 mod handlers;
 mod nodes;
 mod scope;

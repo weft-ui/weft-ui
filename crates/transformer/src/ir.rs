@@ -252,8 +252,16 @@ pub(crate) fn type_display<'a>(
     TypeDisplay { ty, models, error }
 }
 
+/// Routing metadata for a page declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PageInfo {
+    pub path: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Component {
+    /// Present for pages, which cannot be instantiated as component nodes.
+    pub page: Option<PageInfo>,
     pub name: String,
     pub file: FileId,
     pub span: Span,

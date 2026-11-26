@@ -42,7 +42,11 @@ impl ViewLayout {
                 id,
                 component,
                 comp.name.clone(),
-                TemplateKind::Component,
+                if comp.page.is_some() {
+                    TemplateKind::Page
+                } else {
+                    TemplateKind::Component
+                },
                 &comp.roots,
             );
         }

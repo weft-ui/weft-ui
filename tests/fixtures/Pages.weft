@@ -1,0 +1,11 @@
+model NoteModel { title: String }
+
+type Source = "feed" | "search"
+
+component Heading(title: String) { Text(title) }
+
+page Detail(model: NoteModel, id: String, from: Source = "feed", draft: Bool?) path "/notes/{id}" {
+  Column { Heading(model.title) Text(id) }
+}
+
+page About() { Heading("About") }

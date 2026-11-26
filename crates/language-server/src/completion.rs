@@ -17,7 +17,8 @@ use crate::server::Server;
 /// Cannot clash with user code: `.weft` names don't start with `__weft`.
 const PROBE: &str = "__weft_complete__";
 
-const TOP_LEVEL_KEYWORDS: [&str; 7] = [
+const TOP_LEVEL_KEYWORDS: [&str; 8] = [
+    "page",
     "import",
     "model",
     "event",

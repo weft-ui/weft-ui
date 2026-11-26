@@ -11,10 +11,11 @@ This document defines the normative grammar of the `.weft` language. The parser 
 - Identifiers: `[A-Za-z_][A-Za-z0-9_]*`.
 - Reserved keywords: `if` `else` `for` `in` `true` `false` `null`.
 - Contextual keywords (ordinary identifiers elsewhere, such as the `model` parameter in Demo):
-  - `import` (followed by a string) and `model` / `event` / `component` / `type` / `style` (followed by an identifier) begin declarations only at the top level;
+  - `import` (followed by a string) and `model` / `event` / `component` / `page` / `type` / `style` (followed by an identifier) begin declarations only at the top level;
   - `theme` followed by `{` begins a top-level theme declaration; `dark` introduces its second color only in a theme entry;
   - `state` (followed by an identifier) begins a state declaration only in a component body;
   - `let` (followed by an identifier) begins a local declaration at the start of a component body or block;
+  - `path` introduces a page's optional path after its parameter list;
   - `key` appears only in a `for` header.
 - Integers: `[0-9]+`, within the range of `i64`. Floating-point numbers: `[0-9]+ "." [0-9]+ ([eE] [+-]? [0-9]+)?` or `[0-9]+ [eE] [+-]? [0-9]+`.
 - Strings: `"..."`, with escapes `\n` `\r` `\t` `\0` `\\` `\"` `\$` `\u{XXXX}`.
@@ -28,7 +29,7 @@ EBNF notation: `X?` means optional, `X*` means zero or more occurrences, `X+` me
 ```text
 File        = Import* Item* EOF ;
 Import      = "import" STRING ;               (* no interpolation *)
-Item        = Model | Event | Component | TypeAlias | Style | Theme ;
+Item        = Model | Event | Component | Page | TypeAlias | Style | Theme ;
 TypeAlias   = "type" IDENT "=" Type ;
 Style       = "style" IDENT "{" ( StyleEntry ","? )* "}" ;
 StyleEntry  = IDENT "=" ConstValue ;
@@ -43,6 +44,7 @@ FieldList   = Field ( "," Field )* ","? ;
 Field       = IDENT ":" Type ;
 
 Component   = "component" IDENT "(" ParamList? ")" "{" StateDecl* LetDecl* Node* "}" ;
+Page        = "page" IDENT "(" ParamList? ")" ( "path" STRING )? "{" StateDecl* LetDecl* Node* "}" ; (* path has no interpolation *)
 ParamList   = Param ( "," Param )* ","? ;
 Param       = IDENT ":" Type ( "=" Expr )? ;
 StateDecl   = "state" IDENT ( ":" Type )? "=" Expr ;
@@ -103,7 +105,7 @@ Notes:
 
 The parser continues after an error to report as many errors as possible:
 
-- Top level: Skip to the next `import` / `model` / `event` / `component` / `type`.
+- Top level: Skip to the next `import` / `model` / `event` / `component` / `page` / `app` / `type` / `style` / `theme`.
 - Node blocks: Skip unrecognized tokens, skipping over matched delimiters as a unit, until the next token that can start a node or `}`.
 - Argument and field lists: Skip to the next `,` or closing delimiter.
 - Report only the first error at a given location.
@@ -115,12 +117,18 @@ Every AST node carries a source span (file and byte offsets). Diagnostics are lo
 ### Scope and imports
 
 - Each file can see its own declarations and those of files it directly imports with `import`. Imports are not transitive.
-- Within the import closure, `model`, `event`, `component`, `type`, and `style` declarations share one namespace. Duplicate names and names that collide with built-in elements are errors.
+- Within the import closure, `model`, `event`, `component`, `page`, `type`, and `style` declarations share one namespace. Duplicate names and names that collide with built-in elements are errors.
 - Host-side event registration methods are derived from event names (`onFooBar` / `on_foo_bar`). Two event names that differ only in case and underscores (such as `FooBar` and `foo_bar`) are therefore also an error.
 - Import cycles and missing files are errors.
 - `theme` is reserved for the token namespace: it cannot name a component parameter, state, `let`, `for` variable, or lambda parameter.
 - Name lookup within a component proceeds in this order: lambda parameters → `let` bindings (innermost block first) → `for` variables → `state` → component parameters. Names may not shadow existing names within a component.
 - `let` creates an immutable expression alias, visible after its declaration in the same block and in nested blocks and lambdas. Its type is inferred unless annotated. The compiler substitutes its expression at each use site, so dependencies are the same as if the expression had been written there directly.
+
+### Pages
+
+- A page has the same body syntax and scope as a component, but cannot be used as a component node. Its first parameter may be a model; remaining route parameters must be `Int`, `Float`, `Bool`, `String`, a string literal union, or an optional form of one of these. Route parameters may have constant defaults.
+- An explicit path starts with `/` and consists of literal segments (`[a-z0-9._~-]+`) or `{name}` parameters. Each path parameter occurs at most once and names a required `String`, `Int`, or union route parameter. Other route parameters use the query string. Without a path, the page name becomes a kebab-case path, e.g. `/user-profile`.
+- Paths overlap if they have the same number of segments and each pair is either the same literal or includes a parameter; overlapping paths are an error. Page events cannot be named `Show` or `Hide`, which are reserved for page methods.
 
 ### Types
 
