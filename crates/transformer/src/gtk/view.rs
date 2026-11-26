@@ -26,9 +26,11 @@ fn node(out: &mut Code, template: &Template, index: u32, parent: Option<u32>) {
             children,
         } => {
             let args = match element {
-                Element::NavBar | Element::BarButton => {
-                    unreachable!("navigation is not supported on native platforms")
-                }
+                Element::NavBar => String::new(),
+                Element::BarButton => match template.event(index, "onTap") {
+                    Some(slot) => format!("[this] {{ dispatch({slot}); }}"),
+                    None => "nullptr".to_owned(),
+                },
                 Element::Column => "weft::Axis::Vertical".to_owned(),
                 Element::Row => "weft::Axis::Horizontal".to_owned(),
                 Element::Button => match template.event(index, "onClick") {
@@ -78,19 +80,35 @@ fn node(out: &mut Code, template: &Template, index: u32, parent: Option<u32>) {
                 Element::Span => unreachable!("Span is emitted by its parent Text"),
             };
             let made = format!("make<weft::{}>({args})", wrapper(*element));
-            let member = initialize(out, template, index, &made);
-            if let Some(slot) = template.event(index, "onTap") {
+            let access = initialize(out, template, index, &made);
+            if *element != Element::BarButton
+                && let Some(slot) = template.event(index, "onTap")
+            {
                 out.writer.line(format_args!(
-                    "{member}set_on_tap([this] {{ dispatch({slot}); }});"
+                    "{access}set_on_tap([this] {{ dispatch({slot}); }});"
                 ));
             }
-            out.writer.line(format_args!(
-                "{region}.add({});",
-                reference(template, index)
-            ));
+            match element {
+                Element::NavBar => out.writer.line(format_args!(
+                    "set_page_bar({});",
+                    reference(template, index)
+                )),
+                Element::BarButton => {
+                    let parent = parent.expect("BarButton belongs to a NavBar");
+                    out.writer.line(format_args!(
+                        "{}add({});",
+                        member(template, parent),
+                        reference(template, index)
+                    ));
+                }
+                _ => out.writer.line(format_args!(
+                    "{region}.add({});",
+                    reference(template, index)
+                )),
+            }
             if *element == Element::Text {
                 for (position, &child) in children.iter().enumerate() {
-                    span(out, template, child, &member, position);
+                    span(out, template, child, &access, position);
                 }
             } else {
                 for &child in children {
@@ -167,9 +185,8 @@ fn member(template: &Template, index: u32) -> String {
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
-        Element::NavBar | Element::BarButton => {
-            unreachable!("navigation is not supported on native platforms")
-        }
+        Element::NavBar => "NavBar",
+        Element::BarButton => "BarButton",
         Element::Column | Element::Row => "Linear",
         Element::Stack => "Stack",
         Element::Scroll => "Scroll",

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "point.hpp"
+#include "container.hpp"
 #include "weft/gtk.hpp"
 
 namespace weft {
@@ -38,7 +39,36 @@ std::vector<uint8_t> stable_rows(const std::vector<Scope *> &previous, const std
 Scope::Scope(uint32_t id, Session &session, size_t points)
     : id_(id), session_(session), roots_(*this), points_(points) {}
 
-Scope::~Scope() = default;
+Scope::~Scope() {
+  if (page_widget_) g_object_unref(page_widget_);
+  if (back_button_) g_object_unref(back_button_);
+}
+
+void Scope::init_page() {
+  page_widget_ = GTK_WIDGET(g_object_ref_sink(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)));
+  GtkWidget *content = linear_new(Axis::Vertical);
+  gtk_widget_set_vexpand(content, true);
+  roots_.container_ = content;
+  roots_.scope_ = nullptr;
+  auto &bar = make<NavBar>();
+  back_button_ = GTK_WIDGET(g_object_ref_sink(gtk_button_new_from_icon_name("go-previous-symbolic")));
+  gtk_widget_set_visible(back_button_, false);
+  g_signal_connect(back_button_, "clicked", G_CALLBACK(+[](GtkButton *, gpointer data) {
+    static_cast<Scope *>(data)->session_.back();
+  }), this);
+  set_page_bar(bar);
+  gtk_box_append(GTK_BOX(page_widget_), content);
+}
+
+void Scope::set_page_bar(NavBar &bar) {
+  if (page_header_) {
+    gtk_center_box_set_start_widget(GTK_CENTER_BOX(page_header_), nullptr);
+    gtk_box_remove(GTK_BOX(page_widget_), page_header_);
+  }
+  page_header_ = bar.widget();
+  bar.set_back(back_button_);
+  gtk_box_prepend(GTK_BOX(page_widget_), page_header_);
+}
 
 void Scope::apply(uint32_t, const ops::Value &) {}
 

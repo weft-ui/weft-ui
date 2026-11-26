@@ -46,6 +46,19 @@ std::string os_version() {
   return uname(&name) == 0 ? name.release : "";
 }
 
+// Keep the outgoing widget parented until GtkStack finishes its slide.
+void retire_page(GtkWidget *page, bool animated) {
+  if (!animated) {
+    if (auto *parent = gtk_widget_get_parent(page)) gtk_stack_remove(GTK_STACK(parent), page);
+    return;
+  }
+  g_timeout_add_full(G_PRIORITY_DEFAULT, 300, [](gpointer data) -> gboolean {
+    auto *page = GTK_WIDGET(data);
+    if (auto *parent = gtk_widget_get_parent(page)) gtk_stack_remove(GTK_STACK(parent), page);
+    return G_SOURCE_REMOVE;
+  }, g_object_ref(page), g_object_unref);
+}
+
 /// Scope 0: holds the root component instance at mount point 0.
 class RootScope final : public Scope {
  public:
@@ -103,14 +116,29 @@ struct Session::Environment {
   guint idle = 0;
 };
 
-GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area, Factory make) {
+GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area, Factory make, bool app) {
   register_asset_fonts();
   GtkWidget *page = linear_new(Axis::Vertical);
   gtk_widget_set_overflow(page, GTK_OVERFLOW_HIDDEN);
   GtkWidget *overlay = gtk_overlay_new();
   gtk_overlay_set_child(GTK_OVERLAY(overlay), page);
   // The session ends with the root widget.
-  auto *session = new Session(page, make);
+  auto *session = new Session(page, make, app);
+  if (app) {
+    auto *keys = gtk_event_controller_key_new();
+    gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
+    g_signal_connect(keys, "key-pressed", G_CALLBACK(+[](GtkEventControllerKey *, guint key, guint, GdkModifierType state, gpointer data) -> gboolean {
+      return key == GDK_KEY_Left && (state & GDK_ALT_MASK) && static_cast<Session *>(data)->back();
+    }), session);
+    gtk_widget_add_controller(overlay, keys);
+    auto *click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(click), 8);
+    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(click), GTK_PHASE_CAPTURE);
+    g_signal_connect(click, "pressed", G_CALLBACK(+[](GtkGestureClick *gesture, int, double, double, gpointer data) {
+      if (static_cast<Session *>(data)->back()) gtk_gesture_set_state(GTK_GESTURE(gesture), GTK_EVENT_SEQUENCE_CLAIMED);
+    }), session);
+    gtk_widget_add_controller(overlay, GTK_EVENT_CONTROLLER(click));
+  }
   session->ui_ = std::make_shared<platform::Ui>(overlay);
   g_object_set_data(G_OBJECT(page), "weft-session", session);
   g_object_set_data_full(G_OBJECT(overlay), "weft-session", session,
@@ -126,9 +154,19 @@ GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area,
   return overlay;
 }
 
-Session::Session(GtkWidget *page, Factory make)
+Session::Session(GtkWidget *page, Factory make, bool app)
     : make_(make), page_(page), environment_(std::make_unique<Environment>(page)), cancellable_(g_cancellable_new()) {
   scopes_[0] = std::make_unique<RootScope>(*this, page);
+  if (app) {
+    stack_widget_ = gtk_stack_new();
+    auto &layout = attach_layout(stack_widget_);
+    layout.fill = true;
+    layout.grow = 1;
+    gtk_widget_set_hexpand(stack_widget_, true);
+    gtk_widget_set_vexpand(stack_widget_, true);
+    gtk_stack_set_transition_duration(GTK_STACK(stack_widget_), 250);
+    gtk_widget_set_parent(stack_widget_, page);
+  }
 }
 
 Session::~Session() {
@@ -253,7 +291,8 @@ void Session::commit(const uint8_t *ops, size_t len) {
   try {
     auto batch = ops::read_all(ops, len);
     for (const auto &op : batch) {
-      if (op.code == protocol::Code::Splice || op.code == protocol::Code::Bind || op.code == protocol::Code::Nav)
+      if (op.code == protocol::Code::Splice || op.code == protocol::Code::Bind ||
+          (op.code == protocol::Code::Nav && !stack_widget_))
         throw OpError("the layout has no lazy mount point or app");
     }
     for (const auto &op : batch) apply(op);
@@ -283,9 +322,11 @@ void Session::apply(const ops::Op &op) {
     case protocol::Code::Attach:
       mount(op.scope, op.index, {op.child});
       break;
+    case protocol::Code::Nav:
+      navigate(op.nav);
+      break;
     case protocol::Code::Splice:
     case protocol::Code::Bind:
-    case protocol::Code::Nav:
       throw OpError("the layout has no lazy mount point or app");
     case protocol::Code::Rows: {
       std::vector<uint32_t> rows(op.count);
@@ -294,6 +335,71 @@ void Session::apply(const ops::Op &op) {
       break;
     }
   }
+}
+
+void Session::navigate(const ops::Nav &nav) {
+  if (!stack_widget_ || nav.modal || nav.tab >= nav.tabs.count) throw OpError("invalid navigation state");
+  std::vector<uint32_t> tabs, stack;
+  for (auto id : nav.tabs) tabs.push_back(id);
+  for (auto id : nav.stack) stack.push_back(id);
+  std::unordered_set<uint32_t> kept;
+  for (auto id : tabs) if (id) kept.insert(id);
+  for (auto id : stack) if (id) kept.insert(id);
+  for (auto id : kept) {
+    auto found = scopes_.find(id);
+    if (found == scopes_.end() || !found->second->page_widget_) throw OpError("navigation references a non-page scope");
+  }
+  uint32_t current = stack.empty() ? tabs[nav.tab] : stack.back();
+  if (!current || !kept.contains(current)) throw OpError("navigation has no current page");
+  bool push = nav.tab == nav_tab_ && stack.size() > nav_stack_.size() &&
+      std::equal(nav_stack_.begin(), nav_stack_.end(), stack.begin());
+  bool pop = nav.tab == nav_tab_ && stack.size() < nav_stack_.size() &&
+      std::equal(stack.begin(), stack.end(), nav_stack_.begin());
+  auto add_page = [&](uint32_t id, bool show_back) {
+    if (!id) return;
+    auto &scope = *scopes_.at(id);
+    if (!gtk_widget_get_parent(scope.page_widget_)) gtk_stack_add_child(GTK_STACK(stack_widget_), scope.page_widget_);
+    gtk_widget_set_visible(scope.back_button_, show_back);
+  };
+  for (auto id : tabs) add_page(id, false);
+  for (auto id : stack) add_page(id, true);
+  gtk_stack_set_transition_type(GTK_STACK(stack_widget_), push || pop ? GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT : GTK_STACK_TRANSITION_TYPE_NONE);
+  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), scopes_.at(current)->page_widget_);
+  std::unordered_set<uint32_t> old;
+  for (auto id : nav_tabs_) if (id) old.insert(id);
+  for (auto id : nav_stack_) if (id) old.insert(id);
+  for (auto id : old) if (!kept.contains(id)) {
+    auto found = scopes_.find(id);
+    if (found != scopes_.end()) {
+      retire_page(found->second->page_widget_, pop);
+      destroy(*found->second);
+    }
+  }
+  nav_tab_ = nav.tab;
+  nav_tabs_ = std::move(tabs);
+  nav_stack_ = std::move(stack);
+}
+
+bool Session::back() {
+  if (committing_ || nav_stack_.empty()) return false;
+  auto removed = nav_stack_.back();
+  nav_stack_.pop_back();
+  auto current = nav_stack_.empty() ? nav_tabs_[nav_tab_] : nav_stack_.back();
+  gtk_stack_set_transition_type(GTK_STACK(stack_widget_), GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), scopes_.at(current)->page_widget_);
+  auto found = scopes_.find(removed);
+  if (found != scopes_.end()) {
+    retire_page(found->second->page_widget_, true);
+    destroy(*found->second);
+  }
+  std::string json = "{\"tab\":" + std::to_string(nav_tab_) + ",\"stack\":[";
+  for (size_t i = 0; i < nav_stack_.size(); ++i) {
+    if (i) json += ',';
+    json += std::to_string(nav_stack_[i]);
+  }
+  json += "],\"modal\":0}";
+  signal("navigation", json);
+  return true;
 }
 
 void Session::mount(uint32_t parent, uint32_t index, std::vector<uint32_t> ids) {

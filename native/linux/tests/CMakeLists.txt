@@ -61,3 +61,8 @@ target_link_libraries(weft_linux_ui_tests PRIVATE weft_linux)
 target_include_directories(weft_linux_ui_tests PRIVATE ../src)
 add_test(NAME linux.ui COMMAND weft_linux_ui_tests)
 set_tests_properties(linux.ui PROPERTIES SKIP_RETURN_CODE 77)
+
+add_executable(weft_linux_navigation_tests navigation_test.cpp)
+target_link_libraries(weft_linux_navigation_tests PRIVATE weft_linux)
+add_test(NAME linux.navigation COMMAND weft_linux_navigation_tests)
+set_tests_properties(linux.navigation PROPERTIES SKIP_RETURN_CODE 77)

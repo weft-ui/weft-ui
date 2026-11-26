@@ -27,6 +27,40 @@ std::string owned(std::string_view text) { return std::string(text); }
 
 }  // namespace
 
+BarButton::BarButton(std::function<void()> action)
+    : Element(gtk_button_new()), action_(std::move(action)) {
+  g_signal_connect(widget(), "clicked", G_CALLBACK(+[](GtkButton *, gpointer data) {
+    auto &button = *static_cast<BarButton *>(data);
+    if (button.action_) button.action_();
+  }), this);
+}
+
+void BarButton::set_label(std::string_view label) { label_ = label; update(); }
+void BarButton::set_icon(std::string_view icon) { icon_ = icon; update(); }
+void BarButton::set_disabled(bool disabled) { gtk_widget_set_sensitive(widget(), !disabled); }
+
+void BarButton::update() {
+  gtk_accessible_update_property(GTK_ACCESSIBLE(widget()), GTK_ACCESSIBLE_PROPERTY_LABEL, label_.c_str(), -1);
+  if (icon_.starts_with("asset:")) {
+    auto asset = find_asset(asset_directory(), std::string_view(icon_).substr(6), gtk_widget_get_scale_factor(widget()));
+    if (asset) {
+      gtk_button_set_child(GTK_BUTTON(widget()), gtk_image_new_from_file(asset->path.c_str()));
+      return;
+    }
+  }
+  gtk_button_set_label(GTK_BUTTON(widget()), label_.c_str());
+}
+
+NavBar::NavBar() : Element(gtk_center_box_new()), title_(gtk_label_new("")),
+                   actions_(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)) {
+  gtk_center_box_set_center_widget(GTK_CENTER_BOX(widget()), title_);
+  gtk_center_box_set_end_widget(GTK_CENTER_BOX(widget()), actions_);
+}
+void NavBar::set_title(std::string_view title) { gtk_label_set_text(GTK_LABEL(title_), std::string(title).c_str()); }
+void NavBar::set_hidden(bool hidden) { gtk_widget_set_visible(widget(), !hidden); }
+void NavBar::add(BarButton &button) { gtk_box_append(GTK_BOX(actions_), button.widget()); }
+void NavBar::set_back(GtkWidget *button) { gtk_center_box_set_start_widget(GTK_CENTER_BOX(widget()), button); }
+
 // Values.
 
 double number(const ops::Value &value) {

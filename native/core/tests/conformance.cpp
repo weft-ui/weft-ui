@@ -24,6 +24,7 @@
 #include <string_view>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -158,8 +159,8 @@ class Renderer {
     std::vector<std::string> lines;
     auto batch = weft::ops::read_all(bytes, len);
     for (const auto &op : batch) {
-      if (op.code == Code::Splice || op.code == Code::Bind || op.code == Code::Nav)
-        throw Protocol("the layout has no lazy mount point or app");
+      if (op.code == Code::Splice || op.code == Code::Bind)
+        throw Protocol("the layout has no lazy mount point");
     }
     for (const auto &op : batch) {
       lines.push_back(annotate(op));
@@ -168,10 +169,29 @@ class Renderer {
     return lines;
   }
 
+  /// Apply a host back action and return the resulting navigation signal, if any.
+  std::optional<std::string> back() {
+    if (!nav_ || (!nav_->modal && nav_->stack.empty())) return std::nullopt;
+    Navigation next = *nav_;
+    if (next.modal) next.modal = 0;
+    else next.stack.pop_back();
+    set_nav(std::move(next));
+    std::string json = "{\"tab\":" + std::to_string(nav_->tab) + ",\"stack\":[";
+    for (size_t i = 0; i < nav_->stack.size(); i++) {
+      if (i) json += ',';
+      json += std::to_string(nav_->stack[i]);
+    }
+    return json + "],\"modal\":" + std::to_string(nav_->modal) + "}";
+  }
+
   /// The `index`-th element of `type` in document order, as (scope, node).
   std::pair<uint32_t, uint32_t> find(const std::string &type, uint32_t index) const {
     std::vector<std::pair<uint32_t, uint32_t>> found;
-    if (root_) expand_scope(*root_, type, found);
+    if (nav_) {
+      uint32_t current = nav_->modal ? nav_->modal :
+          nav_->stack.empty() ? nav_->tabs[nav_->tab] : nav_->stack.back();
+      expand_scope(current, type, found);
+    } else if (root_) expand_scope(*root_, type, found);
     if (index >= found.size()) throw Protocol("no " + type + " #" + std::to_string(index));
     return found[index];
   }
@@ -201,6 +221,41 @@ class Renderer {
   Layout layout_;
   std::unordered_map<uint32_t, std::unique_ptr<Scope>> scopes_;
   std::optional<uint32_t> root_;
+  struct Navigation {
+    uint32_t tab;
+    std::vector<uint32_t> tabs;
+    std::vector<uint32_t> stack;
+    uint32_t modal;
+  };
+  std::optional<Navigation> nav_;
+
+  void set_nav(Navigation next) {
+    if (root_ || next.tab >= next.tabs.size() || !next.tabs[next.tab] ||
+        std::find(next.stack.begin(), next.stack.end(), 0) != next.stack.end()) {
+      throw Protocol("invalid navigation state");
+    }
+    std::unordered_set<uint32_t> previous;
+    if (nav_) {
+      for (uint32_t id : nav_->tabs) if (id) previous.insert(id);
+      for (uint32_t id : nav_->stack) previous.insert(id);
+      if (nav_->modal) previous.insert(nav_->modal);
+    }
+    std::unordered_set<uint32_t> retained;
+    auto retain = [&](uint32_t id) {
+      if (!id) return;
+      if (!retained.insert(id).second) throw Protocol("scope " + std::to_string(id) + " appears twice in navigation");
+      Scope &scope = at(id);
+      if (layout_.templates[scope.tpl].kind != "page" || (scope.mounted && !previous.count(id))) {
+        throw Protocol("scope " + std::to_string(id) + " is not an available page");
+      }
+    };
+    for (uint32_t id : next.tabs) retain(id);
+    for (uint32_t id : next.stack) retain(id);
+    retain(next.modal);
+    for (uint32_t id : previous) if (!retained.count(id)) destroy(id);
+    for (uint32_t id : retained) at(id).mounted = true;
+    nav_ = std::move(next);
+  }
 
   void expand_scope(uint32_t id, const std::string &type, std::vector<std::pair<uint32_t, uint32_t>> &found) const {
     for (uint32_t node : layout_.templates[at(id).tpl].roots) expand(id, node, type, found);
@@ -282,8 +337,16 @@ class Renderer {
     switch (op.code) {
       case Code::Splice:
       case Code::Bind:
-      case Code::Nav:
-        throw Protocol("the layout has no lazy mount point or app");
+        throw Protocol("the layout has no lazy mount point");
+      case Code::Nav: {
+        Navigation next{op.nav.tab, {}, {}, op.nav.modal};
+        next.tabs.reserve(op.nav.tabs.count);
+        next.stack.reserve(op.nav.stack.count);
+        for (uint32_t id : op.nav.tabs) next.tabs.push_back(id);
+        for (uint32_t id : op.nav.stack) next.stack.push_back(id);
+        set_nav(std::move(next));
+        return;
+      }
       case Code::Create: {
         if (op.index >= layout_.templates.size()) throw Protocol("unknown template " + std::to_string(op.index));
         if (op.scope == 0 || scopes_.count(op.scope)) throw Protocol("scope id " + std::to_string(op.scope) + " is in use");
@@ -343,7 +406,7 @@ class Renderer {
       }
       case Code::Attach: {
         if (op.scope == 0) {
-          if (op.index != 0 || root_) throw Protocol("invalid root " + weft::ops::format(op));
+          if (op.index != 0 || root_ || nav_) throw Protocol("invalid root " + weft::ops::format(op));
           root_ = child(op.child, templates_of_kind("component"));
           return;
         }
@@ -497,6 +560,8 @@ struct Host {
     } else if (call.method == "edit") {
       auto [scope, node] = renderer.find(args["type"].string(), args["index"].u32());
       edit(scope, node, args["value"]);
+    } else if (call.method == "back") {
+      if (auto signal = renderer.back()) weft_runtime_signal(rt, "navigation", signal->data(), signal->size());
     } else if (call.method == "done") {
       done = true;
     } else if (call.method == "fail") {

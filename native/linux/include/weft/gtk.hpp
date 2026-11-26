@@ -581,6 +581,31 @@ class Image final : public Decorated {
   Color placeholder_ = Color::rgba(0);
 };
 
+class BarButton final : public Element {
+ public:
+  explicit BarButton(std::function<void()> action);
+  void set_label(std::string_view label);
+  void set_icon(std::string_view icon);
+  void set_disabled(bool disabled);
+ private:
+  void update();
+  std::string label_;
+  std::string icon_;
+  std::function<void()> action_;
+};
+
+class NavBar final : public Element {
+ public:
+  NavBar();
+  void set_title(std::string_view title);
+  void set_hidden(bool hidden);
+  void add(BarButton &button);
+  void set_back(GtkWidget *button);
+ private:
+  GtkWidget *title_;
+  GtkWidget *actions_;
+};
+
 /// One template instance of the view protocol. The generated views subclass
 /// it per template: the constructor creates the template's elements and
 /// places them into `roots()` and the regions of stacks, and `apply` writes
@@ -601,6 +626,8 @@ class Scope {
  protected:
   /// The template's top-level nodes; they render into the region the scope is mounted in.
   Region &roots() { return roots_; }
+  void init_page();
+  void set_page_bar(NavBar &bar);
 
   /// Creates an element that lives as long as the scope.
   template <class T, class... Args>
@@ -629,6 +656,9 @@ class Scope {
   uint32_t id_;
   Session &session_;
   Region roots_;
+  GtkWidget *page_widget_ = nullptr;
+  GtkWidget *page_header_ = nullptr;
+  GtkWidget *back_button_ = nullptr;
   /// Mount points by index, registered by `Region::point`.
   std::vector<std::unique_ptr<Point>> points_;
   /// The point the scope is mounted at, if any.
@@ -647,7 +677,7 @@ class Session {
   /// Starts the app compiled to `weft/bundle.hbc` next to the executable,
   /// whose views implement the layout with hash `layout_hash`; see `start_app`.
   /// GTK has no safe-area insets, so `safe_area` does not affect the root layout.
-  static GtkWidget *start(uint64_t layout_hash, bool safe_area, Factory make);
+  static GtkWidget *start(uint64_t layout_hash, bool safe_area, Factory make, bool app = false);
 
   Session(const Session &) = delete;
   Session &operator=(const Session &) = delete;
@@ -663,8 +693,11 @@ class Session {
 
  private:
   friend class Scope;
+  friend class NavigationTest;
 
-  Session(GtkWidget *page, Factory make);
+  Session(GtkWidget *page, Factory make, bool app);
+  void navigate(const ops::Nav &nav);
+  bool back();
   void open(const std::string &bundle, uint64_t layout_hash);
   void queue_environment();
   void queue_focus(uint32_t scope, uint32_t slot, bool focused);
@@ -693,6 +726,10 @@ class Session {
 
   Factory make_;
   GtkWidget *page_;
+  GtkWidget *stack_widget_ = nullptr;
+  uint32_t nav_tab_ = 0;
+  std::vector<uint32_t> nav_tabs_;
+  std::vector<uint32_t> nav_stack_;
   std::unique_ptr<Environment> environment_;
   std::shared_ptr<platform::Ui> ui_;
   std::unordered_map<uint32_t, std::unique_ptr<Scope>> scopes_;
