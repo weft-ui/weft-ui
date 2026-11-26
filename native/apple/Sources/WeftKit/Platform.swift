@@ -3,7 +3,7 @@ import Foundation
 /// The platform modules of the shell; byte formats in
 /// protocol/SPEC.md ("Platform calls").
 enum PlatformModules {
-    static let supported: Set<String> = [WeftProtocol.fetchModule, WeftProtocol.storageModule, WeftProtocol.uiModule]
+    static let supported: Set<String> = [WeftProtocol.fetchModule, WeftProtocol.storageModule, WeftProtocol.uiModule, WeftProtocol.navigationModule]
 
     static func call(_ module: String, _ method: String, _ args: Data) async throws -> Data {
         switch (module, method) {

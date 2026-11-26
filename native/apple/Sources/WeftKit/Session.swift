@@ -6,6 +6,18 @@ import os
 
 let logger = Logger(subsystem: "net.mioyi.weftui", category: "weft")
 
+public struct WeftTab {
+    let title: String
+    let icon: String
+    let activeIcon: String
+
+    public init(title: String, icon: String, activeIcon: String) {
+        self.title = title
+        self.icon = icon
+        self.activeIcon = activeIcon
+    }
+}
+
 enum NavigationTransition { case push, pop, replace }
 
 func navigationTransition(from old: [UInt32], to new: [UInt32]) -> NavigationTransition {
@@ -32,8 +44,10 @@ public final class WeftSession {
     public private(set) var failure: String?
     private(set) var navigationRoot: WeftScope?
     private(set) var navigationPath: [UInt32] = []
-    private var navigationTab: UInt32 = 0
-    private var navigationTabs: [UInt32] = []
+    private(set) var navigationTab: UInt32 = 0
+    private(set) var navigationTabs: [UInt32] = []
+    let tabs: [WeftTab]
+    private(set) var badges: [Int: String] = [:]
     private var navigationModal: UInt32 = 0
 
     let overlays = WeftOverlays()
@@ -53,7 +67,8 @@ public final class WeftSession {
     /// Registers `resources` and starts the app compiled to `bytecode` (`bundle.hbc`).
     /// The views implement the layout with hash `layoutHash`; failures are reported through `failure`.
     /// `safeArea` controls root layout without changing the insets reported to the app.
-    public init(bytecode url: URL?, resources: Bundle, layoutHash: UInt64, safeArea: Bool, make: @escaping Make) {
+    public init(bytecode url: URL?, resources: Bundle, layoutHash: UInt64, safeArea: Bool, tabs: [WeftTab] = [], make: @escaping Make) {
+        self.tabs = tabs
         assets = WeftAssets(bundle: resources)
         self.safeArea = safeArea
         self.make = make
@@ -176,7 +191,7 @@ public final class WeftSession {
             mount(scope, point, [child])
             return true
         case let .nav(tab, tabs, stack, modal, _):
-            guard Int(tab) < tabs.count, let root = scopes[tabs[Int(tab)]], stack.allSatisfy({ scopes[$0] != nil }) else {
+            guard Int(tab) < tabs.count, tabs[Int(tab)] != 0, let root = scopes[tabs[Int(tab)]], stack.allSatisfy({ $0 != 0 && scopes[$0] != nil }) else {
                 fail("weft: navigation references a missing page scope")
                 return false
             }
@@ -208,7 +223,7 @@ public final class WeftSession {
         }
     }
 
-    func page(_ id: UInt32) -> WeftScope? { scopes[id] }
+    func page(_ id: UInt32) -> WeftScope? { id == 0 ? nil : scopes[id] }
 
     @discardableResult
     func userNavigationPath(_ path: [UInt32]) -> String? {
@@ -222,6 +237,32 @@ public final class WeftSession {
         let json = "{\"tab\":\(navigationTab),\"stack\":[\(stack)],\"modal\":\(navigationModal)}"
         signal(name: "navigation", json: json)
         return json
+    }
+
+    @discardableResult
+    func userSelectTab(_ tab: UInt32) -> String? {
+        guard Int(tab) < tabs.count, Int(tab) < navigationTabs.count,
+              tab != navigationTab || !navigationPath.isEmpty else { return nil }
+        let removed = navigationPath
+        navigationPath = []
+        navigationTab = tab
+        let root = navigationTabs[Int(tab)]
+        navigationRoot = root == 0 ? nil : scopes[root]
+        for id in removed {
+            if let scope = scopes[id] { destroy(scope) }
+        }
+        let json = "{\"tab\":\(tab),\"stack\":[],\"modal\":0}"
+        signal(name: "navigation", json: json)
+        return json
+    }
+
+    func setBadge(_ data: Data) throws {
+        struct Badge: Decodable { let tab: Int; let text: String? }
+        let badge = try JSONDecoder().decode(Badge.self, from: data)
+        guard badge.tab >= 0 && badge.tab < tabs.count else {
+            throw PlatformFailure("weft: invalid badge tab")
+        }
+        badges[badge.tab] = badge.text
     }
 
     /// Mounts the scopes `ids` at `point` of `parent`; children no longer
@@ -256,6 +297,17 @@ public final class WeftSession {
 
     fileprivate func call(_ id: UInt32, _ module: String, _ method: String, _ args: Data) {
         // Runs after the kernel's callback returns: the kernel is not reentrant.
+        if module == WeftProtocol.navigationModule && method == WeftProtocol.navigationBadge {
+            let result: Result<Data, any Error>
+            do {
+                try setBadge(args)
+                result = .success(Data())
+            } catch {
+                result = .failure(error)
+            }
+            Task { [weak self] in self?.resolve(id, result) }
+            return
+        }
         if module == WeftProtocol.uiModule {
             Task { [weak self] in
                 guard let self else { return }

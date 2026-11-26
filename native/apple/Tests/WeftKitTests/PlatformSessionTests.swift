@@ -126,6 +126,55 @@ import UniformTypeIdentifiers
     #expect(session.userNavigationPath([3]) == nil)
 }
 
+@Test @MainActor func navigationTabSwitchAndBadges() throws {
+    let tab = WeftTab(title: "Home", icon: "home", activeIcon: "home-on")
+    let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true, tabs: [tab, tab]) { _, id, session in
+        WeftScope(id: id, session: session)
+    }
+    try session.setBadge(Data(#"{"tab":1,"text":""}"#.utf8))
+    #expect(session.badges[1] == "")
+    try session.setBadge(Data(#"{"tab":1,"text":null}"#.utf8))
+    #expect(session.badges[1] == nil)
+    var bytes: [UInt8] = [WeftProtocol.version]
+    func word(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { bytes.append(contentsOf: $0) } }
+    for id: UInt32 in [1, 2, 3] {
+        bytes.append(OpCode.create.rawValue); word(id); word(0)
+    }
+    bytes.append(OpCode.nav.rawValue)
+    word(0); word(2); word(1); word(2); word(1); word(3); word(0); word(0)
+    bytes.withUnsafeBytes { session.commit($0) }
+    #expect(session.userSelectTab(1) == #"{"tab":1,"stack":[],"modal":0}"#)
+    #expect(session.navigationRoot?.id == 2)
+    #expect(session.navigationPath.isEmpty)
+    #expect(session.page(3) == nil)
+    #expect(session.userSelectTab(1) == nil)
+    #expect(session.userSelectTab(9) == nil)
+    #expect(session.userSelectTab(0) == #"{"tab":0,"stack":[],"modal":0}"#)
+}
+
+@Test @MainActor func navigationSelectsUncreatedTab() {
+    let tab = WeftTab(title: "Tab", icon: "tab", activeIcon: "tab")
+    let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true, tabs: [tab, tab]) { _, id, session in
+        WeftScope(id: id, session: session)
+    }
+    var bytes: [UInt8] = [WeftProtocol.version]
+    func word(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { bytes.append(contentsOf: $0) } }
+    bytes.append(OpCode.create.rawValue); word(1); word(0)
+    bytes.append(OpCode.nav.rawValue)
+    word(0); word(2); word(1); word(0); word(0); word(0); word(0)
+    bytes.withUnsafeBytes { session.commit($0) }
+    #expect(session.userSelectTab(1) == #"{"tab":1,"stack":[],"modal":0}"#)
+    #expect(session.navigationRoot == nil)
+    #expect(session.page(1) != nil)
+    bytes = [WeftProtocol.version]
+    bytes.append(OpCode.create.rawValue); word(2); word(0)
+    bytes.append(OpCode.nav.rawValue)
+    word(1); word(2); word(1); word(2); word(0); word(0); word(0)
+    bytes.withUnsafeBytes { session.commit($0) }
+    #expect(session.navigationRoot?.id == 2)
+    #expect(session.page(1) != nil)
+}
+
 @Test @MainActor func sessionCommitStopsAfterMissingTemplateOp() {
     var requestedTemplates: [UInt32] = []
     let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true) { template, id, session in

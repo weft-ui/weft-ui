@@ -175,13 +175,42 @@ public struct WeftRoot: View {
                     get: { session.navigationPath },
                     set: { _ = session.userNavigationPath($0) }
                 )) {
-                    root.view.id(root.id)
-                        .modifier(WeftInlineTitle())
-                        .navigationDestination(for: UInt32.self) { id in
-                            if let page = session.page(id) {
-                                page.view.id(id).modifier(WeftInlineTitle())
+                    Group {
+                        if session.tabs.isEmpty {
+                            root.view.id(root.id).modifier(WeftInlineTitle())
+                        } else {
+                            TabView(selection: Binding(
+                                get: { session.navigationTab },
+                                set: { _ = session.userSelectTab($0) }
+                            )) {
+                                ForEach(session.tabs.indices, id: \.self) { index in
+                                    let tab = session.tabs[index]
+                                    Group {
+                                        if index < session.navigationTabs.count,
+                                           let page = session.page(session.navigationTabs[index]) {
+                                            page.view.id(page.id).modifier(WeftInlineTitle())
+                                        } else {
+                                            Color.clear
+                                        }
+                                    }
+                                    .tabItem {
+                                        Label {
+                                            Text(tab.title)
+                                        } icon: {
+                                            Image(index == Int(session.navigationTab) ? tab.activeIcon : tab.icon, bundle: session.assets.bundle)
+                                        }
+                                    }
+                                    .badge(session.badges[index])
+                                    .tag(UInt32(index))
+                                }
                             }
                         }
+                    }
+                    .navigationDestination(for: UInt32.self) { id in
+                        if let page = session.page(id) {
+                            page.view.id(id).modifier(WeftInlineTitle())
+                        }
+                    }
                 }
                 #if os(macOS)
                 // The stack's toolbar back button belongs to the pushed page and disappears with a hidden

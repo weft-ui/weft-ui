@@ -9,6 +9,10 @@ import WeftKit
     resources: Bundle.module,
     layoutHash: 0x69aea4cbb1f5516a,
     safeArea: true,
+    tabs: [
+        WeftTab(title: "Home", icon: "tab_home", activeIcon: "tab_home"),
+        WeftTab(title: "Settings", icon: "tab_settings", activeIcon: "tab_settings"),
+    ],
     make: makeScope
 )
 
