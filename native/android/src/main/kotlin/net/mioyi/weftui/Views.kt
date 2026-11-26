@@ -58,6 +58,7 @@ fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.
                 }
             }
         }
+        OverlayHost(session.overlays)
     }
 }
 

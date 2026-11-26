@@ -36,6 +36,7 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     private val scopes = HashMap<Int, WeftScope>()
     private val main = Handler(Looper.getMainLooper())
     private val platform = PlatformModules(context)
+    internal val overlays = OverlayQueue()
 
     /** Whether a batch of ops is being applied; the kernel is not reentrant. */
     private var committing = false
@@ -56,8 +57,15 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
 
         override fun call(id: Int, module: ByteArray, method: ByteArray, args: ByteArray) {
             // Runs after the kernel's callback returns: the kernel is not reentrant.
-            platform.call(module.decodeToString(), method.decodeToString(), args) { ok, result ->
+            val moduleName = module.decodeToString()
+            val methodName = method.decodeToString()
+            val done: (Boolean, ByteArray) -> Unit = { ok, result ->
                 main.post { if (runtime != 0L) Native.resolve(runtime, id, ok, result) }
+            }
+            if (moduleName == WeftProtocol.UI_MODULE) {
+                main.post { if (runtime != 0L) overlays.call(methodName, args, done) }
+            } else {
+                platform.call(moduleName, methodName, args, done)
             }
         }
 

@@ -130,7 +130,7 @@ internal class PlatformModules(context: Context) {
     }
 
     companion object {
-        val SUPPORTED = setOf(WeftProtocol.FETCH_MODULE, WeftProtocol.STORAGE_MODULE)
+        val SUPPORTED = setOf(WeftProtocol.FETCH_MODULE, WeftProtocol.STORAGE_MODULE, WeftProtocol.UI_MODULE)
         internal const val MAX_FETCH_BYTES = 32 * 1024 * 1024
 
         /** Name of the shared preferences of `storage`. */
