@@ -12,8 +12,8 @@ import { PLATFORMS } from "@weft-ui/runtime/protocol";
 import weft, { type WeftOptions } from "@weft-ui/vite";
 import { Window } from "happy-dom";
 import { chromium } from "playwright";
-import { createBuilder, preview } from "vite";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { createBuilder, createLogger, preview, type Logger } from "vite";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { launch } from "../src/miniprogram.ts";
 
 const WEFT_ANDROID = fileURLToPath(new URL("../../native/android", import.meta.url));
@@ -79,7 +79,7 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-async function build(platform: string | undefined, options: WeftOptions = {}) {
+async function build(platform: string | undefined, options: WeftOptions = {}, logger?: Logger) {
   const previous = process.env.WEFT_PLATFORM;
   if (platform === undefined) delete process.env.WEFT_PLATFORM;
   else process.env.WEFT_PLATFORM = platform;
@@ -88,6 +88,7 @@ async function build(platform: string | undefined, options: WeftOptions = {}) {
       root,
       configFile: false,
       logLevel: "silent",
+      customLogger: logger,
       plugins: [weft({
         platforms: PLATFORMS.filter((platform) => platform === "web" || platform === "wechat"),
         app: { id: "com.example.test", name: "Test \"App\"" },
@@ -435,6 +436,146 @@ run(new Notes({ Home: () => new Home({}), Detail: (params) => new Detail(params)
       expect(existsSync(join(project, `weft/pages/${page}/index.${extension}`))).toBe(true);
     }
   }
+});
+
+async function writeSubPackageFixture() {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Image("asset:shared") }
+page Gallery() { Column { Image("asset:shared") Image("asset:gallery") Image("asset:gallery_icon") Text("Gallery", font = "Inter") } }
+page Account() { Column { Image("asset:account") Text("Account") } }
+app Notes { start = Home }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Gallery, Account, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Gallery: () => new Gallery({}), Account: () => new Account({}) }));
+`);
+}
+
+const subPackages = { gallery: ["Gallery"], account: ["Account"] };
+
+test("WeChat emits two sub-packages, imports main templates and places assets by reachability", async () => {
+  await writeSubPackageFixture();
+  const project = join(root, "apps/wechat");
+  await mkdir(join(root, "assets/images"), { recursive: true });
+  await mkdir(join(root, "assets/fonts"), { recursive: true });
+  await mkdir(join(root, "assets/icons"), { recursive: true });
+  const image = fileURLToPath(new URL("./fixtures/assets/assets/images/logo.png", import.meta.url));
+  for (const name of ["shared", "dynamic", "gallery", "account"]) await cp(image, join(root, `assets/images/${name}.png`));
+  await cp(fileURLToPath(new URL("./fixtures/assets/assets/icons/star.svg", import.meta.url)), join(root, "assets/icons/gallery_icon.svg"));
+  const font = fileURLToPath(new URL("./fixtures/assets/assets/fonts/Inter-Regular.ttf", import.meta.url));
+  await cp(font, join(root, "assets/fonts/Inter-Regular.ttf"));
+  await mkdir(project, { recursive: true });
+  await writeFile(join(project, "app.json"), JSON.stringify({ pages: ["custom/page", "weft/index"], window: { backgroundColor: "#123456" } }));
+  await build("wechat", { wechat: { subPackages } });
+  const manifest = JSON.parse(await readFile(join(project, "app.json"), "utf8"));
+  expect(manifest.pages).toEqual(["weft/pages/home/index", "custom/page"]);
+  expect(manifest.window.backgroundColor).toBe("#123456");
+  expect(manifest.subPackages).toEqual(expect.arrayContaining([
+    { root: "gallery", pages: ["weft/pages/gallery/index"] },
+    { root: "account", pages: ["weft/pages/account/index"] },
+  ]));
+  for (const name of ["gallery", "account"]) {
+    for (const extension of ["js", "json", "wxml", "wxss"]) {
+      expect(existsSync(join(project, `${name}/weft/pages/${name}/index.${extension}`))).toBe(true);
+    }
+    expect(await readFile(join(project, `${name}/weft/view.wxml`), "utf8")).toContain('<import src="/weft/view.wxml"');
+    expect(existsSync(join(project, `weft/pages/${name}/index.js`))).toBe(false);
+    expect(existsSync(join(project, `${name}/weft/assets/${name}.png`))).toBe(true);
+    expect(existsSync(join(project, `weft/assets/${name}.png`))).toBe(false);
+  }
+  expect(existsSync(join(project, "weft/assets/shared.png"))).toBe(true);
+  expect(existsSync(join(project, "weft/assets/dynamic.png"))).toBe(true);
+  expect(existsSync(join(project, "gallery/weft/assets/gallery_icon.svg"))).toBe(true);
+  expect(existsSync(join(project, "weft/assets/gallery_icon.svg"))).toBe(false);
+  expect(existsSync(join(project, "weft/js/index.js"))).toBe(true);
+  const galleryStyle = await readFile(join(project, "gallery/weft/pages/gallery/index.wxss"), "utf8");
+  const encodedFont = (await readFile(font)).toString("base64");
+  expect(galleryStyle).toContain(encodedFont);
+  expect(await readFile(join(project, "weft/pages/home/index.wxss"), "utf8")).not.toContain(encodedFont);
+});
+
+test("WeChat keeps potentially dynamic image assets in the main package", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Text("Home") }
+page Gallery() { state source = "asset:gallery" Image(source) }
+app Notes { start = Home }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Gallery, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), Gallery: () => new Gallery({}) }));
+`);
+  await mkdir(join(root, "assets/images"), { recursive: true });
+  await cp(fileURLToPath(new URL("./fixtures/assets/assets/images/logo.png", import.meta.url)), join(root, "assets/images/gallery.png"));
+  await build("wechat", { wechat: { subPackages: { gallery: ["Gallery"] } } });
+  expect(existsSync(join(root, "apps/wechat/weft/assets/gallery.png"))).toBe(true);
+  expect(existsSync(join(root, "apps/wechat/gallery/weft/assets/gallery.png"))).toBe(false);
+});
+
+test.each([
+  [{ "Bad/name": ["Gallery"] }, "weft: invalid mini program sub-package name `Bad/name`"],
+  [{ gallery: ["Missing"] }, "weft: page `Missing` does not exist"],
+  [{ gallery: ["Gallery"], account: ["Gallery"] }, "weft: page `Gallery` appears in more than one sub-package"],
+  [{ gallery: ["Home"] }, "weft: start or tab page `Home` cannot be in a sub-package"],
+] satisfies [Record<string, string[]>, string][])("WeChat rejects invalid sub-package configuration %#", async (packages, message) => {
+  await writeSubPackageFixture();
+  await expect(build("wechat", { wechat: { subPackages: packages } })).rejects.toThrow(message);
+});
+
+test("WeChat rejects tab pages in sub-packages", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+page Home() { Text("Home") }
+page Settings() { Text("Settings") }
+app Notes { tabs { Home(title = "Home", icon = "asset:home") Settings(title = "Settings", icon = "asset:home") } }
+`);
+  await expect(build("wechat", { wechat: { subPackages: { settings: ["Settings"] } } }))
+    .rejects.toThrow("weft: start or tab page `Settings` cannot be in a sub-package");
+});
+
+test("WeChat warns over the main package budget and excludes ignored project files", async () => {
+  const project = join(root, "apps/wechat");
+  await mkdir(project, { recursive: true });
+  await writeFile(join(project, "payload.bin"), Buffer.alloc(1537 * 1024));
+  await writeFile(join(project, "ignored.bin"), Buffer.alloc(3 * 1024 * 1024));
+  await writeFile(join(project, "project.config.json"), JSON.stringify({ packOptions: { ignore: [{ type: "file", value: "ignored.bin" }] } }));
+  await writeFile(join(project, "project.private.config.json"), " ".repeat(3 * 1024 * 1024));
+  const logger = createLogger();
+  const warnings = vi.spyOn(logger, "warn");
+  await build("wechat", {}, logger);
+  expect(warnings.mock.calls.some(([message]) => /weft: the mini program main package is \d+ KiB, over the 1536 KiB budget/.test(message))).toBe(true);
+});
+
+test("WeChat rejects an oversized main package", async () => {
+  const project = join(root, "apps/wechat");
+  await mkdir(project, { recursive: true });
+  await writeFile(join(project, "payload.bin"), Buffer.alloc(2049 * 1024));
+  await expect(build("wechat")).rejects.toThrow(/weft: the mini program main package is \d+ KiB, over the 2048 KiB limit/);
+});
+
+test("WeChat rejects an oversized sub-package", async () => {
+  await writeSubPackageFixture();
+  const directory = join(root, "apps/wechat/gallery");
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, "payload.bin"), Buffer.alloc(2049 * 1024));
+  await expect(build("wechat", { wechat: { subPackages } })).rejects.toThrow(/weft: the mini program .*package.* is \d+ KiB, over the 2048 KiB limit/);
+});
+
+test("WeChat rejects a total size over 20 MiB even when individual packages fit", async () => {
+  const names = Array.from({ length: 11 }, (_, i) => `Page${i}`);
+  await writeFile(join(root, "src/App.weft"), `page Home() { Text("Home") }\n${names.map((name) => `page ${name}() { Text("${name}") }`).join("\n")}\napp Notes { start = Home }`);
+  await writeFile(join(root, "src/index.ts"), `import { Home, ${names.join(", ")}, Notes } from "./App.weft";
+import { run } from "@weft-ui/platform";
+run(new Notes({ Home: () => new Home({}), ${names.map((name) => `${name}: () => new ${name}({})`).join(", ")} }));`);
+  const packages: Record<string, string[]> = {};
+  for (const [index, name] of names.entries()) {
+    const packageRoot = `part${index}`;
+    packages[packageRoot] = [name];
+    const directory = join(root, "apps/wechat", packageRoot);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(directory, "payload.bin"), Buffer.alloc(1900 * 1024));
+  }
+  await expect(build("wechat", { wechat: { subPackages: packages } })).rejects.toThrow(/weft: the mini program total.* is \d+ KiB, over the .* limit/);
 });
 
 test("WEFT_PLATFORM=wechat generates a mini program project that runs", async () => {

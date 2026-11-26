@@ -18,6 +18,8 @@ import { CSS_PROPS } from "./elements.ts";
 import { sameValue, type Session, type Sink, type Value } from "./remote.ts";
 import { matchRoute, type PageClass } from "./route.ts";
 
+declare const __WEFT_WECHAT_SUBPACKAGES__: Record<string, string> | undefined;
+
 type Data = Record<string, unknown>;
 
 type AssetVariants = Readonly<Record<string, readonly [scale: number, src: string][]>>;
@@ -378,7 +380,9 @@ export class WechatSink implements Sink {
       const query = Object.entries(match.params).filter(([, value]) => value != null)
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
       query.push(`__w=${++this.#nextNavigation}`);
-      const url = `/weft/pages/${slug}/index?${query.join("&")}`;
+      const packages: Record<string, string> = typeof __WEFT_WECHAT_SUBPACKAGES__ === "undefined" ? {} : __WEFT_WECHAT_SUBPACKAGES__;
+      const prefix = packages[route.page] ? `/${packages[route.page]}` : "";
+      const url = `${prefix}/weft/pages/${slug}/index?${query.join("&")}`;
       if (operation === "push") wx.navigateTo({ url });
       else { this.#hostNavigating++; wx.redirectTo({ url }); }
     } else {

@@ -232,7 +232,13 @@ mod tests {
 
         let mut loader = MemoryLoader::new();
         loader.insert("App.weft", r#"component App() { Text("hello") }"#);
-        for options in [AppOptions::default(), AppOptions { safe_area: false }] {
+        for options in [
+            AppOptions::default(),
+            AppOptions {
+                safe_area: false,
+                ..AppOptions::default()
+            },
+        ] {
             let output = compile_app(
                 weft_ui_parser::load(&["App.weft"], &mut loader),
                 Platform::Android,

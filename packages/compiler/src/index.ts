@@ -40,6 +40,8 @@ export interface OutputFile {
 export interface AppOptions {
   /** Keep root content inside the host's safe area. Defaults to `true`. */
   safeArea?: boolean;
+  /** WeChat package roots and their page names. */
+  subPackages?: Record<string, string[]>;
 }
 
 export interface AppResult {
@@ -51,6 +53,15 @@ export interface AppResult {
   layout: string;
   /** Hexadecimal hash of the layout; empty when there is no layout. */
   layoutHash: string;
+  /** Static asset names, without the asset: prefix, reachable from main pages. */
+  mainPackageAssets: string[];
+  /** Static asset names reachable from each subpackage. */
+  subPackageAssets: Record<string, string[]>;
+  mainPackageFonts: string[];
+  subPackageFonts: Record<string, string[]>;
+  /** Dynamic references require keeping all potentially referenced resources in the main package. */
+  hasDynamicAssets: boolean;
+  hasDynamicFonts: boolean;
   /** Rendered diagnostics; empty when there are none. */
   diagnostics: string;
   hasErrors: boolean;
@@ -124,11 +135,20 @@ export async function compileApp(
     const code = output.logicCode;
     const dts = output.logicDts;
     const contents = output.viewContents;
+    type Usage = { assets: string[]; fonts: string[]; dynamicAssets: boolean; dynamicFonts: boolean };
+    const usage = JSON.parse(output.packageUsage) as { main: Usage; subPackages: Record<string, Usage> };
+    const packages = Object.entries(usage.subPackages);
     return {
       logic: output.logicSources.map((source, index) => ({ source, code: code[index]!, dts: dts[index]! })),
       views: output.viewPaths.map((path, index) => ({ path, contents: contents[index]! })),
       layout: output.layout,
       layoutHash: output.layoutHash,
+      mainPackageAssets: usage.main.assets,
+      subPackageAssets: Object.fromEntries(packages.map(([root, value]) => [root, value.assets])),
+      mainPackageFonts: usage.main.fonts,
+      subPackageFonts: Object.fromEntries(packages.map(([root, value]) => [root, value.fonts])),
+      hasDynamicAssets: usage.main.dynamicAssets || packages.some(([, value]) => value.dynamicAssets),
+      hasDynamicFonts: usage.main.dynamicFonts || packages.some(([, value]) => value.dynamicFonts),
       diagnostics: output.diagnostics,
       hasErrors: output.hasErrors,
       files: output.files,

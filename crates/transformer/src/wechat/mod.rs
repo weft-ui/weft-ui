@@ -15,10 +15,127 @@ mod elements;
 mod table;
 mod wxml;
 
+use std::collections::{BTreeMap, BTreeSet};
+
+use crate::AppOptions;
 use crate::bridge::js;
 use crate::elements::CSS;
+use crate::ir::{NodeKind, Program, PropValue};
 use crate::style;
 use crate::transform::{Context, OutputFile};
+
+/// Static resources used by a package's reachable templates.
+#[derive(Debug, Clone, Default)]
+pub struct ResourceUsage {
+    pub assets: BTreeSet<String>,
+    pub fonts: BTreeSet<String>,
+    pub dynamic_assets: bool,
+    pub dynamic_fonts: bool,
+}
+
+/// Resource usage of the main package and each configured subpackage.
+#[derive(Debug, Clone, Default)]
+pub struct PackageUsage {
+    pub main: ResourceUsage,
+    pub sub_packages: BTreeMap<String, ResourceUsage>,
+}
+
+fn reachable(program: &Program, pages: impl Iterator<Item = usize>) -> Vec<bool> {
+    let mut included = vec![false; program.components.len()];
+    let mut pending: Vec<usize> = pages.collect();
+    while let Some(index) = pending.pop() {
+        if std::mem::replace(&mut included[index], true) {
+            continue;
+        }
+        for node in &program.components[index].nodes {
+            if let NodeKind::Component { component, .. } = &node.kind {
+                pending.push(component.index());
+            }
+        }
+    }
+    included
+}
+
+fn resources(program: &Program, included: &[bool]) -> ResourceUsage {
+    let mut usage = ResourceUsage::default();
+    for (component, include) in program.components.iter().zip(included) {
+        if !include {
+            continue;
+        }
+        for node in &component.nodes {
+            let NodeKind::Element { element, props, .. } = &node.kind else {
+                continue;
+            };
+            for prop in props {
+                let is_src = *element == crate::elements::Element::Image && prop.name == "src";
+                let is_font = prop.name == "font";
+                if !is_src && !is_font {
+                    continue;
+                }
+                let literal = match &prop.value {
+                    PropValue::Expr(expr) => crate::view::literal(expr),
+                    _ => None,
+                };
+                match literal {
+                    Some(crate::view::Literal::Str(value)) if is_src => {
+                        if let Some(name) = value.strip_prefix("asset:") {
+                            usage.assets.insert(name.to_owned());
+                        }
+                    }
+                    Some(crate::view::Literal::Str(value)) if is_font => {
+                        usage.fonts.insert(value.to_owned());
+                    }
+                    None if is_src => usage.dynamic_assets = true,
+                    None if is_font => usage.dynamic_fonts = true,
+                    _ => {}
+                }
+            }
+        }
+    }
+    usage
+}
+
+pub(crate) fn package_usage(program: &Program, options: &AppOptions) -> PackageUsage {
+    let package_for = |name: &str| {
+        options
+            .sub_packages
+            .iter()
+            .find(|(_, pages)| pages.iter().any(|page| page == name))
+            .map(|(root, _)| root.as_str())
+    };
+    let main = if program.app.is_some() {
+        reachable(
+            program,
+            program
+                .components
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.page.is_some() && package_for(&c.name).is_none())
+                .map(|(i, _)| i),
+        )
+    } else {
+        vec![true; program.components.len()]
+    };
+    let mut result = PackageUsage {
+        main: resources(program, &main),
+        ..PackageUsage::default()
+    };
+    for (root, pages) in &options.sub_packages {
+        let set = reachable(
+            program,
+            program
+                .components
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.page.is_some() && pages.contains(&c.name))
+                .map(|(i, _)| i),
+        );
+        result
+            .sub_packages
+            .insert(root.clone(), resources(program, &set));
+    }
+    result
+}
 
 // A mini program image has a default 320×240 size, with no CSS intrinsic size.
 // When the parent supplies a dimension, let CSS use that size and derive the
@@ -60,10 +177,31 @@ fn json_string(value: &str) -> String {
 ///
 /// Panics without a layout in `cx`.
 #[must_use]
-pub fn transform(cx: &Context<'_>) -> Vec<OutputFile> {
+pub fn transform(cx: &Context<'_>, options: &AppOptions) -> Vec<OutputFile> {
     let program = cx.program;
     let layout = cx.layout.expect("the mini program view needs the layout");
-    let (templates, styles) = wxml::templates(program, layout);
+    let split = program.app.is_some() && !options.sub_packages.is_empty();
+    let main = reachable(
+        program,
+        program
+            .components
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| {
+                c.page.is_some()
+                    && !options
+                        .sub_packages
+                        .values()
+                        .any(|pages| pages.contains(&c.name))
+            })
+            .map(|(i, _)| i),
+    );
+    let (templates, mut styles) =
+        wxml::templates(program, layout, split.then_some(main.as_slice()));
+    if split {
+        // Styles are shared by all package views.
+        styles = wxml::templates(program, layout, None).1;
+    }
     let image_css = if styles.has_intrinsic_image {
         INTRINSIC_IMAGE_CSS
     } else {
@@ -163,7 +301,15 @@ pub fn transform(cx: &Context<'_>) -> Vec<OutputFile> {
                 }
                 slug.push(c.to_ascii_lowercase());
             }
-            let prefix = format!("pages/{slug}/index");
+            let package = options
+                .sub_packages
+                .iter()
+                .find(|(_, pages)| pages.contains(&page.name))
+                .map(|(root, _)| root.as_str());
+            let prefix = match package {
+                Some(root) => format!("../{root}/weft/pages/{slug}/index"),
+                None => format!("pages/{slug}/index"),
+            };
             files.push(OutputFile {
                 path: format!("{prefix}.js"),
                 contents: format!("Page(getApp().weft.page({}));\n", js::string(&page.name)),
@@ -191,9 +337,10 @@ pub fn transform(cx: &Context<'_>) -> Vec<OutputFile> {
             files.push(OutputFile {
                 path: format!("{prefix}.json"),
                 contents: format!(
-                    "{{\n  \"navigationBarTitleText\": {}{}\n  \"usingComponents\": {{\n    \"weft-view\": \"/weft/view\"\n  }}\n}}\n",
+                    "{{\n  \"navigationBarTitleText\": {}{}\n  \"usingComponents\": {{\n    \"weft-view\": {}\n  }}\n}}\n",
                     json_string(title),
                     if hidden { ",\n  \"navigationStyle\": \"custom\"," } else { "," },
+                    json_string(&package.map_or_else(|| "/weft/view".to_owned(), |root| format!("/{root}/weft/view"))),
                 ),
             });
             files.push(OutputFile {
@@ -205,6 +352,45 @@ pub fn transform(cx: &Context<'_>) -> Vec<OutputFile> {
                 contents: format!(
                     "@import \"../../view.wxss\";\npage{{height:100%;overflow:hidden}}\n{safe_css}"
                 ),
+            });
+        }
+    }
+    if split {
+        for (root, pages) in &options.sub_packages {
+            let mut included = reachable(
+                program,
+                program
+                    .components
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, c)| c.page.is_some() && pages.contains(&c.name))
+                    .map(|(i, _)| i),
+            );
+            for (item, in_main) in included.iter_mut().zip(&main) {
+                *item &= !in_main;
+            }
+            let (extra, _) = wxml::templates(program, layout, Some(&included));
+            let base = format!("../{root}/weft/view");
+            files.push(OutputFile { path: format!("{base}.wxml"), contents: format!("<import src=\"/weft/view.wxml\"/>\n{extra}<block wx:if=\"{{{{t}}}}\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: ''}}}}\"/></block>\n") });
+            files.push(OutputFile {
+                path: format!("{base}.js"),
+                contents: format!(
+                    "Component(getApp().weft.view({}{}));\n",
+                    table.trim_end(),
+                    if needs_assets {
+                        ", require(\"../../weft/assets.js\")"
+                    } else {
+                        ""
+                    }
+                ),
+            });
+            files.push(OutputFile {
+                path: format!("{base}.json"),
+                contents: "{\n  \"component\": true\n}\n".to_owned(),
+            });
+            files.push(OutputFile {
+                path: format!("{base}.wxss"),
+                contents: "@import \"/weft/view.wxss\";\n".to_owned(),
             });
         }
     }

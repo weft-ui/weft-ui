@@ -86,6 +86,18 @@ pnpm --filter example build:wechat
 
 Open `example/apps/wechat/` in WeChat DevTools, not its `weft/` subdirectory. The generated WXML and logic bundle live in `weft/`. The [template](https://github.com/weft-ui/weft-ui/blob/master/packages/vite/templates/wechat/project.config.json) starts with `touristappid`; to use your registered Mini Program, set `appid` in the project’s `project.config.json`.
 
+Configure `wechat.subPackages` in the Vite plugin to move pages into named sub-packages:
+
+```ts
+weft({
+  wechat: { subPackages: { gallery: ["Gallery", "Photo"], account: ["Profile"] } },
+})
+```
+
+Keys are package roots and may contain only lowercase letters, digits, `_` and `-`. Values are page names. Every page must exist and occur in at most one sub-package; the start page and tab pages must remain in the main package. Weft updates `app.json` on each build while preserving unrelated settings. Sub-package pages and views are emitted under `<root>/weft/`; their views import the main package templates. Assets referenced only by pages in one sub-package are placed there; shared assets and assets that may be referenced dynamically stay in the main package. All logic JavaScript remains in the main package; it is not loaded asynchronously by sub-package.
+
+The build warns when the main package exceeds 1536 KiB and fails if the main package or any sub-package exceeds 2048 KiB, or the total exceeds 20 MiB. The size calculation excludes `project.config.json`, `project.private.config.json`, and files excluded by `packOptions.ignore`.
+
 By default, Weft pads the bottom of the page by the safe-area inset. The mini program navigation bar handles the top. `safeArea: false` removes the bottom padding without changing the navigation bar.
 
 In the simulator, open pages from the catalog to check the UI. The workspace also has [automated Web and Mini Program tests](https://github.com/weft-ui/weft-ui/blob/master/tests/vite/platforms.test.ts) that run without WeChat DevTools:

@@ -57,10 +57,17 @@ pub(crate) struct ViewStyles {
 }
 
 /// Templates for every component, plus the conditional styles they need.
-pub(crate) fn templates(program: &Program, layout: &ViewLayout) -> (String, ViewStyles) {
+pub(crate) fn templates(
+    program: &Program,
+    layout: &ViewLayout,
+    included: Option<&[bool]>,
+) -> (String, ViewStyles) {
     let mut out = String::new();
     let mut styles = ViewStyles::default();
     for (index, comp) in program.components.iter().enumerate() {
+        if included.is_some_and(|set| !set[index]) {
+            continue;
+        }
         let mut markup = Markup {
             program,
             layout,

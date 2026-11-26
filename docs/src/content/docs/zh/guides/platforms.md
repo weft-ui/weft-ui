@@ -86,6 +86,18 @@ pnpm --filter example build:wechat
 
 在微信开发者工具中打开 `example/apps/wechat/`，不要打开下一级的 `weft/`。生成的 WXML 和逻辑代码包都在 `weft/` 中。[模板](https://github.com/weft-ui/weft-ui/blob/master/packages/vite/templates/wechat/project.config.json)默认使用 `touristappid`。要使用已注册的小程序，请在工程的 `project.config.json` 中设置 `appid`。
 
+在 Vite 插件中配置 `wechat.subPackages`，将页面放入分包：
+
+```ts
+weft({
+  wechat: { subPackages: { gallery: ["Gallery", "Photo"], account: ["Profile"] } },
+})
+```
+
+键是分包根目录，只能包含小写字母、数字、`_` 和 `-`；值是页面名。页面必须存在，且最多属于一个分包；起始页和 Tab 页必须留在主包。Weft 每次构建都会更新 `app.json`，保留其他设置。分包页面和视图输出到 `<root>/weft/`，其视图引用主包模板。仅被某个分包页面引用的资源放进该分包；共享资源和可能被动态引用的资源留在主包。逻辑层 JavaScript 全部留在主包，不随分包异步加载。
+
+主包超过 1536 KiB 时构建警告；主包或任一分包超过 2048 KiB，或总量超过 20 MiB 时构建失败。体积统计不包含 `project.config.json`、`project.private.config.json` 和 `packOptions.ignore` 排除的文件。
+
 Weft 默认按安全区给页面底部留出内边距，顶部由小程序导航栏处理。设置 `safeArea: false` 可移除底部内边距，不影响导航栏。
 
 在模拟器里也可以打开目录中的页面检查界面。工作区还有[Web 和小程序的自动化测试](https://github.com/weft-ui/weft-ui/blob/master/tests/vite/platforms.test.ts)，不需要启动微信开发者工具：

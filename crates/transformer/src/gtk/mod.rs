@@ -226,7 +226,13 @@ mod tests {
         ] {
             for (options, expected) in [
                 (AppOptions::default(), "true"),
-                (AppOptions { safe_area: false }, "false"),
+                (
+                    AppOptions {
+                        safe_area: false,
+                        ..AppOptions::default()
+                    },
+                    "false",
+                ),
             ] {
                 let mut loader = MemoryLoader::new();
                 loader.insert("App.weft", source);

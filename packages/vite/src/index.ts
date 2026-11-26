@@ -13,6 +13,7 @@ import { writeAndroidAssets } from "./assets/android.ts";
 import { writeWindowsAssets } from "./assets/windows.ts";
 import { writeLinuxAssets } from "./assets/linux.ts";
 import { writeAppleAssets } from "./assets/apple.ts";
+import { checkWechatSize } from "./wechat.ts";
 
 /** Options of the Weft Vite plugin. */
 export interface WeftOptions {
@@ -24,6 +25,8 @@ export interface WeftOptions {
   assets?: string;
   /** Keep root content inside the host's safe area. Defaults to `true`. */
   safeArea?: boolean;
+  /** WeChat sub-package roots mapped to their page names. */
+  wechat?: { subPackages?: Record<string, string[]> };
   /** Overrides the installed native shell packages with a directory containing the shells; absolute or relative to the Vite root. */
   native?: string;
   /** Values filled into the project templates copied to `<apps>/<platform>/` on the first build. */
@@ -280,7 +283,10 @@ export default function weft(options: WeftOptions = {}): Plugin {
         resolve: {
           conditions: [`weft-${platform}`, ...(native ? ["weft-native"] : []), ...defaultClientConditions],
         },
-        define: { __WEFT_PLATFORM__: JSON.stringify(platform) },
+        define: {
+          __WEFT_PLATFORM__: JSON.stringify(platform),
+          __WEFT_WECHAT_SUBPACKAGES__: JSON.stringify(Object.fromEntries(Object.entries(options.wechat?.subPackages ?? {}).flatMap(([root, pages]) => pages.map((page) => [page, root])))),
+        },
       };
       if (platform === "web") return { ...environment, build: { outDir: outDir(appsDir, platform) } };
       return {
@@ -353,7 +359,25 @@ export default function weft(options: WeftOptions = {}): Plugin {
       if (platform === "web") return;
       const entries = globSync(include, { cwd: root }).map((path) => resolve(root, path).replaceAll("\\", "/"));
       if (entries.length === 0) this.error(`weft: no .weft files match ${include} in ${root}`);
-      const app = await compileApp(entries, platform, (path) => readFileSync(path, "utf8"), appOptions);
+      const subPackages = platform === "wechat" ? options.wechat?.subPackages : undefined;
+      const assigned = new Set<string>();
+      for (const [root, pages] of Object.entries(subPackages ?? {})) {
+        if (!/^[a-z0-9_-]+$/.test(root)) this.error(`weft: invalid mini program sub-package name \`${root}\``);
+        for (const page of pages) {
+          if (assigned.has(page)) this.error(`weft: page \`${page}\` appears in more than one sub-package`);
+          assigned.add(page);
+        }
+      }
+      const app = await compileApp(entries, platform, (path) => readFileSync(path, "utf8"), subPackages ? { ...appOptions, subPackages } : appOptions);
+      if (subPackages && !app.hasErrors) {
+        const layout = JSON.parse(app.layout) as { templates: { label: string; kind: string }[]; app?: { start?: number; tabs?: { page: number }[] } };
+        const pages = new Set(layout.templates.filter((template) => template.kind === "page").map((template) => template.label));
+        const roots = new Set([...(layout.app?.start === undefined ? [] : [layout.app.start]), ...(layout.app?.tabs?.map((tab) => tab.page) ?? [])].map((index) => layout.templates[index]!.label));
+        for (const page of assigned) {
+          if (!pages.has(page)) this.error(`weft: page \`${page}\` does not exist`);
+          if (roots.has(page)) this.error(`weft: start or tab page \`${page}\` cannot be in a sub-package`);
+        }
+      }
       apps.set(this.environment.name, app);
       for (const file of app.files) this.addWatchFile(file);
       if (app.hasErrors) this.error(app.diagnostics);
@@ -388,6 +412,14 @@ export default function weft(options: WeftOptions = {}): Plugin {
         id: options.app?.id ?? defaultAppId(name),
         name,
       });
+      if (platform === "wechat") {
+        const manifestPath = join(project, "app.json");
+        const oldManifest = (existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : {}) as { subPackages?: { root: string }[] };
+        const roots = new Set([...Object.keys(options.wechat?.subPackages ?? {}), ...(oldManifest.subPackages ?? []).map((item) => item.root)]);
+        for (const root of roots) {
+          if (/^[a-z0-9_-]+$/.test(root)) rmSync(join(project, root, "weft"), { recursive: true, force: true });
+        }
+      }
       writeGenerated(generated, app);
       if (platform === "wechat") {
         const pages = app.views
@@ -396,7 +428,7 @@ export default function weft(options: WeftOptions = {}): Plugin {
           .map((path) => `weft/${path.slice(0, -3)}`);
         if (pages.length) {
           const manifestPath = join(project, "app.json");
-          const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+          const manifest = (existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : {}) as Record<string, unknown>;
           const layout = JSON.parse(app.layout) as {
             templates: { label: string }[];
             app?: { tabs?: { page: number; title: string; icon: string; activeIcon: string }[] };
@@ -424,10 +456,17 @@ export default function weft(options: WeftOptions = {}): Plugin {
           }
           const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
           manifest.pages = [...pages, ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
+          const subPackages = Object.entries(options.wechat?.subPackages ?? {}).map(([root]) => ({
+            root,
+            pages: app.views.map((file) => file.path).filter((path) => path.startsWith(`../${root}/weft/pages/`) && path.endsWith("/index.js"))
+              .map((path) => path.slice(`../${root}/`.length, -3)),
+          }));
+          if (subPackages.length) manifest.subPackages = subPackages;
+          else delete manifest.subPackages;
           writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
         } else if (app.views.some((file) => file.path === "index.js")) {
           const manifestPath = join(project, "app.json");
-          const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+          const manifest = (existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : {}) as Record<string, unknown>;
           const existing = Array.isArray(manifest.pages) ? manifest.pages as string[] : [];
           if (existing.some((page) => page.startsWith("weft/pages/"))) {
             manifest.pages = ["weft/index", ...existing.filter((page) => page !== "weft/index" && !page.startsWith("weft/pages/"))];
@@ -438,7 +477,9 @@ export default function weft(options: WeftOptions = {}): Plugin {
             writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
           }
         }
-        writeWechatAssets(assets(), generated, (message) => this.warn(message));
+        const roots = Object.keys(options.wechat?.subPackages ?? {});
+        writeWechatAssets(assets(), generated, (message) => this.warn(message), roots.length ? app : undefined);
+        checkWechatSize(project, roots, (message) => this.warn(message));
         return;
       }
       if (!isNativePlatform(platform)) return;

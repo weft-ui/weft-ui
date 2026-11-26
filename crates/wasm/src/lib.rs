@@ -16,11 +16,16 @@ extern "C" {
     fn exception_message(value: &JsValue) -> String;
 
     /// JS options of `compileApp`.
-    #[wasm_bindgen(typescript_type = "{ safeArea?: boolean }")]
+    #[wasm_bindgen(
+        typescript_type = "{ safeArea?: boolean; subPackages?: Record<string, string[]> }"
+    )]
     pub type JsAppOptions;
 
     #[wasm_bindgen(method, getter, js_name = safeArea)]
     fn safe_area(this: &JsAppOptions) -> Option<bool>;
+
+    #[wasm_bindgen(method, getter, js_name = subPackages)]
+    fn sub_packages(this: &JsAppOptions) -> Option<js_sys::Object>;
 }
 
 struct JsLoader<'load>(&'load Function);
@@ -65,6 +70,9 @@ pub struct AppOutput {
     /// Hexadecimal layout hash; empty when there is no layout.
     #[wasm_bindgen(js_name = layoutHash)]
     pub layout_hash: String,
+    /// Package resource usage as JSON.
+    #[wasm_bindgen(js_name = packageUsage)]
+    pub package_usage: String,
     /// Diagnostics with source locations and snippets; empty when there are none.
     pub diagnostics: String,
     /// Whether compilation reported any errors.
@@ -153,13 +161,68 @@ pub fn compile_app(
     options: Option<JsAppOptions>,
 ) -> Result<AppOutput, JsError> {
     let platform: Platform = platform.parse()?;
-    let options = options
-        .as_ref()
-        .and_then(JsAppOptions::safe_area)
-        .map_or_else(AppOptions::default, |safe_area| AppOptions { safe_area });
+    let mut settings = AppOptions::default();
+    if let Some(options) = options.as_ref() {
+        settings.safe_area = options.safe_area().unwrap_or(true);
+        if let Some(packages) = options.sub_packages() {
+            for entry in js_sys::Object::entries(&packages).iter() {
+                let pair = js_sys::Array::from(&entry);
+                let root = pair
+                    .get(0)
+                    .as_string()
+                    .ok_or_else(|| JsError::new("subpackage root must be a string"))?;
+                let pages = pair.get(1);
+                if !js_sys::Array::is_array(&pages) {
+                    return Err(JsError::new("subpackage pages must be an array"));
+                }
+                let pages = js_sys::Array::from(&pages)
+                    .iter()
+                    .map(|page| {
+                        page.as_string()
+                            .ok_or_else(|| JsError::new("subpackage page must be a string"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                settings.sub_packages.insert(root, pages);
+            }
+        }
+    }
     let entries: Vec<&str> = entries.iter().map(String::as_str).collect();
     let parsed = weft_ui_parser::load(&entries, &mut JsLoader(load));
-    let output = weft_ui_transformer::compile_app(parsed, platform, &options);
+    let output = weft_ui_transformer::compile_app(parsed, platform, &settings);
+    let usage = &output.package_usage;
+    let encode = |text: &str| -> String {
+        js_sys::JSON::stringify(&JsValue::from_str(text))
+            .expect("string is JSON serializable")
+            .into()
+    };
+    let resource = |usage: &weft_ui_transformer::wechat::ResourceUsage| -> String {
+        let assets = usage
+            .assets
+            .iter()
+            .map(|s| encode(s))
+            .collect::<Vec<_>>()
+            .join(",");
+        let fonts = usage
+            .fonts
+            .iter()
+            .map(|s| encode(s))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(
+            "{{\"assets\":[{assets}],\"fonts\":[{fonts}],\"dynamicAssets\":{},\"dynamicFonts\":{}}}",
+            usage.dynamic_assets, usage.dynamic_fonts
+        )
+    };
+    let packages = usage
+        .sub_packages
+        .iter()
+        .map(|(root, usage)| format!("{}:{}", encode(root), resource(usage)))
+        .collect::<Vec<_>>()
+        .join(",");
+    let package_usage = format!(
+        "{{\"main\":{},\"subPackages\":{{{packages}}}}}",
+        resource(&usage.main)
+    );
     let compilation = &output.compilation;
     let (logic_sources, (logic_code, logic_dts)) = output
         .logic
@@ -182,6 +245,7 @@ pub fn compile_app(
         view_contents,
         layout,
         layout_hash,
+        package_usage,
         diagnostics: compilation.render_diagnostics(),
         has_errors: compilation.has_errors(),
         files: compilation

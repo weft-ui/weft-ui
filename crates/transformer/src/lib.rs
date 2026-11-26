@@ -27,9 +27,10 @@ mod swiftui;
 pub mod transform;
 pub mod view;
 mod web;
-mod wechat;
+pub mod wechat;
 mod winui;
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use weft_ui_ast::{Diagnostic, FileId, ParsedProgram, SourceMap, diagnostic};
@@ -92,18 +93,25 @@ pub struct AppOutput {
     /// View protocol layout shared by the logic modules and the view files;
     /// `None` on errors and for `web`.
     pub layout: Option<ViewLayout>,
+    /// Static assets and font families reachable from each package.
+    pub package_usage: wechat::PackageUsage,
 }
 
 /// App-wide settings shared by the compiler backends.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppOptions {
     /// Keep root content inside the host's safe area. Defaults to `true`.
     pub safe_area: bool,
+    /// WeChat subpackage roots mapped to page names.
+    pub sub_packages: BTreeMap<String, Vec<String>>,
 }
 
 impl Default for AppOptions {
     fn default() -> Self {
-        Self { safe_area: true }
+        Self {
+            safe_area: true,
+            sub_packages: BTreeMap::new(),
+        }
     }
 }
 
@@ -123,12 +131,16 @@ pub fn compile_app(parsed: ParsedProgram, platform: Platform, options: &AppOptio
         logic: Vec::new(),
         views: Vec::new(),
         layout: None,
+        package_usage: wechat::PackageUsage::default(),
     };
     if let Some(program) = &output.compilation.program {
         let diagnostics = support::check(program, platform);
         if diagnostics.is_empty() {
             (output.logic, output.views, output.layout) =
                 transform_program(program, platform, options);
+            if platform == Platform::Wechat {
+                output.package_usage = wechat::package_usage(program, options);
+            }
         } else {
             output.compilation.program = None;
             output.compilation.diagnostics.extend(diagnostics);
@@ -188,7 +200,7 @@ fn transform_program(
         Platform::Wechat => {
             let layout = ViewLayout::for_platform(program, Some(Platform::Wechat), options);
             let cx = Context::new(program, Some(&layout), platform);
-            let views = crate::wechat::transform(&cx);
+            let views = crate::wechat::transform(&cx, options);
             (remote_modules(program, &layout), views, Some(layout))
         }
         Platform::Ios | Platform::Macos => {

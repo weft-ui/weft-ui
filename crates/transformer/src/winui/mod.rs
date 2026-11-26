@@ -258,7 +258,10 @@ mod tests {
         let output = compile_app(
             weft_ui_parser::load(&["App.weft"], &mut loader),
             Platform::Windows,
-            &AppOptions { safe_area: false },
+            &AppOptions {
+                safe_area: false,
+                ..AppOptions::default()
+            },
         );
         let generated = output
             .views

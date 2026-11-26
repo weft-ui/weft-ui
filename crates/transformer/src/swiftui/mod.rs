@@ -241,7 +241,13 @@ mod tests {
     fn safe_area_is_registered_with_the_session() {
         let source = "component App() { Text(\"Safe area\") }";
         let default = swift(source, &AppOptions::default());
-        let edge_to_edge = swift(source, &AppOptions { safe_area: false });
+        let edge_to_edge = swift(
+            source,
+            &AppOptions {
+                safe_area: false,
+                ..AppOptions::default()
+            },
+        );
         assert!(default.contains("safeArea: true,\n"), "{default}");
         assert!(
             edge_to_edge.contains("safeArea: false,\n"),
