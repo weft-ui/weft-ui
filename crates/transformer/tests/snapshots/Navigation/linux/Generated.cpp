@@ -84,4 +84,4 @@ std::unique_ptr<weft::Scope> make_scope(uint32_t tpl, uint32_t id, weft::Session
 
 }  // namespace
 
-GtkWidget *weft::start_app() { return Session::start(kLayoutHash, safe_area, make_scope, true); }
+GtkWidget *weft::start_app() { return Session::start(kLayoutHash, safe_area, make_scope, true, {{"Home"sv, "asset:tab_home"sv, "asset:tab_home"sv}, {"Settings"sv, "asset:tab_settings"sv, "asset:tab_settings"sv}}); }

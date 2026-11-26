@@ -671,13 +671,18 @@ class Scope {
 /// `start`.
 class Session {
  public:
+  struct Tab {
+    Tab(std::string_view title, std::string_view icon, std::string_view active_icon)
+        : title(title), icon(icon), active_icon(active_icon) {}
+    std::string title, icon, active_icon;
+  };
   /// Creates the scope of template `tpl` for a `create` op, or null for an unknown template.
   using Factory = std::unique_ptr<Scope> (*)(uint32_t tpl, uint32_t id, Session &session);
 
   /// Starts the app compiled to `weft/bundle.hbc` next to the executable,
   /// whose views implement the layout with hash `layout_hash`; see `start_app`.
   /// GTK has no safe-area insets, so `safe_area` does not affect the root layout.
-  static GtkWidget *start(uint64_t layout_hash, bool safe_area, Factory make, bool app = false);
+  static GtkWidget *start(uint64_t layout_hash, bool safe_area, Factory make, bool app = false, std::vector<Tab> tabs = {});
 
   Session(const Session &) = delete;
   Session &operator=(const Session &) = delete;
@@ -695,7 +700,8 @@ class Session {
   friend class Scope;
   friend class NavigationTest;
 
-  Session(GtkWidget *page, Factory make, bool app);
+  Session(GtkWidget *page, Factory make, bool app, std::vector<Tab> tabs = {});
+  void select_tab();
   void navigate(const ops::Nav &nav);
   bool back();
   void open(const std::string &bundle, uint64_t layout_hash);
@@ -727,6 +733,13 @@ class Session {
   Factory make_;
   GtkWidget *page_;
   GtkWidget *stack_widget_ = nullptr;
+  GtkWidget *tab_stack_ = nullptr;
+  GtkWidget *tab_root_ = nullptr;
+  std::vector<GtkWidget *> tab_pages_;
+  std::vector<Tab> tab_metadata_;
+  void update_tab_icons(uint32_t selected);
+  std::vector<bool> badges_;
+  bool changing_tab_ = false;
   uint32_t nav_tab_ = 0;
   std::vector<uint32_t> nav_tabs_;
   std::vector<uint32_t> nav_stack_;

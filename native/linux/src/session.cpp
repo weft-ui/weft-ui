@@ -49,12 +49,18 @@ std::string os_version() {
 // Keep the outgoing widget parented until GtkStack finishes its slide.
 void retire_page(GtkWidget *page, bool animated) {
   if (!animated) {
-    if (auto *parent = gtk_widget_get_parent(page)) gtk_stack_remove(GTK_STACK(parent), page);
+    if (auto *parent = gtk_widget_get_parent(page)) {
+      if (GTK_IS_STACK(parent)) gtk_stack_remove(GTK_STACK(parent), page);
+      else if (GTK_IS_BOX(parent)) gtk_box_remove(GTK_BOX(parent), page);
+    }
     return;
   }
   g_timeout_add_full(G_PRIORITY_DEFAULT, 300, [](gpointer data) -> gboolean {
     auto *page = GTK_WIDGET(data);
-    if (auto *parent = gtk_widget_get_parent(page)) gtk_stack_remove(GTK_STACK(parent), page);
+    if (auto *parent = gtk_widget_get_parent(page)) {
+      if (GTK_IS_STACK(parent)) gtk_stack_remove(GTK_STACK(parent), page);
+      else if (GTK_IS_BOX(parent)) gtk_box_remove(GTK_BOX(parent), page);
+    }
     return G_SOURCE_REMOVE;
   }, g_object_ref(page), g_object_unref);
 }
@@ -116,14 +122,14 @@ struct Session::Environment {
   guint idle = 0;
 };
 
-GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area, Factory make, bool app) {
+GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area, Factory make, bool app, std::vector<Tab> tabs) {
   register_asset_fonts();
   GtkWidget *page = linear_new(Axis::Vertical);
   gtk_widget_set_overflow(page, GTK_OVERFLOW_HIDDEN);
   GtkWidget *overlay = gtk_overlay_new();
   gtk_overlay_set_child(GTK_OVERLAY(overlay), page);
   // The session ends with the root widget.
-  auto *session = new Session(page, make, app);
+  auto *session = new Session(page, make, app, std::move(tabs));
   if (app) {
     auto *keys = gtk_event_controller_key_new();
     gtk_event_controller_set_propagation_phase(keys, GTK_PHASE_CAPTURE);
@@ -154,7 +160,7 @@ GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area,
   return overlay;
 }
 
-Session::Session(GtkWidget *page, Factory make, bool app)
+Session::Session(GtkWidget *page, Factory make, bool app, std::vector<Tab> tabs)
     : make_(make), page_(page), environment_(std::make_unique<Environment>(page)), cancellable_(g_cancellable_new()) {
   scopes_[0] = std::make_unique<RootScope>(*this, page);
   if (app) {
@@ -166,6 +172,33 @@ Session::Session(GtkWidget *page, Factory make, bool app)
     gtk_widget_set_vexpand(stack_widget_, true);
     gtk_stack_set_transition_duration(GTK_STACK(stack_widget_), 250);
     gtk_widget_set_parent(stack_widget_, page);
+    if (!tabs.empty()) {
+      tab_root_ = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+      tab_stack_ = gtk_stack_new();
+      auto *switcher = gtk_stack_switcher_new();
+      gtk_stack_switcher_set_stack(GTK_STACK_SWITCHER(switcher), GTK_STACK(tab_stack_));
+      gtk_widget_set_halign(switcher, GTK_ALIGN_CENTER);
+      gtk_box_append(GTK_BOX(tab_root_), switcher);
+      gtk_widget_set_vexpand(tab_stack_, true);
+      gtk_box_append(GTK_BOX(tab_root_), tab_stack_);
+      gtk_stack_add_child(GTK_STACK(stack_widget_), tab_root_);
+      badges_.resize(tabs.size());
+      for (const auto &tab : tabs) {
+        auto *child = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+        gtk_widget_set_vexpand(child, true);
+        auto *entry = gtk_stack_add_titled(GTK_STACK(tab_stack_), child, nullptr, tab.title.c_str());
+        tab_pages_.push_back(child);
+        if (auto asset = find_asset(asset_directory(), std::string_view(tab.icon).substr(6), 1)) {
+          gtk_icon_theme_add_search_path(gtk_icon_theme_get_for_display(gdk_display_get_default()), asset_directory().c_str());
+          gtk_stack_page_set_icon_name(entry, tab.icon.c_str() + 6);
+        }
+      }
+      tab_metadata_ = std::move(tabs);
+      update_tab_icons(0);
+      g_signal_connect(tab_stack_, "notify::visible-child", G_CALLBACK(+[](GtkStack *, GParamSpec *, gpointer data) {
+        static_cast<Session *>(data)->select_tab();
+      }), this);
+    }
   }
 }
 
@@ -361,10 +394,23 @@ void Session::navigate(const ops::Nav &nav) {
     if (!gtk_widget_get_parent(scope.page_widget_)) gtk_stack_add_child(GTK_STACK(stack_widget_), scope.page_widget_);
     gtk_widget_set_visible(scope.back_button_, show_back);
   };
-  for (auto id : tabs) add_page(id, false);
+  if (tab_stack_) {
+    if (tabs.size() != tab_pages_.size()) throw OpError("navigation tab count differs from layout");
+    for (size_t i = 0; i < tabs.size(); ++i) if (tabs[i]) {
+      auto &scope = *scopes_.at(tabs[i]);
+      if (!gtk_widget_get_parent(scope.page_widget_)) gtk_box_append(GTK_BOX(tab_pages_[i]), scope.page_widget_);
+      gtk_widget_set_visible(scope.back_button_, false);
+    }
+    changing_tab_ = true;
+    gtk_stack_set_visible_child(GTK_STACK(tab_stack_), tab_pages_[nav.tab]);
+    update_tab_icons(nav.tab);
+    changing_tab_ = false;
+  } else {
+    for (auto id : tabs) add_page(id, false);
+  }
   for (auto id : stack) add_page(id, true);
   gtk_stack_set_transition_type(GTK_STACK(stack_widget_), push || pop ? GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT : GTK_STACK_TRANSITION_TYPE_NONE);
-  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), scopes_.at(current)->page_widget_);
+  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), stack.empty() && tab_root_ ? tab_root_ : scopes_.at(current)->page_widget_);
   std::unordered_set<uint32_t> old;
   for (auto id : nav_tabs_) if (id) old.insert(id);
   for (auto id : nav_stack_) if (id) old.insert(id);
@@ -380,13 +426,41 @@ void Session::navigate(const ops::Nav &nav) {
   nav_stack_ = std::move(stack);
 }
 
+void Session::update_tab_icons(uint32_t selected) {
+  for (size_t i = 0; i < tab_pages_.size(); ++i) {
+    const auto &icon = i == selected ? tab_metadata_[i].active_icon : tab_metadata_[i].icon;
+    if (icon.starts_with("asset:") && find_asset(asset_directory(), std::string_view(icon).substr(6), 1))
+      gtk_stack_page_set_icon_name(gtk_stack_get_page(GTK_STACK(tab_stack_), tab_pages_[i]), icon.c_str() + 6);
+  }
+}
+
+void Session::select_tab() {
+  if (changing_tab_ || committing_ || nav_tabs_.empty()) return;
+  auto *child = gtk_stack_get_visible_child(GTK_STACK(tab_stack_));
+  auto found = std::find(tab_pages_.begin(), tab_pages_.end(), child);
+  if (found == tab_pages_.end()) return;
+  auto index = uint32_t(found - tab_pages_.begin());
+  if (index == nav_tab_ && nav_stack_.empty()) return;
+  update_tab_icons(index);
+  if (nav_tabs_[index]) {
+    for (auto id : nav_stack_) {
+      auto it = scopes_.find(id);
+      if (it != scopes_.end()) { retire_page(it->second->page_widget_, false); destroy(*it->second); }
+    }
+    nav_stack_.clear();
+    nav_tab_ = index;
+    gtk_stack_set_visible_child(GTK_STACK(stack_widget_), tab_root_);
+  }
+  signal("navigation", "{\"tab\":" + std::to_string(index) + ",\"stack\":[],\"modal\":0}");
+}
+
 bool Session::back() {
   if (committing_ || nav_stack_.empty()) return false;
   auto removed = nav_stack_.back();
   nav_stack_.pop_back();
   auto current = nav_stack_.empty() ? nav_tabs_[nav_tab_] : nav_stack_.back();
   gtk_stack_set_transition_type(GTK_STACK(stack_widget_), GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
-  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), scopes_.at(current)->page_widget_);
+  gtk_stack_set_visible_child(GTK_STACK(stack_widget_), nav_stack_.empty() && tab_root_ ? tab_root_ : scopes_.at(current)->page_widget_);
   auto found = scopes_.find(removed);
   if (found != scopes_.end()) {
     retire_page(found->second->page_widget_, true);
@@ -460,7 +534,19 @@ void Session::schedule(uint64_t delay_ms) {
 
 void Session::call(uint32_t id, std::string module, std::string method, std::vector<uint8_t> args) {
   auto done = [this, id](bool ok, std::vector<uint8_t> result) { resolve(id, ok, result); };
-  if (module == protocol::kUiModule) ui_->call(std::move(method), std::move(args), cancellable_, std::move(done));
+  if (module == "navigation" && method == "badge") {
+    g_autoptr(JsonParser) parser = json_parser_new();
+    if (!json_parser_load_from_data(parser, reinterpret_cast<const char *>(args.data()), args.size(), nullptr)) {
+      done(false, {});
+      return;
+    }
+    auto *object = json_node_get_object(json_parser_get_root(parser));
+    auto index = json_object_get_int_member(object, "tab");
+    if (index < 0 || size_t(index) >= badges_.size()) { done(false, {}); return; }
+    badges_[index] = !JSON_NODE_HOLDS_NULL(json_object_get_member(object, "text"));
+    gtk_stack_page_set_needs_attention(gtk_stack_get_page(GTK_STACK(tab_stack_), tab_pages_[index]), badges_[index]);
+    done(true, {});
+  } else if (module == protocol::kUiModule) ui_->call(std::move(method), std::move(args), cancellable_, std::move(done));
   else platform::call(module, method, std::move(args), cancellable_, std::move(done));
 }
 
@@ -490,7 +576,7 @@ void Session::on_commit(void *ctx, const uint8_t *ops, size_t len) { static_cast
 
 void Session::on_schedule(void *ctx, uint64_t delay_ms) { static_cast<Session *>(ctx)->schedule(delay_ms); }
 
-bool Session::on_supports(void *, const char *module) { return module && platform::supported(module); }
+bool Session::on_supports(void *, const char *module) { return module && (std::string_view(module) == "navigation" || platform::supported(module)); }
 
 void Session::on_call(void *ctx, uint32_t id, const char *module, const char *method, const uint8_t *args,
                       size_t len) {

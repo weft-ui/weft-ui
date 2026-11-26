@@ -103,6 +103,41 @@ class NavigationTest {
       assert(signal_name == "navigation" && signal_json == "{\"tab\":0,\"stack\":[],\"modal\":0}");
     }
     g_object_unref(page);
+
+    page = GTK_WIDGET(g_object_ref_sink(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)));
+    {
+      Session session(page, make_page, true, {{"Home", "asset:home", "asset:home"}, {"Settings", "asset:settings", "asset:settings"}});
+      for (uint32_t id : {1u, 2u, 3u}) {
+        ops::Op op{}; op.code = protocol::Code::Create; op.scope = id; session.apply(op);
+      }
+      auto badge = [&](const std::string &json) {
+        session.call(1, "navigation", "badge", {json.begin(), json.end()});
+      };
+      badge("{\"tab\":1,\"text\":\"3\"}");
+      auto *badge_page = gtk_stack_get_page(GTK_STACK(session.tab_stack_), session.tab_pages_[1]);
+      assert(gtk_stack_page_get_needs_attention(badge_page));
+      badge("{\"tab\":1,\"text\":null}");
+      assert(!gtk_stack_page_get_needs_attention(badge_page));
+      badge("{\"tab\":1,\"text\":\"\"}");
+      assert(gtk_stack_page_get_needs_attention(badge_page));
+      auto tabs = encode_ids({1, 2});
+      auto stack = encode_ids({3});
+      ops::Op op{}; op.code = protocol::Code::Nav; op.nav.tabs = {tabs.data(), 2};
+      signal_name.clear(); session.runtime_ = reinterpret_cast<weft_runtime *>(1);
+      session.apply(op);
+      assert(signal_name.empty());
+      gtk_stack_set_visible_child(GTK_STACK(session.tab_stack_), session.tab_pages_[1]);
+      assert(signal_name == "navigation" && signal_json == "{\"tab\":1,\"stack\":[],\"modal\":0}");
+      signal_name.clear();
+      op.nav.tab = 0; op.nav.stack = {stack.data(), 1}; session.apply(op);
+      assert(signal_name.empty());
+      assert(gtk_stack_get_visible_child(GTK_STACK(session.stack_widget_)) != session.tab_root_);
+      op.nav.tab = 1; op.nav.stack = {nullptr, 0}; session.apply(op);
+      assert(signal_name.empty() && !session.scopes_.contains(3));
+      assert(gtk_stack_get_visible_child(GTK_STACK(session.stack_widget_)) == session.tab_root_);
+      session.runtime_ = nullptr;
+    }
+    g_object_unref(page);
   }
 };
 }

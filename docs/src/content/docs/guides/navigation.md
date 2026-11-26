@@ -83,7 +83,7 @@ app Notes {
 
 Each tab needs a literal title and an `asset:` icon. `activeIcon` defaults to `icon`. On WeChat, tab icons must be PNG or JPEG. Supply factories for all pages as above: a tab root is created when first selected and retained thereafter.
 
-Use `navigation.switchTab(Settings)` to select a tab and clear the pushed stack. `navigation.tab` gives the selected page name, or `null` without tabs. `navigation.setBadge(Settings, "3")` displays a badge; pass `""` for a dot or `null` to remove it. Pushed pages cover the tab bar. On the Web, switching tabs returns to the root history entry and replaces it with the selected tab's URL.
+Use `navigation.switchTab(Settings)` to select a tab and clear the pushed stack. `navigation.tab` gives the selected page name, or `null` without tabs. `navigation.setBadge(Settings, "3")` displays a badge; pass `""` for a dot or `null` to remove it. On Linux, GTK displays all badges, including text badges, as dots. Pushed pages cover the tab bar. On the Web, switching tabs returns to the root history entry and replaces it with the selected tab's URL.
 
 ## Titles, visibility, and back
 

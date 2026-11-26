@@ -184,6 +184,18 @@ class Renderer {
     return json + "],\"modal\":" + std::to_string(nav_->modal) + "}";
   }
 
+  std::string tab(uint32_t index) {
+    if (!nav_ || index >= nav_->tabs.size()) throw Protocol("invalid tab index " + std::to_string(index));
+    if (nav_->tabs[index]) {
+      Navigation next = *nav_;
+      next.tab = index;
+      next.stack.clear();
+      next.modal = 0;
+      set_nav(std::move(next));
+    }
+    return "{\"tab\":" + std::to_string(index) + ",\"stack\":[],\"modal\":0}";
+  }
+
   /// The `index`-th element of `type` in document order, as (scope, node).
   std::pair<uint32_t, uint32_t> find(const std::string &type, uint32_t index) const {
     std::vector<std::pair<uint32_t, uint32_t>> found;
@@ -562,6 +574,9 @@ struct Host {
       edit(scope, node, args["value"]);
     } else if (call.method == "back") {
       if (auto signal = renderer.back()) weft_runtime_signal(rt, "navigation", signal->data(), signal->size());
+    } else if (call.method == "tab") {
+      auto signal = renderer.tab(args["index"].u32());
+      weft_runtime_signal(rt, "navigation", signal.data(), signal.size());
     } else if (call.method == "done") {
       done = true;
     } else if (call.method == "fail") {
