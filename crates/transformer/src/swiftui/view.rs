@@ -8,12 +8,23 @@ use crate::view::{Constant, PointKind, PropSource, StaticProp, Template, ViewNod
 
 use super::swift::{self, Code};
 
+pub(super) fn has_navbar(template: &Template) -> bool {
+    template.roots.iter().any(|&root| {
+        matches!(
+            &template.nodes[root as usize].kind,
+            ViewNodeKind::Element {
+                element: Element::NavBar,
+                ..
+            }
+        )
+    })
+}
+
 /// Writes the view struct `V{index}` of `template`.
 pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
     out.open(format_args!("private struct V{index}: View {{"));
     out.writer.line(format_args!("let s: S{index}"));
     out.writer.blank();
-    out.open("var body: some View {");
     let body = Body { template };
     let navbar =
         template
@@ -27,6 +38,12 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
                 } => Some((root, props, children)),
                 _ => None,
             });
+    if navbar.is_some_and(|(_, _, children)| !children.is_empty()) {
+        out.writer.line("@Environment(\\.weftModalPage) private var weftModalPage");
+        out.writer.line(format_args!("init(s: S{index}) {{ self.s = s }}"));
+        out.writer.blank();
+    }
+    out.open("var body: some View {");
     if navbar.is_some() {
         out.open("Group {");
     }
@@ -56,6 +73,7 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
         out.writer.line("#endif");
         if !children.is_empty() {
             out.open(".toolbar {");
+            out.open("if !weftModalPage {");
             for &child in children {
                 if let ViewNodeKind::Element { props, .. } = &template.nodes[child as usize].kind {
                     let label = with_default(template.prop(child, props, "label"), "\"\"");
@@ -83,9 +101,45 @@ pub(crate) fn view(out: &mut Code, index: usize, template: &Template) {
                 }
             }
             out.close("}");
+            out.close("}");
         }
     }
     out.close("}");
+    if let Some((node, props, children)) = navbar {
+        let title = with_default(template.prop(node, props, "title"), "\"\"");
+        let hidden = with_default(template.prop(node, props, "hidden"), "false");
+        out.writer.line("#if os(macOS)");
+        out.writer.line(format_args!("var modalBarHidden: Bool {{ {hidden} }}"));
+        out.open("var modalBar: some View {");
+        out.open("HStack {");
+        out.writer.line(format_args!("Text({title}).font(.headline)"));
+        out.writer.line("Spacer()");
+        for &child in children {
+            if let ViewNodeKind::Element { props, .. } = &template.nodes[child as usize].kind {
+                let label = with_default(template.prop(child, props, "label"), "\"\"");
+                let disabled = with_default(template.prop(child, props, "disabled"), "false");
+                let action = template.event(child, "onTap").map_or_else(
+                    || "{}".to_owned(),
+                    |slot| format!("{{ _ = s.dispatch({slot}) }}"),
+                );
+                if let Some(icon) = template.prop(child, props, "icon") {
+                    out.open(format_args!("Button(action: {action}) {{"));
+                    out.writer.line(format_args!(
+                        "WeftImage(src: {}).frame(width: 24, height: 24)",
+                        Argument::Property(icon)
+                    ));
+                    out.close("}");
+                    out.writer.line(format_args!(".accessibilityLabel({label})"));
+                } else {
+                    out.writer.line(format_args!("Button({label}, action: {action})"));
+                }
+                out.writer.line(format_args!(".disabled({disabled})"));
+            }
+        }
+        out.close("}");
+        out.close("}");
+        out.writer.line("#endif");
+    }
     out.close("}");
 }
 

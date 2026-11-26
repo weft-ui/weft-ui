@@ -123,6 +123,17 @@ private struct WeftOverlayModifier: ViewModifier {
     }
 }
 
+private struct WeftModalPageKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+public extension EnvironmentValues {
+    var weftModalPage: Bool {
+        get { self[WeftModalPageKey.self] }
+        set { self[WeftModalPageKey.self] = newValue }
+    }
+}
+
 private struct WeftInlineTitle: ViewModifier {
     func body(content: Content) -> some View {
         #if os(iOS)
@@ -247,9 +258,9 @@ public struct WeftRoot: View {
         }
         #else
         .sheet(item: modalBinding(style: nil)) { modal in
-            modalPage(modal)
-                .frame(width: modal.style == 1 ? size.width : nil,
-                       height: modal.style == 1 ? size.height : nil)
+            macOSModalPage(modal)
+                .frame(width: modal.style == 1 ? size.width : min(size.width, 480),
+                       height: modal.style == 1 ? max(0, size.height - 32) : min(size.height, 360))
         }
         .background {
             Button("Back") {
@@ -276,6 +287,39 @@ public struct WeftRoot: View {
             }
         )
     }
+
+    #if os(macOS)
+    private func macOSModalPage(_ modal: NavigationModal) -> some View {
+        Group {
+            if let page = session.page(modal.id) {
+                VStack(spacing: 0) {
+                    if !page.modalBarHidden {
+                        HStack {
+                            Button("Close", systemImage: "xmark") {
+                                session.userDismissModal(modal.id)
+                            }
+                            .keyboardShortcut(.cancelAction)
+                            page.modalBar
+                        }
+                        .padding(12)
+                        Divider()
+                    }
+                    page.view.id(modal.id)
+                        .environment(\.weftModalPage, true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                }
+                .background {
+                    if page.modalBarHidden {
+                        Button("Close") { session.userDismissModal(modal.id) }
+                            .keyboardShortcut(.cancelAction)
+                            .opacity(0)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+    }
+    #endif
 
     private func modalPage(_ modal: NavigationModal) -> some View {
         NavigationStack {

@@ -27,6 +27,12 @@ open class WeftScope: Identifiable {
     /// The SwiftUI view of this scope.
     open var view: AnyView { AnyView(EmptyView()) }
 
+    #if os(macOS)
+    /// Modal title bar content generated from this page's NavBar.
+    open var modalBar: AnyView { AnyView(EmptyView()) }
+    open var modalBarHidden: Bool { false }
+    #endif
+
     /// Reports that event slot `slot` fired. The handler runs and its ops are
     /// applied before this returns; `false` means a controlled edit was
     /// refused and the control must show its value slot again.

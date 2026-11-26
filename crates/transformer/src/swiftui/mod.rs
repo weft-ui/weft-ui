@@ -215,6 +215,16 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
     out.writer.line(format_args!(
         "override var view: AnyView {{ AnyView(V{index}(s: self)) }}"
     ));
+    if view::has_navbar(template) {
+        out.writer.line("#if os(macOS)");
+        out.writer.line(format_args!(
+            "override var modalBar: AnyView {{ AnyView(V{index}(s: self).modalBar) }}"
+        ));
+        out.writer.line(format_args!(
+            "override var modalBarHidden: Bool {{ V{index}(s: self).modalBarHidden }}"
+        ));
+        out.writer.line("#endif");
+    }
     out.close("}");
 }
 

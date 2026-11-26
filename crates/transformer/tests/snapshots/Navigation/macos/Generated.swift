@@ -40,6 +40,10 @@ public struct WeftAppView: View {
 @Observable private final class S0: WeftScope {
 
     override var view: AnyView { AnyView(V0(s: self)) }
+    #if os(macOS)
+    override var modalBar: AnyView { AnyView(V0(s: self).modalBar) }
+    override var modalBarHidden: Bool { V0(s: self).modalBarHidden }
+    #endif
 }
 
 private struct V0: View {
@@ -57,6 +61,15 @@ private struct V0: View {
         .toolbar(false ? .hidden : .visible, for: .navigationBar)
         #endif
     }
+    #if os(macOS)
+    var modalBarHidden: Bool { false }
+    var modalBar: some View {
+        HStack {
+            Text("Home").font(.headline)
+            Spacer()
+        }
+    }
+    #endif
 }
 
 // MARK: - 1 Settings
@@ -64,6 +77,10 @@ private struct V0: View {
 @Observable private final class S1: WeftScope {
 
     override var view: AnyView { AnyView(V1(s: self)) }
+    #if os(macOS)
+    override var modalBar: AnyView { AnyView(V1(s: self).modalBar) }
+    override var modalBarHidden: Bool { V1(s: self).modalBarHidden }
+    #endif
 }
 
 private struct V1: View {
@@ -81,6 +98,15 @@ private struct V1: View {
         .toolbar(false ? .hidden : .visible, for: .navigationBar)
         #endif
     }
+    #if os(macOS)
+    var modalBarHidden: Bool { false }
+    var modalBar: some View {
+        HStack {
+            Text("Settings").font(.headline)
+            Spacer()
+        }
+    }
+    #endif
 }
 
 // MARK: - 2 Detail
@@ -100,10 +126,17 @@ private struct V1: View {
     }
 
     override var view: AnyView { AnyView(V2(s: self)) }
+    #if os(macOS)
+    override var modalBar: AnyView { AnyView(V2(s: self).modalBar) }
+    override var modalBarHidden: Bool { V2(s: self).modalBarHidden }
+    #endif
 }
 
 private struct V2: View {
     let s: S2
+
+    @Environment(\.weftModalPage) private var weftModalPage
+    init(s: S2) { self.s = s }
 
     var body: some View {
         Group {
@@ -117,10 +150,23 @@ private struct V2: View {
         .toolbar(false ? .hidden : .visible, for: .navigationBar)
         #endif
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Action", action: { _ = s.dispatch(0) })
-                .disabled(false)
+            if !weftModalPage {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Action", action: { _ = s.dispatch(0) })
+                    .disabled(false)
+                }
             }
         }
     }
+    #if os(macOS)
+    var modalBarHidden: Bool { false }
+    var modalBar: some View {
+        HStack {
+            Text(s.v0).font(.headline)
+            Spacer()
+            Button("Action", action: { _ = s.dispatch(0) })
+            .disabled(false)
+        }
+    }
+    #endif
 }
