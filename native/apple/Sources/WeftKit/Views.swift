@@ -71,9 +71,12 @@ final class WeftOverlays {
 
 private struct WeftOverlayModifier: ViewModifier {
     let overlays: WeftOverlays
+    /// Only the topmost presentation (the window or a modal page) may host overlays; SwiftUI
+    /// cannot present an alert from a view that is covered by a sheet.
+    var enabled = true
 
     func body(content: Content) -> some View {
-        let dialog = overlays.active
+        let dialog = enabled ? overlays.active : nil
         let isAlert = dialog?.method == WeftProtocol.uiAlert || dialog?.method == WeftProtocol.uiConfirm
         let alertBinding = Binding(get: { isAlert }, set: { shown in
             if !shown, let dialog { dismiss(dialog) }
@@ -103,7 +106,7 @@ private struct WeftOverlayModifier: ViewModifier {
                 Button(item.options.cancelText ?? "Cancel", role: .cancel) { dismiss(item) }
             }
             .overlay(alignment: .bottom) {
-                if let toast = overlays.toast {
+                if enabled, let toast = overlays.toast {
                     HStack {
                         if toast.options.icon == "success" { Image(systemName: "checkmark.circle.fill") }
                         if toast.options.icon == "error" { Image(systemName: "xmark.circle.fill") }
@@ -185,7 +188,9 @@ public struct WeftRoot: View {
                     .ignoresSafeArea()
                 }
             }
-            .modifier(WeftOverlayModifier(overlays: session.overlays))
+            // Fill the window so the toast centers on it; keep the content at the top leading corner.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .modifier(WeftOverlayModifier(overlays: session.overlays, enabled: session.navigationModal == nil))
             .onChange(of: environment, initial: true) { _, updated in
                 session.update(environment: updated)
             }
@@ -304,9 +309,10 @@ public struct WeftRoot: View {
                         .padding(12)
                         Divider()
                     }
-                    page.view.id(modal.id)
+                    // A page body may have several children; lay them out as one column like a root page.
+                    weftLinear(axis: .vertical) { page.view.id(modal.id) }
                         .environment(\.weftModalPage, true)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
                 .background {
                     if page.modalBarHidden {
@@ -316,6 +322,7 @@ public struct WeftRoot: View {
                             .accessibilityHidden(true)
                     }
                 }
+                .modifier(WeftOverlayModifier(overlays: session.overlays))
             }
         }
     }
@@ -335,6 +342,7 @@ public struct WeftRoot: View {
                     }
             }
         }
+        .modifier(WeftOverlayModifier(overlays: session.overlays))
     }
 
     private var usesSingleStack: Bool {
