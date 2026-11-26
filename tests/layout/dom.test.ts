@@ -3,7 +3,7 @@ import { CSS_PROPS } from "../../packages/runtime/src/elements.ts";
 import { Window } from "happy-dom";
 import { expect, test, vi } from "vitest";
 import { Layout } from "../../crates/transformer/tests/fixtures/Layout.weft";
-import { About, Detail } from "../fixtures/Pages.weft";
+import { About, Detail } from "./Pages.weft";
 
 test("generated pages mount as roots with route parameters", async () => {
   const doc = new Window().document as unknown as Document;
