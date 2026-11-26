@@ -34,6 +34,7 @@ public sealed class WeftSession
     private readonly Dictionary<uint, WeftScope> scopes = [];
     private readonly Panel root;
     private readonly UiOverlay ui;
+    private WeftNavigationHost? navigation;
     private ElementTheme appliedTheme;
     private WindowEnvironment environment;
     private readonly ArrayBufferWriter<byte> environmentJson = new(192);
@@ -248,8 +249,8 @@ public sealed class WeftSession
         {
             OpReader.ReadAll(bytes, batch);
             foreach (ref readonly var op in CollectionsMarshal.AsSpan(batch))
-                if (op.Code is OpCode.Splice or OpCode.Bind or OpCode.Nav)
-                    throw new OpException("lazy lists and app navigation are not supported by these views");
+                if (op.Code is OpCode.Splice or OpCode.Bind)
+                    throw new OpException("lazy lists are not supported by these views");
             foreach (ref readonly var op in CollectionsMarshal.AsSpan(batch)) Apply(op);
         }
         catch (Exception error)
@@ -283,6 +284,10 @@ public sealed class WeftSession
             case OpCode.Rows:
                 Mount(op.Scope, op.Arg, op.Rows!);
                 break;
+            case OpCode.Nav:
+                navigation ??= new WeftNavigationHost(this, root);
+                navigation.Apply(new NavigationState(op.Scope, op.Tabs!, op.Stack!, op.Modal, op.Style));
+                break;
         }
     }
 
@@ -307,6 +312,14 @@ public sealed class WeftSession
             if (scopes.TryGetValue(id, out var child)) children.Add(child);
         }
         point.Mount(children);
+    }
+
+    internal WeftScope Page(uint id) => scopes.TryGetValue(id, out var scope)
+        ? scope : throw new OpException($"navigation references missing scope {id}");
+
+    internal void DestroyPage(uint id)
+    {
+        if (scopes.TryGetValue(id, out var scope)) Destroy(scope);
     }
 
     private void Destroy(WeftScope scope)

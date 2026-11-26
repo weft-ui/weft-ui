@@ -204,6 +204,36 @@ mod tests {
     }
 
     #[test]
+    fn page_navigation_bar_is_separate_from_content() {
+        let code = csharp(
+            r#"event Action()
+            app Notes { start = Home }
+            page Home(title: String = "Home", disabled: Bool = false, icon: String = "") {
+                NavBar(title = title, hidden = true) {
+                    BarButton(label = title, disabled = disabled, icon = icon, onTap = Action())
+                }
+                Text("body")
+            }"#,
+        );
+        for expected in [
+            "private readonly WeftNavigationBar n0;",
+            "private readonly WeftBarButton n1;",
+            "n0.Hidden = true;",
+            "NavigationBar = n0.Element;",
+            "n1 = new WeftBarButton(() => Dispatch(0));",
+            "n0.Add(n1);",
+            "Roots.Add(n2.Element);",
+            "n0.Title = value.String; break;",
+            "n1.Label = value.String; break;",
+            "n1.Disabled = value.Bool; break;",
+            "n1.Icon = value.String; break;",
+        ] {
+            assert!(code.contains(expected), "missing {expected:?}\n{code}");
+        }
+        assert!(!code.contains("Roots.Add(n0.Element);"), "{code}");
+    }
+
+    #[test]
     fn registers_safe_area_opt_out() {
         let mut loader = MemoryLoader::new();
         loader.insert("App.weft", "component App() { Text(\"hello\") }");

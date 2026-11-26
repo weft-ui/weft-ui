@@ -30,9 +30,11 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                 .peekable();
             let declaration = if slots.peek().is_some() { "" } else { "var " };
             let args = std::fmt::from_fn(|out| match element {
-                Element::NavBar | Element::BarButton => {
-                    unreachable!("navigation is not supported on native platforms")
-                }
+                Element::NavBar => Ok(()),
+                Element::BarButton => match template.event(index, "onTap") {
+                    Some(slot) => write!(out, "() => Dispatch({slot})"),
+                    None => out.write_str("null"),
+                },
                 Element::Column | Element::Row => {
                     write!(out, "vertical: {}", *element == Element::Column)?;
                     if let Some(slot) = template.event(index, "onTap") {
@@ -106,11 +108,23 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                     literal(*element, prop.name, &prop.value)
                 ));
             }
-            if *element != Element::Span {
-                out.writer
-                    .line(format_args!("{region}.Add(n{index}.Element);"));
-                for &child in children {
-                    node(out, template, has_theme, child, Some(index));
+            match element {
+                Element::NavBar => {
+                    out.writer.line(format_args!("NavigationBar = n{index}.Element;"));
+                    for &child in children {
+                        node(out, template, has_theme, child, Some(index));
+                    }
+                }
+                Element::BarButton => {
+                    let parent = parent.expect("a BarButton belongs to a NavBar");
+                    out.writer.line(format_args!("n{parent}.Add(n{index});"));
+                }
+                Element::Span => {}
+                _ => {
+                    out.writer.line(format_args!("{region}.Add(n{index}.Element);"));
+                    for &child in children {
+                        node(out, template, has_theme, child, Some(index));
+                    }
                 }
             }
         }
@@ -122,9 +136,8 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
-        Element::NavBar | Element::BarButton => {
-            unreachable!("navigation is not supported on native platforms")
-        }
+        Element::NavBar => "WeftNavigationBar",
+        Element::BarButton => "WeftBarButton",
         Element::Column | Element::Row => "WeftStack",
         Element::Text => "WeftText",
         Element::Span => "WeftSpan",

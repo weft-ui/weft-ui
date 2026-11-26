@@ -18,6 +18,9 @@ public abstract class WeftScope
 
     public WeftSession Session { get; }
 
+    /// <summary>The page's navigation bar content, or null for an empty default bar.</summary>
+    public UIElement? NavigationBar { get; protected set; }
+
     /// <summary>The template's top-level nodes; they render into the region the scope is mounted in.</summary>
     protected WeftRegion Roots { get; }
 
