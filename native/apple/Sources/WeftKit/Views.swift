@@ -133,6 +133,16 @@ private struct WeftInlineTitle: ViewModifier {
     }
 }
 
+private struct WeftPushedTab: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.toolbar(.hidden, for: .tabBar)
+        #else
+        content
+        #endif
+    }
+}
+
 /// Renders the root component or startup failure, respecting the safe area by default.
 public struct WeftRoot: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -165,75 +175,94 @@ public struct WeftRoot: View {
     }
 
     private func content(size: CGSize) -> some View {
-        weftLinear(axis: .vertical) {
-            if let failure = session.failure {
-                Text(verbatim: failure)
-                    .foregroundStyle(.red)
-                    .padding()
-            } else if let root = session.navigationRoot {
-                NavigationStack(path: Binding(
-                    get: { session.navigationPath },
-                    set: { _ = session.userNavigationPath($0) }
-                )) {
-                    Group {
-                        if session.tabs.isEmpty {
-                            root.view.id(root.id).modifier(WeftInlineTitle())
-                        } else {
-                            TabView(selection: Binding(
-                                get: { session.navigationTab },
-                                set: { _ = session.userSelectTab($0) }
-                            )) {
-                                ForEach(session.tabs.indices, id: \.self) { index in
-                                    let tab = session.tabs[index]
-                                    Group {
-                                        if index < session.navigationTabs.count,
-                                           let page = session.page(session.navigationTabs[index]) {
-                                            page.view.id(page.id).modifier(WeftInlineTitle())
-                                        } else {
-                                            Color.clear
-                                        }
-                                    }
-                                    .tabItem {
-                                        Label {
-                                            Text(tab.title)
-                                        } icon: {
-                                            Image(index == Int(session.navigationTab) ? tab.activeIcon : tab.icon, bundle: session.assets.bundle)
-                                        }
-                                    }
-                                    .badge(session.badges[index])
-                                    .tag(UInt32(index))
-                                }
-                            }
-                        }
-                    }
-                    .navigationDestination(for: UInt32.self) { id in
-                        if let page = session.page(id) {
-                            page.view.id(id).modifier(WeftInlineTitle())
-                        }
+        Group {
+            if let root = session.navigationRoot, session.failure == nil {
+                navigation(root: root)
+            } else {
+                weftLinear(axis: .vertical) {
+                    if let failure = session.failure {
+                        Text(verbatim: failure).foregroundStyle(.red).padding()
+                    } else if let root = session.root {
+                        root.view.id(root.id)
                     }
                 }
-                #if os(macOS)
-                // The stack's toolbar back button belongs to the pushed page and disappears with a hidden
-                // navigation bar; ⌘[ lives outside the toolbar so it works in both cases.
-                .background {
-                    Button("Back") {
-                        session.userNavigationPath(Array(session.navigationPath.dropLast()))
-                    }
-                    .keyboardShortcut("[", modifiers: .command)
-                    .disabled(session.navigationPath.isEmpty)
-                    .opacity(0)
-                    .accessibilityHidden(true)
-                }
-                #endif
-                .frame(width: size.width, height: size.height)
-            } else if let root = session.root {
-                root.view.id(root.id)
+                .weftFrame(width: size.width, height: size.height)
+                .clipped()
             }
         }
-        .weftFrame(width: size.width, height: size.height)
-        .clipped()
         .environment(\.layoutDirection, .leftToRight)
         .environment(\.weftAssets, session.assets)
+    }
+
+    @ViewBuilder
+    private func navigation(root: WeftScope) -> some View {
+        Group {
+            if usesSingleStack {
+                navigationStack(root: root, tab: nil)
+            } else {
+                TabView(selection: Binding(
+                    get: { session.navigationTab },
+                    set: { _ = session.userSelectTab($0) }
+                )) {
+                    ForEach(session.tabs.indices, id: \.self) { index in
+                        let tab = session.tabs[index]
+                        Group {
+                            if index < session.navigationTabs.count,
+                               let page = session.page(session.navigationTabs[index]) {
+                                navigationStack(root: page, tab: UInt32(index))
+                            } else {
+                                Color.clear
+                            }
+                        }
+                        .tabItem {
+                            Label {
+                                Text(tab.title)
+                            } icon: {
+                                Image(index == Int(session.navigationTab) ? tab.activeIcon : tab.icon, bundle: session.assets.bundle)
+                            }
+                        }
+                        .badge(session.badges[index])
+                        .tag(UInt32(index))
+                    }
+                }
+            }
+        }
+        #if os(macOS)
+        .background {
+            Button("Back") {
+                session.userNavigationPath(Array(session.navigationPath.dropLast()))
+            }
+            .keyboardShortcut("[", modifiers: .command)
+            .disabled(session.navigationPath.isEmpty)
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
+        #endif
+    }
+
+    private var usesSingleStack: Bool {
+        #if os(macOS)
+        session.tabs.isEmpty || !session.navigationPath.isEmpty
+        #else
+        session.tabs.isEmpty
+        #endif
+    }
+
+    private func navigationStack(root: WeftScope, tab: UInt32?) -> some View {
+        NavigationStack(path: Binding(
+            get: { tab == nil || tab == session.navigationTab ? session.navigationPath : [] },
+            set: { if tab == nil || tab == session.navigationTab { _ = session.userNavigationPath($0) } }
+        )) {
+            root.view.id(root.id)
+                .modifier(WeftInlineTitle())
+                .navigationDestination(for: UInt32.self) { id in
+                    if let page = session.page(id) {
+                        page.view.id(id)
+                            .modifier(WeftInlineTitle())
+                            .modifier(WeftPushedTab())
+                    }
+                }
+        }
     }
 
     private func windowEnvironment(_ geometry: GeometryProxy) -> WeftEnvironment {
