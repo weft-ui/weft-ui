@@ -839,7 +839,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | P2 | ☑ | ef5f8e0 | |
 | P3 | ☑ | 4c861c8 | |
 | L1 | ☑ | e28e65a、9211773 | 后者把 DOM 测试用的 `Pages.weft` 移出 conformance 夹具目录 |
-| R1.w | ☐ | | |
+| R1.w | ☑ | 4403a24 | 微信开发者工具里的推入、系统返回与动态标题已用 automator 验证 |
 | R1.a | ☐ | | |
 | R1.d | ☐ | | |
 | R1.n | ☐ | | |
@@ -856,10 +856,10 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R3.n | ☐ | | |
 | R3.g | ☐ | | |
 | R4.w | ☑ | 4081f7f | 截图待维护者确认；微信开发者工具里四个按钮的人工确认待维护者 |
-| R4.a | ☐ | | |
-| R4.d | ☐ | | |
-| R4.n | ☐ | | |
-| R4.g | ☐ | | |
+| R4.a | ☑ | 03f1196 | iOS `overlays` 基线待维护者确认；macOS C-ui 与 `overlays` 浮层操作由编排者运行通过 |
+| R4.d | ☑ | 6418daa | Android `overlays` 基线待维护者确认 |
+| R4.n | ☑ | 4638a69 | |
+| R4.g | ☑ | a6bd73a | 含本波次的启用改动（`overlays` 不再 `pending`、platform-api 指南） |
 | R5.w | ☐ | | |
 | R5.a | ☐ | | |
 | R5.d | ☐ | | |
@@ -902,3 +902,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [P3] 小程序 `js/index.js` 也变化（计划只写了原生平台）：远程会话新增的 `window` 回调同样打进小程序 bundle。结论：接受，已重新录制 C-apps 基线
 - [L1] 执行者用旧版 tree-sitter CLI 生成 `parser.c`，`tree_sitter/array.h` 被降级；改用 CI 使用的 tree-sitter 0.27.2 重新生成后提交（`array.h` 仍与此前略有差异，来自 0.27.2 本身）。DOM 测试用的 `Pages.weft` 原先放在 `tests/fixtures/`，原生 conformance 构建把它当作夹具目录而失败（`conformance.build`），另提交 9211773 移到 `tests/layout/`。结论：已修复
 - [L1、R4.w] 两个任务在独立 worktree 中执行：iOS、macOS 生成的 `Package.swift` 含检出目录的绝对路径，在 worktree 里比对 C-apps 时只有这一行不同；合并回主工作区后重新运行检查并录制了基线。结论：接受
+- [R4.a–R4.g] R4 的原生波次先于 R1–R3 的原生波次执行：它只改各平台壳的平台调用模块，与导航无关，不依赖 R3.x 的改动；同一平台族仍然串行。结论：接受（依赖图的同族串行只为避免同一批文件的冲突）
+- [R4.g] `GtkAlertDialog` 不能单独设置某个按钮的危险样式，`destructive` 与 `destructiveIndex` 在 Linux 上以普通按钮显示，已写入 platform-api 指南。结论：接受（平台限制）
+- [R1.w] 预期变化写「原生快照与原生平台的产物不变」，实际：五个原生平台的 `js/index.js` 变化（导航状态机与 `nav`、`navigation` 信号在共用的 remote 运行时里，原生 bundle 也包含它）；L1 的 `Pages` 原生快照中 `Pages.d.ts` 加入 `onShow`、`onHide` 声明（规范 §1，R1.w 加入）。原生生成视图与布局不变。结论：接受（运行时与声明的必然结果），已重新录制 C-apps 基线
+- [R1.w] 在独立 worktree 里与 R4 原生波次并行；原生波次推进了 C-apps 基线，R1.w 改用其基础提交 91b7e4c 的基线比对，合并后在主工作区重新检查并录制。结论：接受
