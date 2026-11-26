@@ -27,6 +27,7 @@
 #include <weft/runtime.h>
 
 namespace weft {
+namespace platform { class Ui; }
 
 class Scope;
 class Session;
@@ -693,6 +694,7 @@ class Session {
   Factory make_;
   GtkWidget *page_;
   std::unique_ptr<Environment> environment_;
+  std::shared_ptr<platform::Ui> ui_;
   std::unordered_map<uint32_t, std::unique_ptr<Scope>> scopes_;
   /// Destroyed scopes, freed once the main loop is idle: a widget's signal
   /// handler may still run code of the scope that its event destroyed.

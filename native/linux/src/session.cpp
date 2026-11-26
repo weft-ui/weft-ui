@@ -12,6 +12,7 @@
 #include "appearance.hpp"
 #include "assets.hpp"
 #include "platform.hpp"
+#include "ui.hpp"
 #include "point.hpp"
 #include "container.hpp"
 #include "weft/gtk.hpp"
@@ -106,9 +107,13 @@ GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area,
   register_asset_fonts();
   GtkWidget *page = linear_new(Axis::Vertical);
   gtk_widget_set_overflow(page, GTK_OVERFLOW_HIDDEN);
+  GtkWidget *overlay = gtk_overlay_new();
+  gtk_overlay_set_child(GTK_OVERLAY(overlay), page);
   // The session ends with the root widget.
   auto *session = new Session(page, make);
-  g_object_set_data_full(G_OBJECT(page), "weft-session", session,
+  session->ui_ = std::make_shared<platform::Ui>(overlay);
+  g_object_set_data(G_OBJECT(page), "weft-session", session);
+  g_object_set_data_full(G_OBJECT(overlay), "weft-session", session,
                          [](gpointer session) { delete static_cast<Session *>(session); });
   // GTK has no width/height notifications; observe the root's allocation.
   container_on_allocate(page, [](GtkWidget *widget) {
@@ -118,7 +123,7 @@ GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area,
     static_cast<Session *>(data)->queue_environment();
   }), session);
   session->open(weft_directory() + "/bundle.hbc", layout_hash);
-  return page;
+  return overlay;
 }
 
 Session::Session(GtkWidget *page, Factory make)
@@ -127,6 +132,7 @@ Session::Session(GtkWidget *page, Factory make)
 }
 
 Session::~Session() {
+  if (ui_) ui_->close();
   weft_runtime_free(runtime_);
   g_cancellable_cancel(cancellable_);
   g_object_unref(cancellable_);
@@ -347,8 +353,9 @@ void Session::schedule(uint64_t delay_ms) {
 }
 
 void Session::call(uint32_t id, std::string module, std::string method, std::vector<uint8_t> args) {
-  platform::call(module, method, std::move(args), cancellable_,
-                 [this, id](bool ok, std::vector<uint8_t> result) { resolve(id, ok, result); });
+  auto done = [this, id](bool ok, std::vector<uint8_t> result) { resolve(id, ok, result); };
+  if (module == protocol::kUiModule) ui_->call(std::move(method), std::move(args), cancellable_, std::move(done));
+  else platform::call(module, method, std::move(args), cancellable_, std::move(done));
 }
 
 void Session::resolve(uint32_t id, bool ok, const std::vector<uint8_t> &result) {

@@ -95,6 +95,43 @@ bool contains(GtkWidget *area, std::string_view expected) {
   return expected == text;
 }
 
+GtkWidget *dialog_with(std::string_view text) {
+  auto *windows = gtk_window_get_toplevels();
+  for (guint i = 0; i < g_list_model_get_n_items(windows); ++i) {
+    auto *window = GTK_WIDGET(g_list_model_get_item(windows, i));
+    bool found = label(window, text) != nullptr;
+    g_object_unref(window);
+    if (found) return window;
+  }
+  return nullptr;
+}
+
+void overlays(GtkWidget *root) {
+  click(root, "page:overlays");
+  click(root, "Alert");
+  auto *dialog = dialog_with("This is an alert.");
+  check(dialog, "Alert not shown"); click(dialog, "OK");
+  check(label(root, "Alert dismissed."), "Alert result missing");
+  click(root, "Confirm");
+  dialog = dialog_with("Continue?");
+  check(dialog, "Confirm not shown"); click(dialog, "Cancel");
+  check(label(root, "Cancelled."), "Confirm result missing");
+  click(root, "Action sheet");
+  dialog = dialog_with("Choose an option");
+  check(dialog, "Action sheet not shown"); click(dialog, "Second");
+  check(label(root, "Selected option 2."), "Action sheet result missing");
+  click(root, "Toast");
+  auto *toast = label(root, "This is a toast.");
+  check(toast && label(root, "Toast shown."), "Toast missing");
+  auto *revealer = gtk_widget_get_ancestor(toast, GTK_TYPE_REVEALER);
+  check(revealer && gtk_revealer_get_reveal_child(GTK_REVEALER(revealer)), "Toast not revealed");
+  const auto deadline = g_get_monotonic_time() + 3 * G_TIME_SPAN_SECOND;
+  while (gtk_revealer_get_reveal_child(GTK_REVEALER(revealer)) && g_get_monotonic_time() < deadline) {
+    g_usleep(1000); pump();
+  }
+  check(!gtk_revealer_get_reveal_child(GTK_REVEALER(revealer)), "Toast did not close");
+}
+
 void controls(GtkWidget *root) {
   click(root, "page:controls");
 
@@ -385,5 +422,6 @@ int main(int argc, char **argv) {
   }
   run(controls);
   run(inputs);
+  run(overlays);
   return 0;
 }

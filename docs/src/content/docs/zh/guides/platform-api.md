@@ -127,7 +127,7 @@ ui.toast("已保存", { icon: "success", duration: "short" });
 
 同一时刻最多显示一个对话框或操作表，后续调用按先进先出排队。通过系统方式关闭（如返回键、Esc、点击遮罩）时，`confirm` 返回 `false`，`actionSheet` 返回 `null`。Toast 不排队，新的会替换旧的。Toast 的 `icon` 可为 `none`、`success` 或 `error`；`duration` 可为 `short`（默认，1.5 秒）或 `long`（3 秒）。
 
-尚未实现 `ui` 的原生平台壳会让 `isSupported("ui")` 返回 false。宿主不支持时，对话框和操作表调用以 `PlatformError` 拒绝，`toast` 则同步抛出该错误。
+五个原生平台壳都用各自平台的对话框实现了 `ui`：SwiftUI 的 alert 与 confirmationDialog（macOS 上操作表以对话框呈现）、Android 的 Material 对话框与底部面板、Windows 的 `ContentDialog`、Linux 的 `GtkAlertDialog`（无法为危险选项单独着色）。不支持 `ui` 的宿主让 `isSupported("ui")` 返回 false，此时对话框和操作表调用以 `PlatformError` 拒绝，`toast` 则同步抛出该错误。
 
 ## 查看宿主和可用能力
 

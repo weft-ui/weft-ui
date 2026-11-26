@@ -325,7 +325,7 @@ std::vector<std::string> parse_storage_args(std::string_view method, const std::
 }
 
 bool supported(std::string_view module) {
-  return module == protocol::kFetchModule || module == protocol::kStorageModule;
+  return module == protocol::kFetchModule || module == protocol::kStorageModule || module == protocol::kUiModule;
 }
 
 void call(const std::string &module, const std::string &method, std::vector<uint8_t> args,

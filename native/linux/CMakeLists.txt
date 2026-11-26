@@ -50,6 +50,7 @@ add_library(weft_linux STATIC
   src/scope.cpp
   src/session.cpp
   src/texture_cache.cpp
+  src/ui.cpp
   ${weft_core_source}/src/ops.cpp
 )
 add_library(weft::linux ALIAS weft_linux)

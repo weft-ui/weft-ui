@@ -41,7 +41,6 @@
   {
     "id": "overlays",
     "title": "Overlays",
-    "pending": ["ios", "macos", "android", "windows", "linux"],
     "props": { "overlayResult": ["No overlay opened yet."] }
   }
 ]

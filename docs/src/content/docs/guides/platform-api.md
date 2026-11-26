@@ -127,7 +127,7 @@ ui.toast("Saved", { icon: "success", duration: "short" });
 
 Only one dialog or action sheet is shown at a time; later calls queue in FIFO order. System dismissal (such as Back, Escape, or tapping the backdrop) resolves `confirm` to `false` and `actionSheet` to `null`. Toasts do not queue: a new toast replaces the previous one. Toast icons are `none`, `success`, or `error`; duration is `short` (1.5 seconds, the default) or `long` (3 seconds).
 
-Native shells that have not implemented `ui` report `isSupported("ui")` as false. On an unsupported host, dialog and action sheet calls reject with `PlatformError`, while `toast` throws it synchronously.
+All five native shells implement `ui` with their platform's dialogs: SwiftUI alerts and confirmation dialogs (an action sheet appears as a dialog on macOS), Material dialogs and a bottom sheet on Android, `ContentDialog` on Windows, and `GtkAlertDialog` on Linux, which cannot color a destructive option. A host without `ui` reports `isSupported("ui")` as false; there, dialog and action sheet calls reject with `PlatformError`, while `toast` throws it synchronously.
 
 ## Check the host and its capabilities
 
