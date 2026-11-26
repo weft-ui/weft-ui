@@ -16,6 +16,8 @@ internal object WeftProtocol {
     const val UI_CONFIRM = "confirm"
     const val UI_ACTIONSHEET = "actionSheet"
     const val UI_TOAST = "toast"
+    const val NAVIGATION_MODULE = "navigation"
+    const val NAVIGATION_BADGE = "badge"
 }
 
 internal object OpCode {

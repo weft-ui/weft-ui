@@ -103,4 +103,10 @@ export class NativeSink extends OpWriter implements Sink {
     this.take();
     this.#kernel.close();
   }
+
+  /** Forwards a tab badge to the shell's `navigation` module; shells without it show no badges. */
+  badge(index: number, text: string | null): void {
+    if (!this.#kernel.supports("navigation")) return;
+    this.#kernel.call("navigation", "badge", JSON.stringify({ tab: index, text })).catch((error: unknown) => console.error(error));
+  }
 }

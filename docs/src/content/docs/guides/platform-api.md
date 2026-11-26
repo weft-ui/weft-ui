@@ -133,7 +133,7 @@ All five native shells implement `ui` with their platform's dialogs: SwiftUI ale
 
 Use `platform.os` and `platform.version` to identify the current host. `os` is one of `web`, `wechat`, `ios`, `macos`, `android`, `windows`, or `linux`. `version` is a host-specific string, not the Weft UI package version. Don't assume a common format across platforms. For example, on Web it is the full user agent string; on native targets it is empty if the kernel isn't present or the shell supplies no version.
 
-`isSupported(api: "fetch" | "storage" | "ui"): boolean` checks whether the current host exposes a capability without performing an operation. Use it to choose a fallback. A `true` result does not guarantee an individual operation will succeed.
+`isSupported(api: "fetch" | "storage" | "ui" | "navigation"): boolean` checks whether the current host exposes a capability without performing an operation. `navigation` reports whether the host shows tab badges set with `navigation.setBadge`. Use it to choose a fallback. A `true` result does not guarantee an individual operation will succeed.
 
 | Target | `fetch` | `storage` | `platform.version` |
 | --- | --- | --- | --- |

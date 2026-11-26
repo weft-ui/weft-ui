@@ -133,7 +133,7 @@ ui.toast("已保存", { icon: "success", duration: "short" });
 
 用 `platform.os` 和 `platform.version` 查看当前宿主。`os` 的取值为 `web`、`wechat`、`ios`、`macos`、`android`、`windows` 或 `linux`。`version` 是宿主报告的字符串，不是 Weft UI 的包版本，也没有跨平台的统一格式。比如，在 Web 上它是完整的用户代理字符串；在原生目标上，如果没有内核或平台壳没有提供版本，它就是空字符串。
 
-`isSupported(api: "fetch" | "storage" | "ui"): boolean` 检查当前宿主是否提供该能力，不会实际执行操作。可以据此选择备用方案。返回 `true` 不代表某次调用一定成功。
+`isSupported(api: "fetch" | "storage" | "ui" | "navigation"): boolean` 检查当前宿主是否提供该能力，不会实际执行操作。`navigation` 表示宿主能否显示 `navigation.setBadge` 设置的 Tab 角标。可以据此选择备用方案。返回 `true` 不代表某次调用一定成功。
 
 | 目标 | `fetch` | `storage` | `platform.version` |
 | --- | --- | --- | --- |

@@ -167,5 +167,6 @@ export const platform = /* @__PURE__ */ new WebPlatform(readEnvironment, observe
 /** Checks whether the browser currently exposes the requested capability. */
 export function isSupported(api: PlatformModule): boolean {
   if (api === "ui") return typeof document !== "undefined" && typeof HTMLDialogElement !== "undefined";
+  if (api === "navigation") return typeof history === "object" && history !== null;
   return api === "fetch" ? typeof globalThis.fetch === "function" : localStorage() !== null;
 }

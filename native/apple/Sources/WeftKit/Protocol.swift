@@ -14,6 +14,8 @@ enum WeftProtocol {
     static let uiConfirm = "confirm"
     static let uiActionSheet = "actionSheet"
     static let uiToast = "toast"
+    static let navigationModule = "navigation"
+    static let navigationBadge = "badge"
 }
 
 enum OpCode: UInt8 {

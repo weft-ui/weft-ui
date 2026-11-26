@@ -44,5 +44,7 @@ inline constexpr std::string_view kUiAlert = "alert";
 inline constexpr std::string_view kUiConfirm = "confirm";
 inline constexpr std::string_view kUiActionSheet = "actionSheet";
 inline constexpr std::string_view kUiToast = "toast";
+inline constexpr std::string_view kNavigationModule = "navigation";
+inline constexpr std::string_view kNavigationBadge = "badge";
 
 }  // namespace weft::protocol

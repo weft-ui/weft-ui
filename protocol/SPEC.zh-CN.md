@@ -249,6 +249,9 @@ WXML 只渲染 `{{key}}`，`setData` 的路径就是块数据树中的路径（`
 | `fetch`   | `request`                    | 帧：`u32 头长度（小端） \| 头（UTF-8 JSON）\| 请求体`，头是 `{"url", "method", "headers"}` | 同样的帧，头是 `{"status"}`，之后是响应体 |
 | `storage` | `get` / `set` / `remove`     | JSON 数组：`[key]` 或 `[key, value]`                         | `get`：JSON 字符串或 `null`；其余为空      |
 | `ui` | `alert` / `confirm` / `actionSheet` / `toast` | UTF-8 JSON 对象，字段为对应 UI 选项；`toast` 使用 `{"message", "icon", "duration"}` | `alert` 和 `toast`：空；`confirm`：JSON `true` 或 `false`；`actionSheet`：JSON 选中项下标或 `null`。`toast` 显示后立即完成。 |
+| `navigation` | `badge` | UTF-8 JSON 对象 `{"tab", "text"}`：`tab` 是布局 `app.tabs` 的下标，`text` 为字符串（`""` 显示圆点）或 `null`（移除角标） | 空，立即完成 |
+
+`navigation.badge` 由运行时在应用调用 `navigation.setBadge` 时同步发起，不随 op 批次排序，可能早于第一个 `nav`；壳按 Tab 下标保存角标，建好 Tab 栏时再应用。壳不支持 `navigation` 时运行时不发起调用。
 
 `@weft-ui/platform` 在 `supports(api)` 为假时直接抛 `PlatformError`，不发起调用。
 

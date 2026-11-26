@@ -296,6 +296,7 @@ export const platform = /* @__PURE__ */ new WechatPlatform(readEnvironment, obse
 export function isSupported(api: PlatformModule): boolean {
   if (typeof wx === "undefined") return false;
   if (api === "ui") return typeof wx.showModal === "function" && typeof wx.showActionSheet === "function" && typeof wx.showToast === "function";
+  if (api === "navigation") return "switchTab" in wx && "setTabBarBadge" in wx;
   return api === "fetch"
     ? typeof wx.request === "function"
     : typeof wx.getStorage === "function"

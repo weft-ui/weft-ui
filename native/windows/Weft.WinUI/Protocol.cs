@@ -17,6 +17,8 @@ internal static class WeftProtocol
     internal const string UiConfirm = "confirm";
     internal const string UiActionSheet = "actionSheet";
     internal const string UiToast = "toast";
+    internal const string NavigationModule = "navigation";
+    internal const string NavigationBadge = "badge";
 }
 
 internal enum OpCode : byte
