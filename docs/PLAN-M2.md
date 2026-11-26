@@ -390,7 +390,7 @@ Web 与小程序没有内核，同样的事件由 `@weft-ui/platform` 的 `web.t
 | `weft/view.{js,json,wxml,wxss}` | 同 M1：主包页面可达的全部模板 |
 | `weft/pages/<kebab>/index.js` | `Page(getApp().weft.page("<Name>"))`：运行时返回 `onLoad(query)`、`onShow`、`onHide`、`onUnload`、`onReady`、`onShareAppMessage` 等处理函数 |
 | `weft/pages/<kebab>/index.json` | `usingComponents`（`weft-view` 指向 `/weft/view` 或分包的 `view`）；静态 `NavBar.title` 写入 `navigationBarTitleText`；`NavBar(hidden = true)` 写 `"navigationStyle": "custom"` |
-| `weft/pages/<kebab>/index.wxml` | `<weft-view id="weft" class="w-root…"/>`，加模态容器 `<page-container show="{{m}}" position="bottom" round="{{ms == 0}}" custom-style="{{mc}}" bind:afterleave="$dismissed"><weft-view id="modal"/></page-container>` |
+| `weft/pages/<kebab>/index.wxml` | `<weft-view id="weft" class="w-root…"/>`，加模态容器 `<page-container show="{{m}}" position="bottom" round="{{ms == 0}}" close-on-slide-down="{{ms == 0}}" custom-style="{{mc}}" bind:afterleave="$dismissed"><weft-view id="modal"/></page-container>` |
 | `weft/pages/<kebab>/index.wxss` | `@import` 对应的 `view.wxss` 加页面规则 |
 
 - 没有 `app` 的程序保持 M1 的单页面 `weft/index`，现有快照不变。
@@ -852,12 +852,12 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R2.d | ☑ | 8798267 | |
 | R2.n | ☑ | 4256345 | |
 | R2.g | ☑ | cb019ae | |
-| R3.w | ⏸ | 3f9b7fb | 开发者工具里 sheet 与 fullScreen 呈现、关闭按钮、模态内推入报错由编排者用 automator 验证；下滑关闭手势待维护者 |
+| R3.w | ☑ | 3f9b7fb | 修正 533d7cd（sheet 下滑关闭）；开发者工具里 sheet 与 fullScreen 呈现、关闭按钮、模态内推入报错、下滑关闭（automator 合成触摸，sheet 关闭、fullScreen 不关闭）由编排者验证 |
 | R3.a | ☑ | 16a40d3 | 修正 d367946（macOS 模态标题栏）、20f71ad（浮层显示在模态上、macOS 模态内容布局）、89f38cb（rustfmt）；macOS 临时应用（sheet、fullScreen、Esc、关闭按钮、模态内推入报错）由编排者运行通过 |
 | R3.d | ☑ | ce89778 | 顺带修正只有文字的 BarButton 被裁切 |
 | R3.n | ☑ | e201d90 | |
 | R3.g | ☑ | 09dfa29 | |
-| R4.w | ☑ | 4081f7f | 截图待维护者确认；微信开发者工具里四个按钮的人工确认待维护者 |
+| R4.w | ☑ | 4081f7f | 修正 bbdf0b7（小程序 `ui.confirm` 总是失败）；开发者工具里四个按钮由编排者用 automator 验证（截图与 `mockWxMethod` 结果）；截图基线待维护者确认 |
 | R4.a | ☑ | 03f1196 | iOS `overlays` 基线待维护者确认；macOS C-ui 与 `overlays` 浮层操作由编排者运行通过 |
 | R4.d | ☑ | 6418daa | Android `overlays` 基线待维护者确认 |
 | R4.n | ☑ | 4638a69 | |
@@ -920,7 +920,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R2.a] iOS 上 Tab 根页不显示标题、Tab 栏底部被裁切，由代理自查截图发现并修正（1b547b6）；macOS 的 `TabView` 呈现为工具栏里的分段控件，不显示图标与根页标题，`.badge` 不显示——角标改为写进 Tab 标题（`Home 3`、空串为 `Home •`），指南注明（48f4b6b）。结论：已修正
 - [R2.g] GTK 的 `GtkStackPage:needs-attention` 只能显示圆点，文字角标在 Linux 上也显示为圆点，指南注明。结论：接受（计划已预见）
 - [R2.n] Windows 虚拟机重启后 `prlctl exec` 需要等控制台用户登录；`weft-interactive` 计划任务曾经由 ssh（提升权限）注册，之后控制台会话无法覆盖它（Access denied），删除后恢复。交互式 UI 步骤只经 `prlctl exec --current-user` 运行。结论：环境问题，已处理
-- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时，三项的开发者工具检查先标 ⏸。R3 原生波次结束后，编排者关闭残留的开发者工具实例，在主工作区用临时应用（两个 Tab、角标、推入分包页面、两种模态、模态内推入）以 automator 运行通过。剩下的下滑关闭手势与「详情」面板里的包大小需要人工操作。结论：部分待维护者
+- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时，三项的开发者工具检查先标 ⏸。R3 原生波次结束后，编排者关闭残留的开发者工具实例，在主工作区用临时应用（两个 Tab、角标、推入分包页面、两种模态、模态内推入、在模态标题行上合成下滑触摸）以 automator 运行通过。剩下「详情」面板里的包大小需要人工查看（或经 `cli preview --info-output` 上传到微信服务器取得）。结论：W1 的这一项待维护者
 - [W1、R3.w] 预期变化写 C-apps 只有 web、wechat 变化，实际五个原生平台的 `js/index.js` 也变化：W1 的分包路由与 R3.w 的模态都改了共用的运行时。结论：接受，已重新录制 C-apps 基线
 - [R3.w] 代理顺带在 C++ conformance 宿主实现了 `dismiss` 动作（原属 R3.g），因此合并后 `navigation` 不必再放回 `pending.json`。结论：接受
 - [R2.w、W1] 开发者工具检查后把 example 改回组件根重新构建，`app.json` 残留只有颜色、没有 `list` 的 `tabBar`（开发者工具会拒绝）；组件根构建也不会删除旧的 `subPackages`。原因：去掉 Tab 时只删除 `list`，而默认颜色是 Weft 写入的。修正：程序不声明 Tab 时删除整个 `tabBar`，组件根构建同时删除 `subPackages`（4e9f9df，含测试）。结论：已修正
@@ -929,3 +929,5 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R3.g] GTK 在模态覆盖层测量时打印零宽高的警告，渲染与交互正常。结论：记录
 - [R3.a–R3.g] 预期的原生 `Navigation` 快照变化只出现在 Apple（d367946 新增 macOS 模态标题栏的生成代码）；其他平台族的模态完全在宿主里实现，快照不变。结论：接受
 - [R4] example 的 `overlays` 页已在所有平台启用，`index.ts` 里按事件名注册的过渡写法改为生成的 `onOverlay*` 方法（5bb3e39）。结论：已清理
+- [R3.w] 小程序 sheet 不能下滑关闭：`page-container` 的 `close-on-slide-down` 默认 `false`，§8.1 的模板没有设置，指南却写了可以下滑关闭。修正：`close-on-slide-down="{{ms == 0}}"`（只对 sheet），同时去掉关闭按钮的默认边框（533d7cd）。对照：不加该属性时，同样的合成下滑不关闭模态。结论：已修正，§8.1 模板已更新
+- [R4.w] 小程序 `ui.confirm` 总是失败：非危险确认传 `confirmColor: undefined`，`wx.showModal` 报 `parameter.confirmColor should be String instead of Undefined`；没有 `title` 或 `message` 的 `alert`、没有 `title` 的 `actionSheet` 同理。单测的 `wx` 桩不校验参数，所以没有发现。修正：去掉值为 `undefined` 的可选参数，单测的桩改为像微信一样拒绝 `undefined`（bbdf0b7）。结论：已修正
