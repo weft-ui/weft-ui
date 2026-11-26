@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "weft/runtime.h"
+#include "weft/protocol.hpp"
 
 namespace {
 
@@ -213,6 +214,7 @@ JNIEXPORT jlong JNICALL Java_net_mioyi_weftui_Native_create(JNIEnv *e, jobject, 
     return 0;
   }
   const weft_host callbacks{
+      .protocol = weft::protocol::kVersion,
       .ctx = session.get(),
       .commit = commit,
       .schedule = schedule,

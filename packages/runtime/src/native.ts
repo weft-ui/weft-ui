@@ -8,6 +8,7 @@
  */
 
 import { OpWriter } from "./ops.ts";
+import { VERSION } from "./protocol.ts";
 import type { Session, Sink, Value } from "./remote.ts";
 
 /** The kernel's global, installed by `native/core/src/runtime.cpp`. */
@@ -16,7 +17,7 @@ export interface Kernel {
    * Starts rendering. Throws if `hash` is not the layout hash of the native
    * views or another app is open. `dispatch` receives the shell's events.
    */
-  open(hash: string, dispatch: (scope: number, slot: number, payload: Value | undefined) => boolean): void;
+  open(hash: string, dispatch: (scope: number, slot: number, payload: Value | undefined) => boolean, protocol: number): void;
   /** Hands `length` bytes at `offset` to the shell; they are read during the call only. */
   commit(buffer: ArrayBuffer, offset: number, length: number): void;
   /** The app was unmounted; later events are ignored. */
@@ -29,6 +30,8 @@ export interface Kernel {
    * error message (immediately for unsupported modules).
    */
   call(module: string, method: string, args?: string | ArrayBuffer | ArrayBufferView): Promise<ArrayBuffer>;
+  /** Protocol version implemented by the kernel. */
+  readonly protocol: number;
   /** OS version reported by the shell. */
   readonly version: string;
   /** Current environment as a JSON string. */
@@ -58,7 +61,7 @@ export class NativeSink extends OpWriter implements Sink {
   }
 
   open(session: Session): void {
-    this.#kernel.open(session.hash, (scope, slot, payload) => session.dispatch(scope, slot, payload));
+    this.#kernel.open(session.hash, (scope, slot, payload) => session.dispatch(scope, slot, payload), VERSION);
   }
 
   commit(): void {

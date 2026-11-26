@@ -44,6 +44,7 @@ enum {
 
 /* Callbacks of the platform shell. `ctx` is passed back unchanged. */
 typedef struct {
+  uint32_t protocol;
   void *ctx;
   /* One batch of view protocol ops (binary encoding), valid only during the call. */
   void (*commit)(void *ctx, const uint8_t *ops, size_t len);

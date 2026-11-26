@@ -1,7 +1,7 @@
 // Generated from protocol/weft.protocol.json by protocol/generate.ts; do not edit.
 
 enum WeftProtocol {
-    static let version: UInt8 = 2
+    static let version: UInt8 = 3
 
     static let fetchModule = "fetch"
     static let fetchRequest = "request"

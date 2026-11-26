@@ -121,6 +121,7 @@ public sealed class WeftSession
             {
                 var host = new Native.Host
                 {
+                    Protocol = WeftProtocol.Version,
                     Ctx = GCHandle.ToIntPtr(selfHandle),
                     Commit = &OnCommit,
                     Schedule = &OnSchedule,

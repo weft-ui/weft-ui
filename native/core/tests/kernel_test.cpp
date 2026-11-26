@@ -74,6 +74,7 @@ struct Shell {
 
   weft_host host() {
     weft_host h{};
+    h.protocol = weft::protocol::kVersion;
     h.ctx = this;
     h.commit = [](void *ctx, const uint8_t *ops, size_t len) {
       static_cast<Shell *>(ctx)->commits.emplace_back(ops, ops + len);
@@ -332,6 +333,25 @@ void refused() {
   }
 }
 
+void protocol() {
+  {
+    Shell shell;
+    auto h = shell.host();
+    h.protocol = 2;
+    CHECK(!weft_runtime_new(&h, nullptr, 0, 0));
+    CHECK(shell.logged(WEFT_LOG_ERROR, "weft: protocol mismatch: kernel speaks 3, shell speaks 2"));
+  }
+  {
+    Shell shell;
+    CHECK(!shell.start("protocol-mismatch", 0xab));
+    CHECK(shell.logged(WEFT_LOG_ERROR, "weft: protocol mismatch: bundle speaks 2, kernel speaks 3"));
+  }
+  {
+    Shell shell;
+    CHECK(shell.start("session", 0xab));
+  }
+}
+
 void stable_rows() {
   auto stable = [](std::vector<uint32_t> old_rows, std::vector<uint32_t> new_rows) {
     std::vector<uint8_t> out(new_rows.size(), 9);
@@ -569,7 +589,7 @@ const std::map<std::string, std::function<void()>> kCases = {
     {"text", text},       {"calls", calls},             {"session", session},
     {"refused", refused}, {"stable_rows", stable_rows}, {"ops", ops},
     {"corpus", corpus},   {"unicode", unicode},         {"environment", environment},
-    {"bounds", bounds},
+    {"bounds", bounds},   {"protocol", protocol},
 };
 
 }  // namespace

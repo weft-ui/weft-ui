@@ -16,6 +16,7 @@ internal static unsafe partial class Native
     [StructLayout(LayoutKind.Sequential)]
     public struct Host
     {
+        public uint Protocol;
         public nint Ctx;
         public delegate* unmanaged<nint, byte*, nuint, void> Commit;
         public delegate* unmanaged<nint, ulong, void> Schedule;

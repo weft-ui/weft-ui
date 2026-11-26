@@ -21,6 +21,7 @@ function installKernel(modules: string[], reply: (call: Call) => Uint8Array | st
   const calls: Call[] = [];
   const encoder = new TextEncoder();
   const kernel: Kernel = {
+    protocol: 3,
     version: "17.4",
     environment: "{}",
     listen: vi.fn(),
@@ -99,5 +100,5 @@ test("platform reports the OS version of the shell, run mounts through the kerne
   native.run(app);
   const sink = app.mount.mock.calls[0]![0] as { open(session: object): void };
   sink.open({ hash: "abc", dispatch: () => true, detach() {} });
-  expect(kernel.open).toHaveBeenCalledWith("abc", expect.any(Function));
+  expect(kernel.open).toHaveBeenCalledWith("abc", expect.any(Function), 3);
 });

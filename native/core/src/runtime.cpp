@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "weft/ops.hpp"
+#include "weft/protocol.hpp"
 
 namespace jsi = facebook::jsi;
 using Clock = std::chrono::steady_clock;
@@ -291,6 +292,7 @@ void install_weft(weft_runtime &rt, const char *environment) {
   auto &js = *rt.js;
   jsi::Object weft(js);
   weft.setProperty(js, "version", jsi::String::createFromUtf8(js, rt.version));
+  weft.setProperty(js, "protocol", int(weft::protocol::kVersion));
   const char *json = environment ? environment : "{}";
   weft.setProperty(js, "environment", jsi::String::createFromUtf8(
       js, reinterpret_cast<const uint8_t *>(json), std::strlen(json)));
@@ -302,9 +304,13 @@ void install_weft(weft_runtime &rt, const char *environment) {
     return jsi::Value::undefined();
   }));
 
-  weft.setProperty(js, "open", host_function(js, "open", 2, [&rt](jsi::Runtime &js, const jsi::Value &, const jsi::Value *args, size_t count) {
-    if (count < 2 || !args[0].isString() || !is_function(js, args[1])) {
-      throw jsi::JSError(js, "weft: open expects a layout hash and a dispatch function");
+  weft.setProperty(js, "open", host_function(js, "open", 3, [&rt](jsi::Runtime &js, const jsi::Value &, const jsi::Value *args, size_t count) {
+    if (count < 3 || !args[0].isString() || !is_function(js, args[1]) || !args[2].isNumber()) {
+      throw jsi::JSError(js, "weft: open expects a layout hash, a dispatch function and a protocol version");
+    }
+    if (args[2].getNumber() != weft::protocol::kVersion) {
+      throw jsi::JSError(js, "weft: protocol mismatch: bundle speaks " +
+          describe(js, args[2]) + ", kernel speaks " + std::to_string(weft::protocol::kVersion));
     }
     auto hash = args[0].getString(js).utf8(js);
     if (hash != rt.hash) {
@@ -388,6 +394,14 @@ extern "C" {
 weft_runtime *weft_runtime_new(const weft_host *host, const uint8_t *bytecode, size_t len,
                                uint64_t layout_hash) {
   if (!host) return nullptr;
+  if (host->protocol != weft::protocol::kVersion) {
+    if (host->log) {
+      std::string message = "weft: protocol mismatch: kernel speaks " +
+          std::to_string(weft::protocol::kVersion) + ", shell speaks " + std::to_string(host->protocol);
+      host->log(host->ctx, WEFT_LOG_ERROR, message.data(), message.size());
+    }
+    return nullptr;
+  }
   auto rt = std::make_unique<weft_runtime>();
   rt->host = *host;
   rt->version = host->version ? host->version : "";

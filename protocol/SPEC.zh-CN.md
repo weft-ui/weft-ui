@@ -64,9 +64,9 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 
 反方向只有一种消息：`Session.dispatch(scope, slot, payload) → boolean`，`slot` 是事件槽下标，`payload` 的类型由事件槽决定。JS 同步执行处理函数并 flush，所以返回前 sink 已经收到这次事件引起的 ops。返回值表示受控编辑是否被接受：事件槽没有 `controls`、scope 已销毁、或者被控值槽的当前值等于载荷时为 `true`。返回 `false` 时视图把控件恢复成被控值槽的当前值（宿主改写过的值已经通过 `set` 到达）。已销毁或未知 scope 的事件被忽略并返回 `true`。
 
-## 二进制编码（版本 2）
+## 二进制编码（版本 3）
 
-一批 ops 是一段字节：第一个字节是版本号 `2`，之后是连续的 op。整数都是 u32 小端。
+一批 ops 是一段字节：第一个字节是版本号 `3`，之后是连续的 op。整数都是 u32 小端。
 
 | opcode | op       | 字段                                       |
 | ------ | -------- | ------------------------------------------ |
@@ -101,6 +101,8 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 共享样例在 [`protocol/corpus/`](corpus/)，列出编码后的批次及其解码结果或错误种类、编码后的值，以及平台调用的帧。各宿主的读取器、值编码器和帧编解码都用它测试。
 
 ## 版本
+
+启动时内核比较壳的 `weft_host` 第一个字段 `protocol` 与生成的 `weft::protocol::kVersion`；不一致时记录 `weft: protocol mismatch: kernel speaks 3, shell speaks 2` 并返回 NULL。`__weft.open` 先比较 bundle 与内核的协议版本，再检查布局哈希；版本不一致时抛出 `weft: protocol mismatch: bundle speaks 3, kernel speaks 2`。启动失败时壳原样记录内核日志。这是构建期检查的补充；Web 和小程序的 bundle 与视图一起构建，无需协商。
 
 - 协议版本是 [`weft.protocol.json`](weft.protocol.json) 里的整数 `version`，写在每个批次的第一个字节。凡是现有读取器或内核会误读的变化（新增 opcode、值标签、字段布局，或者改变某个 op、事件的语义），都要把它加一。旧读取器永远收不到的新增内容不需要加一。
 - 每个原生壳包（`@weft-ui/native-<target>`）在 `package.json` 的 `weft.protocol` 里记录它实现的协议版本，由 `pnpm gen:protocol` 写入。原生构建之前，`@weft-ui/vite` 把它与编译产物所用的 `@weft-ui/runtime` 的协议版本比较，不一致时直接报错并给出两边的版本，不会等到设备上才失败。
@@ -172,7 +174,8 @@ WXML 只渲染 `{{key}}`，`setData` 的路径就是块数据树中的路径（`
 
 | 成员                              | 含义                                                         |
 | --------------------------------- | ------------------------------------------------------------ |
-| `open(hash, dispatch)`            | sink 的 `open`。`hash` 与平台壳传给 `weft_runtime_new` 的布局哈希不同就抛错，已有 app 打开时也抛错 |
+| `open(hash, dispatch, protocol)`  | sink 的 `open`。先检查 bundle 协议版本，再检查布局哈希；不一致或已有 app 打开时抛错 |
+| `protocol`                        | 内核的协议版本 |
 | `commit(buffer, offset, length)`  | 一批 ops。内核把这段字节直接交给 `weft_host.commit`，不复制  |
 | `close()`                         | sink 的 `close`；之后的事件被忽略                            |
 | `supports(module)`                | 平台壳是否实现平台模块 `module`                              |

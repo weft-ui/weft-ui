@@ -3,7 +3,7 @@
 package net.mioyi.weftui
 
 internal object WeftProtocol {
-    const val VERSION = 2
+    const val VERSION = 3
 
     const val FETCH_MODULE = "fetch"
     const val FETCH_REQUEST = "request"

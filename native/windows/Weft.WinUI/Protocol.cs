@@ -4,7 +4,7 @@ namespace Weft.WinUI.Protocol;
 
 internal static class WeftProtocol
 {
-    internal const byte Version = 2;
+    internal const byte Version = 3;
 
     internal const string FetchModule = "fetch";
     internal const string FetchRequest = "request";

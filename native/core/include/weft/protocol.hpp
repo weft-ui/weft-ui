@@ -7,7 +7,7 @@
 
 namespace weft::protocol {
 
-inline constexpr std::uint8_t kVersion = 2;
+inline constexpr std::uint8_t kVersion = 3;
 
 enum class Code : std::uint8_t {
   Create = 1,

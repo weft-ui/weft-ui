@@ -64,9 +64,9 @@ Guarantees:
 
 Only one message goes in the opposite direction: `Session.dispatch(scope, slot, payload) → boolean`. `slot` is the event slot index, and the event slot determines the type of `payload`. JS runs the handler and flushes synchronously, so the sink receives any ops caused by the event before the call returns. The return value indicates whether a controlled edit was accepted. It is `true` if the event slot has no `controls`, the scope has been destroyed, or the current value of the controlled value slot equals the payload. On `false`, the view restores the control to the current value of the controlled value slot (any value rewritten by the host has already arrived via `set`). Events for destroyed or unknown scopes are ignored and return `true`.
 
-## Binary encoding (version 2)
+## Binary encoding (version 3)
 
-A batch of ops is a byte sequence: the first byte is the version number `2`, followed by consecutive ops. All integers are little-endian u32 values.
+A batch of ops is a byte sequence: the first byte is the version number `3`, followed by consecutive ops. All integers are little-endian u32 values.
 
 | opcode | op       | Fields                             |
 | ------ | -------- | ---------------------------------- |
@@ -101,6 +101,8 @@ Decoding a batch fails with exactly one of five errors. Every reader uses the sa
 The shared corpus in [`protocol/corpus/`](corpus/) lists encoded batches with their decoded ops or error kinds, encoded values, and platform call frames. The readers, value encoders and frame codecs of every platform shell are tested against it.
 
 ## Versioning
+
+At startup the kernel compares the shell's first `weft_host.protocol` field with its generated `weft::protocol::kVersion`, logs `weft: protocol mismatch: kernel speaks 3, shell speaks 2` and returns NULL on mismatch. Before checking the layout hash, `__weft.open` compares the bundle's protocol with the kernel's and throws `weft: protocol mismatch: bundle speaks 3, kernel speaks 2` on mismatch. The shell reports kernel logs unchanged on startup failure. This supplements the build-time check; web and mini programs need no negotiation because bundle and views are built together.
 
 - The protocol version is the integer `version` of [`weft.protocol.json`](weft.protocol.json), written as the first byte of every batch. Any change that an existing reader or kernel would misread (new opcodes, value tags, field layouts, or changed semantics of an op or event) increments it. Additions that old readers never receive do not.
 - Each native shell package (`@weft-ui/native-<target>`) records the protocol version it implements in `weft.protocol` of its `package.json`; `pnpm gen:protocol` writes it. Before a native build, `@weft-ui/vite` compares it with the protocol version of `@weft-ui/runtime`, which the compiled bundle speaks, and fails with both versions when they differ, so a mismatch never reaches a device.
@@ -172,7 +174,8 @@ The kernel installs this global before running the bundle. The native implementa
 
 | Member                            | Meaning |
 | --------------------------------- | ------- |
-| `open(hash, dispatch)`            | The sink's `open`. Throws if `hash` does not match the layout hash the platform shell passed to `weft_runtime_new`, or if an app is already open. |
+| `open(hash, dispatch, protocol)`  | The sink's `open`. Checks the bundle protocol before the layout hash; throws on mismatch or if an app is already open. |
+| `protocol`                        | The kernel's protocol version. |
 | `commit(buffer, offset, length)`  | A batch of ops. The kernel passes this byte range directly to `weft_host.commit` without copying it. |
 | `close()`                         | The sink's `close`. Subsequent events are ignored. |
 | `supports(module)`                | Whether the platform shell implements the platform module `module`. |

@@ -156,6 +156,7 @@ void Session::open(const std::string &bundle, uint64_t layout_hash) {
   environment_->sent = environment_->current();
   g_autofree char *environment = environment_->sent.json();
   weft_host host{
+      .protocol = weft::protocol::kVersion,
       .ctx = this,
       .commit = on_commit,
       .schedule = on_schedule,

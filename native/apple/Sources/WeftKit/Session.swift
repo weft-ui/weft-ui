@@ -206,6 +206,7 @@ private final class Host {
     /// arrives on the main thread.
     func callbacks(version: UnsafePointer<CChar>, environment: UnsafePointer<CChar>) -> weft_host {
         weft_host(
+            protocol: UInt32(WeftProtocol.version),
             ctx: Unmanaged.passUnretained(self).toOpaque(),
             commit: { ctx, ops, len in
                 let host = Host.from(ctx)

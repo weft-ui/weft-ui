@@ -407,6 +407,7 @@ struct Host {
 
   weft_host callbacks() {
     weft_host h{};
+    h.protocol = weft::protocol::kVersion;
     h.ctx = this;
     h.commit = [](void *ctx, const uint8_t *ops, size_t len) {
       auto &host = *static_cast<Host *>(ctx);

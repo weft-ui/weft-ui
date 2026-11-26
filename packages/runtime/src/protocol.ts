@@ -1,7 +1,7 @@
 // Generated from protocol/weft.protocol.json by protocol/generate.ts; do not edit.
 
 /** Protocol version written as the first byte of every batch. */
-export const VERSION = 2;
+export const VERSION = 3;
 
 export const Opcode = {
   Create: 1,
