@@ -27,6 +27,11 @@ internal sealed interface Op {
     }
 
     data class Attach(val scope: Int, val point: Int, val child: Int) : Op
+
+    data class SpliceItem(val item: Int, val template: Int)
+    data class Splice(val scope: Int, val point: Int, val index: Int, val remove: Int, val items: List<SpliceItem>) : Op
+    data class Bind(val scope: Int, val point: Int, val item: Int, val child: Int) : Op
+    data class Nav(val tab: Int, val tabs: List<Int>, val stack: List<Int>, val modal: Int, val style: Int) : Op
 }
 
 /** Why a batch of ops could not be decoded. */
@@ -62,11 +67,25 @@ internal class OpReader(bytes: ByteBuffer) {
                     Op.Rows(scope, point, IntArray(count.toInt()) { u32() })
                 }
                 OpCode.ATTACH -> Op.Attach(u32(), u32(), u32())
+                OpCode.SPLICE -> {
+                    val scope = u32(); val point = u32(); val index = u32(); val remove = u32()
+                    val count = u32().toUInt().toLong()
+                    if (count > bytes.remaining() / 8) throw OpException("truncated")
+                    Op.Splice(scope, point, index, remove, List(count.toInt()) { Op.SpliceItem(u32(), u32()) })
+                }
+                OpCode.BIND -> Op.Bind(u32(), u32(), u32(), u32())
+                OpCode.NAV -> Op.Nav(u32(), u32List(), u32List(), u32(), u32())
                 else -> throw OpException("opcode", "opcode $opcode")
             }
         } catch (_: BufferUnderflowException) {
             throw OpException("truncated")
         }
+    }
+
+    private fun u32List(): List<Int> {
+        val count = u32().toUInt().toLong()
+        if (count > bytes.remaining() / 4) throw OpException("truncated")
+        return List(count.toInt()) { u32() }
     }
 
     private fun byte(): Int = bytes.get().toInt() and 0xff

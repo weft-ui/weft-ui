@@ -33,6 +33,8 @@ JS 逻辑层（`@weft-ui/runtime/remote` 和生成的 remote 模式逻辑模块�
 - **值槽** `values[i]`：节点的一个动态属性，`type` 是元素属性声明的类型：`Int` / `Float` / `Bool` / `String` / `Color` / `Strings`。`Strings` 槽接收字符串数组（线路标签 4）。`Color` 槽的值是字符串，由平台解析（规则见[语法的内置元素与布局](../crates/parser/GRAMMAR.zh-CN.md#内置元素与布局)）；静态颜色已在编译期校验，`props` 里写成规范化的 `#rrggbb` 或 `#rrggbbaa`。受控属性（如 `Input.value`、`Checkbox.checked`、`Picker.selected`）即使是常量也总是值槽。
 - **事件槽** `events[i]`：节点的一个事件属性，`payload` 是载荷类型（`null` 表示无载荷）。受控元素总有 `onChange` 事件槽，`controls` 是它控制的值槽下标，其余事件为 `null`。生命周期属性（`onMount` / `onUnmount`）由 JS 处理，不进入布局。
 - **挂载点** `points[i]`：`branch`（`templates` 依次是各分支的模板）、`list`（`template` 是行体）、`instance`（`template` 是被实例化组件的组件体）或 `slot`（插槽内容由使用方提供，可以是任意 `slot` 种类的模板）。
+- **页面与惰性模板**：页面体模板的 `kind` 是 `page`。惰性挂载点写成 `{"node": n, "kind": "lazy", "templates": [row]}`，分组列表为 `[header, row]`。
+- **应用**：应用布局有顶层 `app`，为 `{"start": 模板}` 或 `{"tabs": [{"page": 模板, "title": "…", "icon": "asset:…", "activeIcon": "asset:…"}]}`。它参与哈希，路由仍由 JS 处理。
 - **主题**：应用声明了主题时，顶层 `theme` 对象将颜色令牌名映射到 `[浅色, 深色]`。两项均为小写 `#rrggbbaa`；仅声明一种外观时两项相同。数值令牌已在编译期折叠，不写进布局。静态 `props` 中的令牌和动态 `Color` 值槽中的令牌都使用字符串 `"@name"`，由宿主按当前外观解析。
 - **安全区**：顶层布尔值 `safeArea` 表示应用是否要求为安全区留出内边距，默认为 `true`，并参与布局哈希计算。
 - **哈希**：去掉 `hash` 字段后的 JSON 的 FNV-1a 64 位哈希，16 位十六进制。它同时写进 JS 逻辑（`App` 构造参数）和平台视图，sink 在 `open` 时比对，不一致直接报错。
@@ -43,6 +45,10 @@ JS 逻辑层（`@weft-ui/runtime/remote` 和生成的 remote 模式逻辑模块�
 
 scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、不再出现在 `rows` 里、或者祖先被销毁时隐式销毁，后代一起销毁。`unmount` 时 sink 收到 `close`，所有 scope 一起作废。
 
+应用用 `nav` 引用页面根 scope，不发送 `attach`；同一程序只使用一种根。页面根在引用它的 `nav` 之前创建并设置全部值，位于同一批次。首批包含完整导航状态，之后只在状态变化时发送 `nav`。最新状态（包括宿主上报的导航状态）不再引用的页面及其后代被销毁，JS 不再为它发送 op。
+
+惰性挂载点拥有扁平项序列，item ID 在该挂载点内从 1 递增且不复用；稳定 key 离开列表前保持同一 ID。`splice` 替换公共前后缀之间变化的部分，保留 ID 的已物化 scope，销毁被移除项的 scope。`bind` 将项关联到已创建的 scope，child 为 0 时释放。窗口请求物化范围内的项并释放范围外的 scope；首次最多物化前 20 项。项 scope 的创建与初始值在同一批次中先于 `bind`。
+
 ## Ops
 
 | op       | 参数                     | 含义                                                         |
@@ -52,6 +58,9 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 | `branch` | scope, point, child \| 0 | `branch` 挂载点切换到 child（0 表示没有分支），旧的子 scope 销毁 |
 | `rows`   | scope, point, [child…]   | `list` 挂载点的完整新顺序，不在新列表里的行销毁              |
 | `attach` | scope, point, child      | `instance` / `slot` 挂载点挂上 child，每个挂载点只发一次     |
+| `splice` | scope, point, index, remove, items | 替换 `lazy` 挂载点的一段，项为 `(item, template)` 对，template 是该挂载点 `templates` 下标 |
+| `bind` | scope, point, item, child \| 0 | 物化或释放惰性项 |
+| `nav` | tab, tabs, stack, modal, style | 替换完整导航状态；未创建的 Tab 和不存在的模态为 0 |
 
 保证：
 
@@ -75,6 +84,11 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 | 3      | `branch` | scope, point, child                        |
 | 4      | `rows`   | scope, point, count, child × count         |
 | 5      | `attach` | scope, point, child                        |
+| 6      | `splice` | scope, point, index, remove, count, (item, template) × count |
+| 7      | `bind` | scope, point, item, child |
+| 8      | `nav` | tab, n, scope × n, m, scope × m, modal, style |
+
+表中字段均为小端 u32。`style` 使用 `modalStyles`：`sheet` = 0，`fullScreen` = 1；`modal` 为 0 时它也为 0。
 
 值以一个 u8 标签开头：`0` false、`1` true、`2` 数字（f64 小端，`Int` 槽的值也按 f64 传）、`3` 字符串（u32 字节长度 + UTF-8），或 `4` 字符串数组（u32 元素数，后接对应数量的字符串，每个字符串为 u32 字节长度加 UTF-8 字节，不带标签）。JS 侧的 `OpWriter`（`@weft-ui/runtime` 的 `src/ops.ts`）复用同一块缓冲，每批的字节只在下一次写入前有效。
 
@@ -119,6 +133,11 @@ set 3 0 "milk"
 rows 2 0 [3 4 5]
 branch 1 0 0
 attach 0 0 1
+splice 2 0 0 0 [1/0 2/1 3/1]
+bind 2 0 1 7
+bind 2 0 3 0
+nav 0 [4 0] [9 11] 13 sheet
+nav 0 [4] [] 0
 ```
 
 无头渲染器在 `#` 后附上模板 label 或槽位说明，例如 `create 1 0  # TodoList`、`set 1 0 ""  # Input.value`。

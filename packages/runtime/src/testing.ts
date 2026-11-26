@@ -83,8 +83,14 @@ export class Renderer extends OpWriter implements Sink {
   commit(): void {
     const batch = this.take();
     if (!batch) return;
+    const ops = decode(batch);
+    for (const op of ops) {
+      if (op.op === "splice" || op.op === "bind" || op.op === "nav") {
+        throw new Error(`weft protocol: unsupported ${op.op} for this layout`);
+      }
+    }
     const lines: string[] = [];
-    for (const op of decode(batch)) {
+    for (const op of ops) {
       lines.push(this.#annotate(op));
       this.#apply(op);
     }

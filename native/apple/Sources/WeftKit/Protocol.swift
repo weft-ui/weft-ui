@@ -17,6 +17,14 @@ enum OpCode: UInt8 {
     case branch = 3
     case rows = 4
     case attach = 5
+    case splice = 6
+    case bind = 7
+    case nav = 8
+}
+
+enum ModalStyle: UInt32 {
+    case sheet = 0
+    case fullScreen = 1
 }
 
 enum ValueTag: UInt8 {

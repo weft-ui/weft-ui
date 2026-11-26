@@ -66,6 +66,35 @@ class Error : public std::runtime_error {
   Kind kind_;
 };
 
+/// Fixed-width little-endian records borrowed from a validated batch.
+template <typename T, size_t Width>
+struct ListView {
+  const uint8_t *data = nullptr;
+  uint32_t count = 0;
+  struct Iterator {
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = T;
+    using difference_type = std::ptrdiff_t;
+    const uint8_t *at = nullptr;
+    T operator*() const;
+    Iterator &operator++() { at += Width; return *this; }
+    Iterator operator++(int) { auto old = *this; ++*this; return old; }
+    bool operator==(const Iterator &) const = default;
+  };
+  Iterator begin() const { return {data}; }
+  Iterator end() const { return {count ? data + size_t(count) * Width : data}; }
+};
+
+struct Item { uint32_t item, template_index; };
+using ItemList = ListView<Item, 8>;
+using ScopeList = ListView<uint32_t, 4>;
+struct Splice { uint32_t index = 0, remove = 0; ItemList items; };
+struct Bind { uint32_t item = 0, child = 0; };
+struct Nav { uint32_t tab = 0; ScopeList tabs, stack; uint32_t modal = 0, style = 0; };
+
+template <> uint32_t ScopeList::Iterator::operator*() const;
+template <> Item ItemList::Iterator::operator*() const;
+
 struct Op {
   protocol::Code code{};
   uint32_t scope = 0;
@@ -78,6 +107,9 @@ struct Op {
   /// The children of `rows`: `count` little-endian u32 scope ids.
   const uint8_t *rows = nullptr;
   uint32_t count = 0;
+  Splice splice;
+  Bind bind;
+  Nav nav;
 
   /// Child `i` of a `rows` op.
   uint32_t row(uint32_t i) const;

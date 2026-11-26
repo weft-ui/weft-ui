@@ -21,6 +21,15 @@ internal enum OpCode : byte
     Branch = 3,
     Rows = 4,
     Attach = 5,
+    Splice = 6,
+    Bind = 7,
+    Nav = 8,
+}
+
+internal enum ModalStyle : uint
+{
+    Sheet = 0,
+    FullScreen = 1,
 }
 
 internal enum ValueTag : byte

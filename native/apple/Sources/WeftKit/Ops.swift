@@ -1,3 +1,8 @@
+struct SpliceItem: Equatable {
+    let item: UInt32
+    let template: UInt32
+}
+
 /// One view protocol op (protocol/SPEC.md, "Ops").
 enum Op: Equatable {
     case create(scope: UInt32, template: UInt32)
@@ -5,6 +10,9 @@ enum Op: Equatable {
     case branch(scope: UInt32, point: UInt32, child: UInt32)
     case rows(scope: UInt32, point: UInt32, children: [UInt32])
     case attach(scope: UInt32, point: UInt32, child: UInt32)
+    case splice(scope: UInt32, point: UInt32, index: UInt32, remove: UInt32, items: [SpliceItem])
+    case bind(scope: UInt32, point: UInt32, item: UInt32, child: UInt32)
+    case nav(tab: UInt32, tabs: [UInt32], stack: [UInt32], modal: UInt32, style: UInt32)
 }
 
 /// Why a batch of ops could not be decoded.
@@ -66,7 +74,27 @@ struct OpReader {
             return .rows(scope: scope, point: point, children: children)
         case .attach:
             return .attach(scope: try u32(), point: try u32(), child: try u32())
+        case .splice:
+            let scope = try u32(), point = try u32(), index = try u32(), remove = try u32(), count = try u32()
+            guard Int(count) <= (bytes.count - offset) / 8 else { throw .truncated }
+            var items: [SpliceItem] = []
+            items.reserveCapacity(Int(count))
+            for _ in 0..<count { items.append(SpliceItem(item: try u32(), template: try u32())) }
+            return .splice(scope: scope, point: point, index: index, remove: remove, items: items)
+        case .bind:
+            return .bind(scope: try u32(), point: try u32(), item: try u32(), child: try u32())
+        case .nav:
+            return .nav(tab: try u32(), tabs: try u32List(), stack: try u32List(), modal: try u32(), style: try u32())
         }
+    }
+
+    private mutating func u32List() throws(OpError) -> [UInt32] {
+        let count = try u32()
+        guard Int(count) <= (bytes.count - offset) / 4 else { throw .truncated }
+        var values: [UInt32] = []
+        values.reserveCapacity(Int(count))
+        for _ in 0..<count { values.append(try u32()) }
+        return values
     }
 
     private mutating func take(_ count: Int) throws(OpError) -> UnsafeRawBufferPointer {

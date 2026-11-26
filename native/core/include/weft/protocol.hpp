@@ -15,6 +15,14 @@ enum class Code : std::uint8_t {
   Branch = 3,
   Rows = 4,
   Attach = 5,
+  Splice = 6,
+  Bind = 7,
+  Nav = 8,
+};
+
+enum class ModalStyle : std::uint32_t {
+  Sheet = 0,
+  FullScreen = 1,
 };
 
 enum class Tag : std::uint8_t {

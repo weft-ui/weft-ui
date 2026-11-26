@@ -16,6 +16,7 @@ import { generateElements } from "./elements.ts";
 interface Schema {
   version: number;
   opcodes: Record<string, number>;
+  modalStyles: Record<string, number>;
   valueTags: Record<string, number>;
   errorKinds: string[];
   platforms: { name: string; native?: boolean; apple?: boolean }[];
@@ -31,7 +32,7 @@ const check = mode === "--check";
 const root = new URL("../", import.meta.url);
 const header = "// Generated from protocol/weft.protocol.json by protocol/generate.ts; do not edit.\n";
 const schema: Schema = JSON.parse(readFileSync(new URL("weft.protocol.json", import.meta.url), "utf8"));
-const { version, opcodes, valueTags, errorKinds, platforms, platformModules } = schema;
+const { version, opcodes, modalStyles, valueTags, errorKinds, platforms, platformModules } = schema;
 
 const quote = (text: string): string => JSON.stringify(text);
 const pascal = (key: string): string => key[0].toUpperCase() + key.slice(1);
@@ -57,6 +58,8 @@ function typescript(): string {
 export const VERSION = ${version};
 
 ${tsConstants("Opcode", opcodes)}
+
+${tsConstants("ModalStyle", modalStyles)}
 
 ${tsConstants("ValueTag", valueTags)}
 
@@ -142,6 +145,10 @@ enum class Code : std::uint8_t {
 ${numericMembers(opcodes, "  ")}
 };
 
+enum class ModalStyle : std::uint32_t {
+${numericMembers(modalStyles, "  ")}
+};
+
 enum class Tag : std::uint8_t {
 ${numericMembers(valueTags, "  ")}
 };
@@ -170,6 +177,8 @@ ${modules.map(({ name, value }) => `    static let ${name} = ${quote(value)}`).j
 
 ${swiftEnum("OpCode", "UInt8", opcodes)}
 
+${swiftEnum("ModalStyle", "UInt32", modalStyles)}
+
 ${swiftEnum("ValueTag", "UInt8", valueTags)}
 
 ${swiftEnum("OpErrorKind", "String", errors)}
@@ -192,6 +201,8 @@ ${modules.map(({ upper, value }) => `    const val ${upper} = ${quote(value)}`).
 
 ${kotlinObject("OpCode", opcodes)}
 
+${kotlinObject("ModalStyle", modalStyles)}
+
 ${kotlinObject("ValueTag", valueTags)}
 
 ${kotlinObject("OpErrorKind", errors)}
@@ -213,6 +224,11 @@ ${modules.map(({ name, value }) => `    internal const string ${pascal(name)} = 
 internal enum OpCode : byte
 {
 ${numericMembers(opcodes, "    ")}
+}
+
+internal enum ModalStyle : uint
+{
+${numericMembers(modalStyles, "    ")}
 }
 
 internal enum ValueTag : byte

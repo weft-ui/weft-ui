@@ -156,8 +156,12 @@ class Renderer {
   /// Checks and applies one batch, returning its annotated lines.
   std::vector<std::string> commit(const uint8_t *bytes, size_t len) {
     std::vector<std::string> lines;
-    weft::ops::Reader reader(bytes, len);
-    for (weft::ops::Op op; reader.next(op);) {
+    auto batch = weft::ops::read_all(bytes, len);
+    for (const auto &op : batch) {
+      if (op.code == Code::Splice || op.code == Code::Bind || op.code == Code::Nav)
+        throw Protocol("the layout has no lazy mount point or app");
+    }
+    for (const auto &op : batch) {
       lines.push_back(annotate(op));
       apply(op);
     }
@@ -276,6 +280,10 @@ class Renderer {
 
   void apply(const weft::ops::Op &op) {
     switch (op.code) {
+      case Code::Splice:
+      case Code::Bind:
+      case Code::Nav:
+        throw Protocol("the layout has no lazy mount point or app");
       case Code::Create: {
         if (op.index >= layout_.templates.size()) throw Protocol("unknown template " + std::to_string(op.index));
         if (op.scope == 0 || scopes_.count(op.scope)) throw Protocol("scope id " + std::to_string(op.scope) + " is in use");

@@ -19,6 +19,14 @@ internal object OpCode {
     const val BRANCH = 3
     const val ROWS = 4
     const val ATTACH = 5
+    const val SPLICE = 6
+    const val BIND = 7
+    const val NAV = 8
+}
+
+internal object ModalStyle {
+    const val SHEET = 0
+    const val FULLSCREEN = 1
 }
 
 internal object ValueTag {

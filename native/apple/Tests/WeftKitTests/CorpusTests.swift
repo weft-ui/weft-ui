@@ -43,13 +43,27 @@ private func expectedOp(_ json: JSONObject) throws -> Op {
         try #require(json[name] as? UInt32)
     }
     let op = try #require(json["op"] as? String)
-    let scope = try field("scope")
     switch op {
-    case "create": return .create(scope: scope, template: try field("template"))
-    case "set": return .set(scope: scope, slot: try field("slot"), value: try expectedValue(json["value"]))
-    case "branch": return .branch(scope: scope, point: try field("point"), child: try field("child"))
-    case "rows": return .rows(scope: scope, point: try field("point"), children: try #require(json["children"] as? [UInt32]))
-    case "attach": return .attach(scope: scope, point: try field("point"), child: try field("child"))
+    case "create": return .create(scope: try field("scope"), template: try field("template"))
+    case "set": return .set(scope: try field("scope"), slot: try field("slot"), value: try expectedValue(json["value"]))
+    case "branch": return .branch(scope: try field("scope"), point: try field("point"), child: try field("child"))
+    case "rows": return .rows(scope: try field("scope"), point: try field("point"), children: try #require(json["children"] as? [UInt32]))
+    case "attach": return .attach(scope: try field("scope"), point: try field("point"), child: try field("child"))
+    case "splice":
+        let items = try #require(json["items"] as? [JSONObject]).map { item in
+            SpliceItem(item: try #require(item["item"] as? UInt32), template: try #require(item["template"] as? UInt32))
+        }
+        return .splice(scope: try field("scope"), point: try field("point"), index: try field("index"), remove: try field("remove"), items: items)
+    case "bind": return .bind(scope: try field("scope"), point: try field("point"), item: try field("item"), child: try field("child"))
+    case "nav":
+        let style = try #require(json["style"] as? String)
+        let rawStyle: UInt32
+        switch style {
+        case "sheet": rawStyle = ModalStyle.sheet.rawValue
+        case "fullScreen": rawStyle = ModalStyle.fullScreen.rawValue
+        default: throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unknown modal style: \(style)"))
+        }
+        return .nav(tab: try field("tab"), tabs: try #require(json["tabs"] as? [UInt32]), stack: try #require(json["stack"] as? [UInt32]), modal: try field("modal"), style: rawStyle)
     default: throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unknown corpus op: \(op)"))
     }
 }
@@ -91,6 +105,23 @@ private func decode(_ bytes: [UInt8]) throws -> [Op] {
 
     #expect(session.failure?.hasPrefix("weft: malformed ops") == true)
     #expect(createdScopes.isEmpty)
+}
+
+@Test @MainActor func unsupportedOpsRejectTheWholeBatch() throws {
+    let cases = try #require(corpus("ops")["cases"] as? [JSONObject])
+    for name in ["splice-rows", "bind", "nav-start"] {
+        let test = try #require(cases.first { $0["name"] as? String == name })
+        let encoded = try hexBytes(test)
+        let bytes: [UInt8] = [WeftProtocol.version, OpCode.create.rawValue, 1, 0, 0, 0, 1, 0, 0, 0] + encoded.dropFirst()
+        var createdScopes: [UInt32] = []
+        let session = WeftSession(bytecode: nil, resources: .main, layoutHash: 0, safeArea: true) { _, id, session in
+            createdScopes.append(id)
+            return WeftScope(id: id, session: session)
+        }
+        bytes.withUnsafeBytes { session.commit($0) }
+        #expect(session.failure?.hasPrefix("weft: cannot apply ops") == true, "\(name)")
+        #expect(createdScopes.isEmpty, "\(name)")
+    }
 }
 
 @Test func handlesValuesCorpus() throws {

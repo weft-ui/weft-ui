@@ -117,7 +117,12 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     private fun commit(ops: ByteBuffer) {
         committing = true
         try {
-            for (op in OpReader.readAll(ops)) {
+            val batch = OpReader.readAll(ops)
+            if (batch.any { it is Op.Splice || it is Op.Bind || it is Op.Nav }) {
+                fail("weft: cannot apply ops (lazy lists and app navigation are not supported by these views)")
+                return
+            }
+            for (op in batch) {
                 if (!apply(op)) break
             }
         } catch (error: OpException) {
@@ -143,6 +148,7 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
             is Op.Branch -> mount(op.scope, op.point, if (op.child == 0) IntArray(0) else intArrayOf(op.child))
             is Op.Rows -> mount(op.scope, op.point, op.children)
             is Op.Attach -> mount(op.scope, op.point, intArrayOf(op.child))
+            is Op.Splice, is Op.Bind, is Op.Nav -> error("unsupported op")
         }
         return true
     }

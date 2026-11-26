@@ -1,6 +1,7 @@
 {
   "version": 3,
-  "opcodes": { "create": 1, "set": 2, "branch": 3, "rows": 4, "attach": 5 },
+  "opcodes": { "create": 1, "set": 2, "branch": 3, "rows": 4, "attach": 5, "splice": 6, "bind": 7, "nav": 8 },
+  "modalStyles": { "sheet": 0, "fullScreen": 1 },
   "valueTags": { "false": 0, "true": 1, "number": 2, "string": 3, "strings": 4 },
   "errorKinds": ["truncated", "version", "opcode", "tag", "utf8"],
   "platforms": [

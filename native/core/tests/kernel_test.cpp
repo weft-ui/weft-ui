@@ -487,6 +487,9 @@ const char *op_name(weft::protocol::Code code) {
     case Code::Branch: return "branch";
     case Code::Rows: return "rows";
     case Code::Attach: return "attach";
+    case Code::Splice: return "splice";
+    case Code::Bind: return "bind";
+    case Code::Nav: return "nav";
   }
   return "?";
 }
@@ -494,8 +497,40 @@ const char *op_name(weft::protocol::Code code) {
 void check_op(const std::string &name, const weft::ops::Op &op, const json::Value &want) {
   using weft::protocol::Code;
   CHECK_EQ(name + " " + op_name(op.code), name + " " + want["op"].string());
-  CHECK_EQ(op.scope, want["scope"].u32());
+  if (op.code != Code::Nav) CHECK_EQ(op.scope, want["scope"].u32());
   switch (op.code) {
+    case Code::Splice: {
+      CHECK_EQ(op.index, want["point"].u32());
+      CHECK_EQ(op.splice.index, want["index"].u32());
+      CHECK_EQ(op.splice.remove, want["remove"].u32());
+      auto &items = want["items"].array();
+      CHECK_EQ(op.splice.items.count, uint32_t(items.size()));
+      size_t i = 0;
+      for (auto item : op.splice.items) {
+        CHECK_EQ(item.item, items[i]["item"].u32());
+        CHECK_EQ(item.template_index, items[i++]["template"].u32());
+      }
+      break;
+    }
+    case Code::Bind:
+      CHECK_EQ(op.index, want["point"].u32());
+      CHECK_EQ(op.bind.item, want["item"].u32());
+      CHECK_EQ(op.bind.child, want["child"].u32());
+      break;
+    case Code::Nav: {
+      CHECK_EQ(op.nav.tab, want["tab"].u32());
+      auto check_list = [](weft::ops::ScopeList got, const json::Value &expected) {
+        auto &values = expected.array();
+        CHECK_EQ(got.count, uint32_t(values.size()));
+        size_t i = 0;
+        for (auto value : got) CHECK_EQ(value, values[i++].u32());
+      };
+      check_list(op.nav.tabs, want["tabs"]);
+      check_list(op.nav.stack, want["stack"]);
+      CHECK_EQ(op.nav.modal, want["modal"].u32());
+      CHECK_EQ(op.nav.style, want["style"].string() == "sheet" ? 0u : 1u);
+      break;
+    }
     case Code::Create:
       CHECK_EQ(op.index, want["template"].u32());
       break;

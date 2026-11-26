@@ -168,7 +168,7 @@ class CorpusTest {
     private fun load(file: String): JSONObject = JSONObject(corpus.resolve(file).readText())
 
     private fun op(json: JSONObject): Op {
-        val scope = json.getInt("scope")
+        val scope = if (json.has("scope")) json.getInt("scope") else 0
         return when (val name = json.getString("op")) {
             "create" -> Op.Create(scope, json.getInt("template"))
             "set" -> Op.Set(scope, json.getInt("slot"), value(json.getJSONObject("value")))
@@ -178,6 +178,23 @@ class CorpusTest {
                 Op.Rows(scope, json.getInt("point"), IntArray(children.length()) { children.getInt(it) })
             }
             "attach" -> Op.Attach(scope, json.getInt("point"), json.getInt("child"))
+            "splice" -> {
+                val items = json.getJSONArray("items")
+                Op.Splice(scope, json.getInt("point"), json.getInt("index"), json.getInt("remove"),
+                    List(items.length()) { items.getJSONObject(it).let { item -> Op.SpliceItem(item.getInt("item"), item.getInt("template")) } })
+            }
+            "bind" -> Op.Bind(scope, json.getInt("point"), json.getInt("item"), json.getInt("child"))
+            "nav" -> {
+                val tabs = json.getJSONArray("tabs")
+                val stack = json.getJSONArray("stack")
+                val style = when (val value = json.getString("style")) {
+                    "sheet" -> ModalStyle.SHEET
+                    "fullScreen" -> ModalStyle.FULLSCREEN
+                    else -> error("Unknown modal style: $value")
+                }
+                Op.Nav(json.getInt("tab"), List(tabs.length()) { tabs.getInt(it) },
+                    List(stack.length()) { stack.getInt(it) }, json.getInt("modal"), style)
+            }
             else -> error("Unknown corpus op: $name")
         }
     }

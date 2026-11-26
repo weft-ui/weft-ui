@@ -228,7 +228,12 @@ void Session::commit(const uint8_t *ops, size_t len) {
   if (failed_) return;
   committing_ = true;
   try {
-    for (const auto &op : ops::read_all(ops, len)) apply(op);
+    auto batch = ops::read_all(ops, len);
+    for (const auto &op : batch) {
+      if (op.code == protocol::Code::Splice || op.code == protocol::Code::Bind || op.code == protocol::Code::Nav)
+        throw OpError("the layout has no lazy mount point or app");
+    }
+    for (const auto &op : batch) apply(op);
   } catch (const std::exception &error) {
     committing_ = false;
     fail(std::string("weft: cannot apply ops (") + error.what() + ")");
@@ -255,6 +260,10 @@ void Session::apply(const ops::Op &op) {
     case protocol::Code::Attach:
       mount(op.scope, op.index, {op.child});
       break;
+    case protocol::Code::Splice:
+    case protocol::Code::Bind:
+    case protocol::Code::Nav:
+      throw OpError("the layout has no lazy mount point or app");
     case protocol::Code::Rows: {
       std::vector<uint32_t> rows(op.count);
       for (uint32_t i = 0; i < op.count; i++) rows[i] = op.row(i);

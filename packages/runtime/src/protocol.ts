@@ -9,6 +9,14 @@ export const Opcode = {
   Branch: 3,
   Rows: 4,
   Attach: 5,
+  Splice: 6,
+  Bind: 7,
+  Nav: 8,
+} as const;
+
+export const ModalStyle = {
+  Sheet: 0,
+  FullScreen: 1,
 } as const;
 
 export const ValueTag = {

@@ -164,6 +164,9 @@ bool StringList::operator==(const StringList &other) const {
   return count == other.count && (data == other.data || std::ranges::equal(*this, other));
 }
 
+template <> uint32_t ScopeList::Iterator::operator*() const { return load_u32(at); }
+template <> Item ItemList::Iterator::operator*() const { return {load_u32(at), load_u32(at + 4)}; }
+
 uint32_t Op::row(uint32_t i) const { return load_u32(rows + size_t(i) * 4); }
 
 Reader::Reader(const uint8_t *data, size_t len) : at_(data), end_(data + len) {
@@ -195,6 +198,37 @@ bool Reader::next(Op &op) {
       op.index = take_u32(at_, end_);
       op.child = take_u32(at_, end_);
       return true;
+    case protocol::Code::Splice: {
+      op.scope = take_u32(at_, end_);
+      op.index = take_u32(at_, end_);
+      op.splice.index = take_u32(at_, end_);
+      op.splice.remove = take_u32(at_, end_);
+      op.splice.items.count = take_u32(at_, end_);
+      if (op.splice.items.count > size_t(end_ - at_) / 8) throw Error(Error::Kind::Truncated, "weft ops: truncated batch");
+      op.splice.items.data = at_;
+      at_ += size_t(op.splice.items.count) * 8;
+      return true;
+    }
+    case protocol::Code::Bind:
+      op.scope = take_u32(at_, end_);
+      op.index = take_u32(at_, end_);
+      op.bind.item = take_u32(at_, end_);
+      op.bind.child = take_u32(at_, end_);
+      return true;
+    case protocol::Code::Nav: {
+      op.nav.tab = take_u32(at_, end_);
+      auto list = [&](ScopeList &out) {
+        out.count = take_u32(at_, end_);
+        if (out.count > size_t(end_ - at_) / 4) throw Error(Error::Kind::Truncated, "weft ops: truncated batch");
+        out.data = at_;
+        at_ += size_t(out.count) * 4;
+      };
+      list(op.nav.tabs);
+      list(op.nav.stack);
+      op.nav.modal = take_u32(at_, end_);
+      op.nav.style = take_u32(at_, end_);
+      return true;
+    }
     case protocol::Code::Rows: {
       op.scope = take_u32(at_, end_);
       op.index = take_u32(at_, end_);
@@ -302,6 +336,29 @@ std::string format(const Op &op) {
       return head("branch") + ' ' + std::to_string(op.child);
     case protocol::Code::Attach:
       return head("attach") + ' ' + std::to_string(op.child);
+    case protocol::Code::Splice: {
+      std::string out = head("splice") + ' ' + std::to_string(op.splice.index) + ' ' + std::to_string(op.splice.remove) + " [";
+      bool first = true;
+      for (auto item : op.splice.items) {
+        if (!first) out += ' ';
+        first = false;
+        out += std::to_string(item.item) + '/' + std::to_string(item.template_index);
+      }
+      return out + ']';
+    }
+    case protocol::Code::Bind:
+      return head("bind") + ' ' + std::to_string(op.bind.item) + ' ' + std::to_string(op.bind.child);
+    case protocol::Code::Nav: {
+      auto list = [](ScopeList values) {
+        std::string out = "[";
+        bool first = true;
+        for (auto value : values) { if (!first) out += ' '; first = false; out += std::to_string(value); }
+        return out + ']';
+      };
+      std::string out = "nav " + std::to_string(op.nav.tab) + ' ' + list(op.nav.tabs) + ' ' + list(op.nav.stack) + ' ' + std::to_string(op.nav.modal);
+      if (op.nav.modal) out += op.nav.style == uint32_t(protocol::ModalStyle::FullScreen) ? " fullScreen" : " sheet";
+      return out;
+    }
     case protocol::Code::Rows: {
       std::string out = head("rows") + " [";
       for (uint32_t i = 0; i < op.count; i++) {

@@ -56,13 +56,13 @@ describe("ops", () => {
 
   test.each(valid.map((c) => [c.name, c] as const))("encodes %s", (_, c) => {
     const writer = new OpWriter();
-    for (const o of decode(bytes(c.hex))) {
+    for (const o of c.ops!) {
       switch (o.op) {
         case "create":
           writer.create(o.scope, o.template);
           break;
         case "set":
-          writer.set(o.scope, o.slot, o.value);
+          writer.set(o.scope, o.slot, value(o.value));
           break;
         case "branch":
           writer.branch(o.scope, o.point, o.child);
@@ -72,6 +72,15 @@ describe("ops", () => {
           break;
         case "attach":
           writer.attach(o.scope, o.point, o.child);
+          break;
+        case "splice":
+          writer.splice(o.scope, o.point, o.index, o.remove, o.items);
+          break;
+        case "bind":
+          writer.bind(o.scope, o.point, o.item, o.child);
+          break;
+        case "nav":
+          writer.nav(o.tab, o.tabs, o.stack, o.modal, o.style);
           break;
       }
     }

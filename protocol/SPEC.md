@@ -33,6 +33,8 @@ The headless renderer in `@weft-ui/runtime/testing` is the reference implementat
 - **Value slot** `values[i]`: A dynamic property of a node. `type` is the declared type of the element property: `Int` / `Float` / `Bool` / `String` / `Color` / `Strings`. A `Strings` slot holds an array of strings (wire tag 4). The value of a `Color` slot is a string parsed by the platform (see [Built-in elements and layout](../crates/parser/GRAMMAR.md#built-in-elements-and-layout) for the rules). Static colors are validated at compile time and written in `props` as normalized `#rrggbb` or `#rrggbbaa` values. Controlled properties such as `Input.value`, `Checkbox.checked`, and `Picker.selected` always use value slots, even when constant.
 - **Event slot** `events[i]`: An event property of a node. `payload` specifies the payload type (`null` means no payload). Every controlled element has an `onChange` event slot. Its `controls` field is the index of the value slot it controls; for all other events, `controls` is `null`. JS handles lifecycle properties (`onMount` / `onUnmount`), which do not appear in the layout.
 - **Mount point** `points[i]`: `branch` (`templates` lists branch templates in order), `list` (`template` is the row body), `instance` (`template` is the body of the instantiated component), or `slot` (the caller supplies the slot content, which may be any template of kind `slot`).
+- **Page and lazy templates**: A page body has template `kind: "page"`. A lazy mount point has `{"node": n, "kind": "lazy", "templates": [row]}`, or `[header, row]` for sections.
+- **App**: An application layout has a top-level `app`, either `{"start": template}` or `{"tabs": [{"page": template, "title": "…", "icon": "asset:…", "activeIcon": "asset:…"}]}`. It participates in the hash; routing remains in JS.
 - **Theme**: When the app declares a theme, the top-level `theme` object maps color token names to `[light, dark]` pairs. Both colors use lowercase `#rrggbbaa`; a token with only one color repeats it. Numeric tokens are folded by the compiler and do not appear here. A token in a static `props` entry or a dynamic `Color` value slot uses the string `"@name"`; it is resolved according to the host's appearance.
 - **Safe area**: The top-level `safeArea` boolean records whether the app requests safe-area padding. It defaults to `true` and is included in the layout hash.
 - **Hash**: The 64-bit FNV-1a hash of the JSON with the `hash` field removed, represented as 16 hexadecimal digits. It is written into both the JS logic (as an `App` constructor argument) and the platform view. The sink compares the hashes at `open` and reports an error if they differ.
@@ -43,6 +45,10 @@ At runtime, each template instance is a scope. JS allocates IDs per app, startin
 
 A scope is created by `create` and is not yet mounted in the tree. It is implicitly destroyed if it is replaced by `branch`, no longer appears in `rows`, or an ancestor is destroyed. Its descendants are destroyed with it. On `unmount`, the sink receives `close`, which invalidates all scopes at once.
 
+Applications use page-root scopes referenced by `nav` instead of `attach`; a program uses only one root convention. Page roots are created and fully set in the same batch before `nav`. The first batch contains the complete navigation state; later `nav` ops are sent only on changes. Pages no longer referenced by the latest state (including host-reported navigation) and their descendants are destroyed, and JS sends no further ops for them.
+
+A lazy point owns a flat sequence of item IDs, allocated from 1 without reuse within that point. Stable keys retain IDs until removed. `splice` replaces the changed middle after the common prefix and suffix; retained IDs keep their materialized scopes, removed IDs destroy theirs. `bind` associates an item with a created scope, or releases it when child is 0. Window requests materialize in-range items and release out-of-range scopes; initially up to 20 items are materialized. A created item scope and its initial values precede its `bind` in the same batch.
+
 ## Ops
 
 | op       | Parameters               | Meaning |
@@ -52,6 +58,9 @@ A scope is created by `create` and is not yet mounted in the tree. It is implici
 | `branch` | scope, point, child \| 0 | Switch a `branch` mount point to child (0 means no branch). The previous child scope is destroyed. |
 | `rows`   | scope, point, [child…]   | Replace the full row order at a `list` mount point. Rows absent from the new list are destroyed. |
 | `attach` | scope, point, child      | Mount child at an `instance` / `slot` mount point. This op is sent only once per mount point. |
+| `splice` | scope, point, index, remove, items | Replace a range at a `lazy` point with `(item, template)` pairs. Template is an index into the point's `templates`. |
+| `bind` | scope, point, item, child \| 0 | Materialize or release a lazy item. |
+| `nav` | tab, tabs, stack, modal, style | Replace the complete navigation state; uncreated tabs and an absent modal are 0. |
 
 Guarantees:
 
@@ -75,6 +84,11 @@ A batch of ops is a byte sequence: the first byte is the version number `3`, fol
 | 3      | `branch` | scope, point, child                |
 | 4      | `rows`   | scope, point, count, child × count |
 | 5      | `attach` | scope, point, child                |
+| 6      | `splice` | scope, point, index, remove, count, (item, template) × count |
+| 7      | `bind` | scope, point, item, child |
+| 8      | `nav` | tab, n, scope × n, m, scope × m, modal, style |
+
+All listed fields are little-endian u32. `style` uses `modalStyles`: `sheet` = 0, `fullScreen` = 1; it is 0 when `modal` is 0.
 
 Each value starts with a u8 tag: `0` for false, `1` for true, `2` for a number (little-endian f64, including values in `Int` slots), `3` for a string (u32 byte length followed by UTF-8), or `4` for an array of strings (u32 string count followed by that many strings, each with its own u32 byte length and UTF-8 bytes, without a tag). On the JS side, `OpWriter` (`src/ops.ts` in `@weft-ui/runtime`) reuses the same buffer. The bytes of a batch are valid only until the next write.
 
@@ -119,6 +133,11 @@ set 3 0 "milk"
 rows 2 0 [3 4 5]
 branch 1 0 0
 attach 0 0 1
+splice 2 0 0 0 [1/0 2/1 3/1]
+bind 2 0 1 7
+bind 2 0 3 0
+nav 0 [4 0] [9 11] 13 sheet
+nav 0 [4] [] 0
 ```
 
 The headless renderer appends a template label or slot description after `#`, for example `create 1 0  # TodoList` or `set 1 0 ""  # Input.value`.

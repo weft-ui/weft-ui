@@ -6,13 +6,17 @@ using Weft.WinUI.Protocol;
 
 namespace Weft.WinUI;
 
+internal readonly record struct SpliceItem(uint Item, uint Template);
+
 /// <summary>
 /// One decoded op. <see cref="Arg"/> is the field after the scope: the
 /// template (create), slot (set) or point (branch / rows / attach);
 /// <see cref="Child"/> is the child of branch / attach and
 /// <see cref="Rows"/> the children of rows.
 /// </summary>
-internal readonly record struct Op(OpCode Code, uint Scope, uint Arg, uint Child, WeftValue Value, uint[]? Rows);
+internal readonly record struct Op(OpCode Code, uint Scope, uint Arg, uint Child, WeftValue Value, uint[]? Rows,
+    uint Index = 0, uint Remove = 0, SpliceItem[]? Items = null, uint[]? Tabs = null, uint[]? Stack = null,
+    uint Modal = 0, uint Style = 0, uint Item = 0);
 
 /// <summary>Why a batch of ops could not be decoded or applied.</summary>
 internal sealed class OpException(string message, string? kind = null) : Exception(message)
@@ -63,6 +67,29 @@ internal ref struct OpReader
                 for (var i = 0; i < rows.Length; i++) rows[i] = U32();
                 op = new Op(code, scope, list, 0, default, rows);
                 break;
+            case OpCode.Splice:
+                var spliceScope = U32();
+                var point = U32();
+                var index = U32();
+                var remove = U32();
+                var itemCount = U32();
+                if (itemCount > (uint)(bytes.Length - offset) / 8) throw new OpException("truncated splice", "truncated");
+                var items = new SpliceItem[itemCount];
+                for (var i = 0; i < items.Length; i++) items[i] = new(U32(), U32());
+                op = new Op(code, spliceScope, point, 0, default, null, index, remove, items);
+                break;
+            case OpCode.Bind:
+                var bindScope = U32();
+                var bindPoint = U32();
+                var item = U32();
+                op = new Op(code, bindScope, bindPoint, U32(), default, null, Item: item);
+                break;
+            case OpCode.Nav:
+                var tab = U32();
+                var tabs = ReadU32List();
+                var stack = ReadU32List();
+                op = new Op(code, tab, 0, 0, default, null, Tabs: tabs, Stack: stack, Modal: U32(), Style: U32());
+                break;
             default:
                 throw new OpException($"unknown opcode {(byte)code}", "opcode");
         }
@@ -87,6 +114,15 @@ internal ref struct OpReader
         var span = bytes.Slice(offset, (int)count);
         offset += (int)count;
         return span;
+    }
+
+    private uint[] ReadU32List()
+    {
+        var count = U32();
+        if (count > (uint)(bytes.Length - offset) / 4) throw new OpException("truncated list", "truncated");
+        var result = new uint[count];
+        for (var i = 0; i < result.Length; i++) result[i] = U32();
+        return result;
     }
 
     private byte Byte() => Take(1)[0];

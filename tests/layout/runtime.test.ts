@@ -2,8 +2,30 @@
 import { expect, test } from "vitest";
 import { flushSync, hold, restoreAfterFlush, schedule, tick } from "../../packages/runtime/src/core.ts";
 import { CSS_PROPS } from "../../packages/runtime/src/elements.ts";
+import { render } from "../../packages/runtime/src/testing.ts";
 import { App as DomApp, Instance as DomInstance, List as DomList, Row as DomRow, style, theme } from "../../packages/runtime/src/index.ts";
 import { App as RemoteApp, Instance as RemoteInstance, List as RemoteList, Row as RemoteRow, type Sink } from "../../packages/runtime/src/remote.ts";
+
+test.each(["splice", "bind", "nav"] as const)("headless rejects %s before applying the batch", (op) => {
+  const renderer = render({
+    hash: "test",
+    templates: [{
+      label: "root", kind: "component", roots: [0],
+      nodes: [{ element: "Text", props: { text: "before" }, children: [] }],
+      values: [{ node: 0, prop: "text", type: "String" }], events: [], points: [],
+    }],
+  });
+  renderer.create(1, 0);
+  renderer.attach(0, 0, 1);
+  renderer.commit();
+  renderer.set(1, 0, "after");
+  if (op === "splice") renderer.splice(1, 0, 0, 0, [{ item: 1, template: 0 }]);
+  else if (op === "bind") renderer.bind(1, 0, 1, 2);
+  else renderer.nav(0, [1], [], 0, "sheet");
+  expect(() => renderer.commit()).toThrow(`weft protocol: unsupported ${op}`);
+  expect(renderer.tree()[0].props.text).toBe("before");
+  expect(renderer.batches).toHaveLength(1);
+});
 
 test("theme() populates webThemeColors even when a theme style tag already exists", () => {
   const existing = document.createElement("style");

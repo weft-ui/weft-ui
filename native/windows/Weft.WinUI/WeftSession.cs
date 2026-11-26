@@ -216,6 +216,9 @@ public sealed class WeftSession
         try
         {
             OpReader.ReadAll(bytes, batch);
+            foreach (ref readonly var op in CollectionsMarshal.AsSpan(batch))
+                if (op.Code is OpCode.Splice or OpCode.Bind or OpCode.Nav)
+                    throw new OpException("lazy lists and app navigation are not supported by these views");
             foreach (ref readonly var op in CollectionsMarshal.AsSpan(batch)) Apply(op);
         }
         catch (Exception error)

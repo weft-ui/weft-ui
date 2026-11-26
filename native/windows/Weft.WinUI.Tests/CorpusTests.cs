@@ -209,10 +209,13 @@ public sealed class CorpusTests
             "branch" => OpCode.Branch,
             "rows" => OpCode.Rows,
             "attach" => OpCode.Attach,
+            "splice" => OpCode.Splice,
+            "bind" => OpCode.Bind,
+            "nav" => OpCode.Nav,
             var unknown => throw new InvalidOperationException($"unknown corpus op {unknown}"),
         };
         Assert.AreEqual(code, op.Code, name);
-        Assert.AreEqual(expected.GetProperty("scope").GetUInt32(), op.Scope, name);
+        Assert.AreEqual(expected.GetProperty(code == OpCode.Nav ? "tab" : "scope").GetUInt32(), op.Scope, name);
         switch (code)
         {
             case OpCode.Create:
@@ -225,6 +228,33 @@ public sealed class CorpusTests
             case OpCode.Branch or OpCode.Attach:
                 Assert.AreEqual(expected.GetProperty("point").GetUInt32(), op.Arg, name);
                 Assert.AreEqual(expected.GetProperty("child").GetUInt32(), op.Child, name);
+                break;
+            case OpCode.Splice:
+                Assert.AreEqual(expected.GetProperty("point").GetUInt32(), op.Arg, name);
+                Assert.AreEqual(expected.GetProperty("index").GetUInt32(), op.Index, name);
+                Assert.AreEqual(expected.GetProperty("remove").GetUInt32(), op.Remove, name);
+                var items = expected.GetProperty("items");
+                Assert.AreEqual(items.GetArrayLength(), op.Items!.Length, name);
+                var itemIndex = 0;
+                foreach (var item in items.EnumerateArray())
+                    Assert.AreEqual(new SpliceItem(item.GetProperty("item").GetUInt32(), item.GetProperty("template").GetUInt32()), op.Items[itemIndex++], name);
+                break;
+            case OpCode.Bind:
+                Assert.AreEqual(expected.GetProperty("point").GetUInt32(), op.Arg, name);
+                Assert.AreEqual(expected.GetProperty("item").GetUInt32(), op.Item, name);
+                Assert.AreEqual(expected.GetProperty("child").GetUInt32(), op.Child, name);
+                break;
+            case OpCode.Nav:
+                CollectionAssert.AreEqual(expected.GetProperty("tabs").EnumerateArray().Select(x => x.GetUInt32()).ToArray(), op.Tabs!, name);
+                CollectionAssert.AreEqual(expected.GetProperty("stack").EnumerateArray().Select(x => x.GetUInt32()).ToArray(), op.Stack!, name);
+                Assert.AreEqual(expected.GetProperty("modal").GetUInt32(), op.Modal, name);
+                var style = expected.GetProperty("style").GetString() switch
+                {
+                    "sheet" => ModalStyle.Sheet,
+                    "fullScreen" => ModalStyle.FullScreen,
+                    var unknown => throw new InvalidOperationException($"unknown modal style {unknown}"),
+                };
+                Assert.AreEqual((uint)style, op.Style, name);
                 break;
             case OpCode.Rows:
                 Assert.AreEqual(expected.GetProperty("point").GetUInt32(), op.Arg, name);

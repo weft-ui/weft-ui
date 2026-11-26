@@ -4,7 +4,7 @@
  * files.
  */
 
-import { VERSION, Opcode, ValueTag, type OpErrorKind } from "./protocol.ts";
+import { VERSION, Opcode, ValueTag, ModalStyle, type OpErrorKind } from "./protocol.ts";
 import type { Ops, Value } from "./remote.ts";
 
 /**
@@ -27,7 +27,10 @@ export type Op =
   | { op: "set"; scope: number; slot: number; value: Value }
   | { op: "branch"; scope: number; point: number; child: number }
   | { op: "rows"; scope: number; point: number; children: number[] }
-  | { op: "attach"; scope: number; point: number; child: number };
+  | { op: "attach"; scope: number; point: number; child: number }
+  | { op: "splice"; scope: number; point: number; index: number; remove: number; items: { item: number; template: number }[] }
+  | { op: "bind"; scope: number; point: number; item: number; child: number }
+  | { op: "nav"; tab: number; tabs: number[]; stack: number[]; modal: number; style: "sheet" | "fullScreen" };
 
 /** Writes ops into one reusable buffer; `take` hands out each batch. */
 export class OpWriter implements Ops {
@@ -100,6 +103,38 @@ export class OpWriter implements Ops {
     this.#u32(scope);
     this.#u32(point);
     this.#u32(child);
+  }
+
+  splice(scope: number, point: number, index: number, remove: number, items: readonly { item: number; template: number }[]): void {
+    this.#op(Opcode.Splice, 20 + items.length * 8);
+    this.#u32(scope);
+    this.#u32(point);
+    this.#u32(index);
+    this.#u32(remove);
+    this.#u32(items.length);
+    for (const { item, template } of items) {
+      this.#u32(item);
+      this.#u32(template);
+    }
+  }
+
+  bind(scope: number, point: number, item: number, child: number): void {
+    this.#op(Opcode.Bind, 16);
+    this.#u32(scope);
+    this.#u32(point);
+    this.#u32(item);
+    this.#u32(child);
+  }
+
+  nav(tab: number, tabs: readonly number[], stack: readonly number[], modal: number, style: "sheet" | "fullScreen"): void {
+    this.#op(Opcode.Nav, 20 + (tabs.length + stack.length) * 4);
+    this.#u32(tab);
+    this.#u32(tabs.length);
+    for (const scope of tabs) this.#u32(scope);
+    this.#u32(stack.length);
+    for (const scope of stack) this.#u32(scope);
+    this.#u32(modal);
+    this.#u32(modal !== 0 && style === "fullScreen" ? ModalStyle.FullScreen : ModalStyle.Sheet);
   }
 
   /** Writes the batch header if needed and the opcode, reserving `size` more bytes. */
@@ -215,6 +250,36 @@ export function decode(batch: Uint8Array): Op[] {
       case Opcode.Attach:
         ops.push({ op: "attach", scope: u32(), point: u32(), child: u32() });
         break;
+      case Opcode.Splice: {
+        const scope = u32();
+        const point = u32();
+        const index = u32();
+        const remove = u32();
+        const count = u32();
+        need(count * 8);
+        const items: { item: number; template: number }[] = [];
+        for (let i = 0; i < count; i++) items.push({ item: u32(), template: u32() });
+        ops.push({ op: "splice", scope, point, index, remove, items });
+        break;
+      }
+      case Opcode.Bind:
+        ops.push({ op: "bind", scope: u32(), point: u32(), item: u32(), child: u32() });
+        break;
+      case Opcode.Nav: {
+        const tab = u32();
+        const n = u32();
+        need(n * 4);
+        const tabs: number[] = [];
+        for (let i = 0; i < n; i++) tabs.push(u32());
+        const m = u32();
+        need(m * 4);
+        const stack: number[] = [];
+        for (let i = 0; i < m; i++) stack.push(u32());
+        const modal = u32();
+        const style = u32() === ModalStyle.FullScreen ? "fullScreen" : "sheet";
+        ops.push({ op: "nav", tab, tabs, stack, modal, style });
+        break;
+      }
       default:
         throw new OpsError("opcode", `weft ops: unknown opcode ${code} at byte ${at - 1}`);
     }
@@ -240,5 +305,11 @@ export function formatOp(op: Op): string {
       return `rows ${op.scope} ${op.point} [${op.children.join(" ")}]`;
     case "attach":
       return `attach ${op.scope} ${op.point} ${op.child}`;
+    case "splice":
+      return `splice ${op.scope} ${op.point} ${op.index} ${op.remove} [${op.items.map(({ item, template }) => `${item}/${template}`).join(" ")}]`;
+    case "bind":
+      return `bind ${op.scope} ${op.point} ${op.item} ${op.child}`;
+    case "nav":
+      return `nav ${op.tab} [${op.tabs.join(" ")}] [${op.stack.join(" ")}] ${op.modal}${op.modal === 0 ? "" : ` ${op.style}`}`;
   }
 }

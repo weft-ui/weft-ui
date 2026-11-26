@@ -99,7 +99,16 @@ public final class WeftSession {
         committing = true
         defer { committing = false }
         do {
-            for op in try OpReader.readAll(bytes) {
+            let ops = try OpReader.readAll(bytes)
+            for op in ops {
+                switch op {
+                case .splice, .bind, .nav:
+                    fail("weft: cannot apply ops (lazy lists and app navigation are not supported by these views)")
+                    return
+                default: break
+                }
+            }
+            for op in ops {
                 if !apply(op) { break }
             }
         } catch {
@@ -128,6 +137,9 @@ public final class WeftSession {
         case let .attach(scope, point, child):
             mount(scope, point, [child])
             return true
+        case .splice, .bind, .nav:
+            fail("weft: cannot apply ops (lazy lists and app navigation are not supported by these views)")
+            return false
         }
     }
 
