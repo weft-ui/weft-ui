@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -35,6 +36,8 @@ public sealed class WeftSession
     private readonly Panel root;
     private readonly UiOverlay ui;
     private WeftNavigationHost? navigation;
+    private readonly WeftTab[]? tabs;
+    private readonly Dictionary<int, string?> badges = [];
     private ElementTheme appliedTheme;
     private WindowEnvironment environment;
     private readonly ArrayBufferWriter<byte> environmentJson = new(192);
@@ -64,7 +67,7 @@ public sealed class WeftSession
     /// whose views implement the layout with hash <paramref name="layoutHash"/>,
     /// and returns its root layout, showing the startup error if the app failed.
     /// </summary>
-    public static UIElement Start(ulong layoutHash, bool safeArea, Factory make, WeftTheme? theme = null)
+    public static UIElement Start(ulong layoutHash, bool safeArea, Factory make, WeftTheme? theme = null, WeftTab[]? tabs = null)
     {
         // A ThemeResource stays live when the appearance changes, unlike a resource dictionary lookup.
         var root = new WeftLinearPanel(WeftAxis.Vertical, fillAvailable: true)
@@ -77,12 +80,13 @@ public sealed class WeftSession
         };
         var overlayRoot = new Grid();
         overlayRoot.Children.Add(root);
-        _ = new WeftSession(Path.Combine(AppContext.BaseDirectory, "weft", "bundle.hbc"), layoutHash, safeArea, make, root, overlayRoot, theme);
+        _ = new WeftSession(Path.Combine(AppContext.BaseDirectory, "weft", "bundle.hbc"), layoutHash, safeArea, make, root, overlayRoot, theme, tabs);
         return overlayRoot;
     }
 
-    private unsafe WeftSession(string bundle, ulong layoutHash, bool safeArea, Factory make, Panel root, Grid overlayRoot, WeftTheme? theme)
+    private unsafe WeftSession(string bundle, ulong layoutHash, bool safeArea, Factory make, Panel root, Grid overlayRoot, WeftTheme? theme, WeftTab[]? tabs)
     {
+        this.tabs = tabs;
         this.make = make;
         this.root = root;
         ui = new UiOverlay(overlayRoot);
@@ -285,7 +289,11 @@ public sealed class WeftSession
                 Mount(op.Scope, op.Arg, op.Rows!);
                 break;
             case OpCode.Nav:
-                navigation ??= new WeftNavigationHost(this, root);
+                if (navigation is null)
+                {
+                    navigation = new WeftNavigationHost(this, root, tabs);
+                    foreach (var (index, text) in badges) navigation.SetBadge(index, text);
+                }
                 navigation.Apply(new NavigationState(op.Scope, op.Tabs!, op.Stack!, op.Modal, op.Style));
                 break;
         }
@@ -351,7 +359,16 @@ public sealed class WeftSession
             byte[] result;
             try
             {
-                result = await (module == WeftProtocol.UiModule
+                if (module == "navigation" && method == "badge")
+                {
+                    using var json = JsonDocument.Parse(args);
+                    var index = json.RootElement.GetProperty("tab").GetInt32();
+                    var text = json.RootElement.GetProperty("text").GetString();
+                    badges[index] = text;
+                    navigation?.SetBadge(index, text);
+                    result = [];
+                }
+                else result = await (module == WeftProtocol.UiModule
                     ? ui.Call(method, args) : PlatformModules.Call(module, method, args));
                 ok = true;
             }
@@ -437,7 +454,7 @@ public sealed class WeftSession
     {
         try
         {
-            return module != null && PlatformModules.Supported.Contains(Utf8(module)) ? (byte)1 : (byte)0;
+            return module != null && (Utf8(module) == "navigation" || PlatformModules.Supported.Contains(Utf8(module))) ? (byte)1 : (byte)0;
         }
         catch
         {

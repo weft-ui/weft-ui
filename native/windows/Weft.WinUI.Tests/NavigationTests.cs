@@ -17,6 +17,20 @@ public sealed class NavigationTests
     }
 
     [TestMethod]
+    public void TabSwitchClearsStackAndProducesAdoptableSignal()
+    {
+        var initial = new NavigationState(0, [1, 4], [2, 3], 0, 0);
+        var switched = initial.SelectTab(1);
+        Assert.AreEqual(4u, switched.Current);
+        Assert.AreEqual(0, switched.Stack.Length);
+        Assert.AreEqual(NavigationTransition.None, NavigationState.Diff(initial, switched));
+        Assert.AreEqual("{\"tab\":1,\"stack\":[],\"modal\":0}", switched.SignalJson());
+        CollectionAssert.AreEqual(new uint[] { 1, 4 }, switched.Tabs);
+        var lazy = new NavigationState(0, [1, 0], [], 0, 0).SelectTab(1);
+        Assert.AreEqual("{\"tab\":1,\"stack\":[],\"modal\":0}", lazy.SignalJson());
+    }
+
+    [TestMethod]
     public void UserBackProducesAdoptableNavigationSignal()
     {
         var state = new NavigationState(0, [1], [2, 3], 0, 0);

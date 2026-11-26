@@ -5,9 +5,13 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.System;
 
 namespace Weft.WinUI;
+
+/// <summary>Display metadata for one application tab.</summary>
+public sealed record WeftTab(string Title, string Icon, string ActiveIcon);
 
 internal enum NavigationTransition { None, Push, Pop }
 
@@ -32,6 +36,8 @@ internal sealed record NavigationState(uint Tab, uint[] Tabs, uint[] Stack, uint
         return this with { Stack = Stack[..^1] };
     }
 
+    internal NavigationState SelectTab(uint tab) => this with { Tab = tab, Stack = [], Modal = 0, Style = 0 };
+
     internal string SignalJson() => $"{{\"tab\":{Tab},\"stack\":[{string.Join(",", Stack)}],\"modal\":{Modal}}}";
 
     internal static NavigationTransition Diff(NavigationState? old, NavigationState next)
@@ -52,12 +58,32 @@ internal sealed class WeftNavigationHost
     private readonly WeftSession session;
     private readonly Grid container = new();
     private readonly Dictionary<uint, PageView> pages = [];
+    private readonly WeftTab[]? tabs;
+    private readonly NavigationView? tabView;
+    private readonly Grid tabPages = new();
+    private bool selecting;
     private NavigationState? state;
     private Storyboard? animation;
 
-    internal WeftNavigationHost(WeftSession session, Panel root)
+    internal WeftNavigationHost(WeftSession session, Panel root, WeftTab[]? tabs)
     {
         this.session = session;
+        this.tabs = tabs;
+        if (tabs is not null)
+        {
+            tabView = new NavigationView
+            {
+                PaneDisplayMode = NavigationViewPaneDisplayMode.Left,
+                IsSettingsVisible = false,
+                IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
+                IsPaneToggleButtonVisible = false,
+                Content = tabPages,
+            };
+            foreach (var tab in tabs) tabView.MenuItems.Add(new NavigationViewItem { Content = tab.Title });
+            tabView.SelectionChanged += OnSelectionChanged;
+            tabView.Loaded += (_, _) => UpdateIcons();
+            container.Children.Add(tabView);
+        }
         container.SetValue(WeftLayout.GrowProperty, 1.0);
         container.SetValue(WeftLayout.FillProperty, true);
         root.Children.Add(container);
@@ -80,10 +106,20 @@ internal sealed class WeftNavigationHost
             {
                 var page = new PageView(session, session.Page(id), Back);
                 pages.Add(id, page);
-                container.Children.Add(page.View);
+                if (tabView is not null && Array.IndexOf(next.Tabs, id) >= 0) tabPages.Children.Add(page.View);
+                else container.Children.Add(page.View);
             }
         }
         state = next;
+        if (tabView is not null)
+        {
+            selecting = true;
+            tabView.SelectedItem = tabView.MenuItems[(int)next.Tab];
+            selecting = false;
+            tabView.Visibility = next.Stack.Length == 0 && next.Modal == 0 ? Visibility.Visible : Visibility.Collapsed;
+            UpdateIcons();
+            transition = NavigationTransition.None;
+        }
         foreach (var (id, page) in pages)
         {
             page.SetBack(id == next.Current && (next.Modal != 0 || next.Stack.Length != 0), next.Modal != 0);
@@ -110,6 +146,40 @@ internal sealed class WeftNavigationHost
             running.Begin();
         }
         else Prune();
+    }
+
+    internal void SetBadge(int index, string? text)
+    {
+        if (tabView is null || index < 0 || index >= tabView.MenuItems.Count) return;
+        var item = (NavigationViewItem)tabView.MenuItems[index];
+        item.InfoBadge = text is null ? null : text.Length == 0 ? new InfoBadge()
+            : int.TryParse(text, out var number) && number >= 0 ? new InfoBadge { Value = number }
+            : new InfoBadge { IconSource = new FontIconSource { Glyph = text } };
+    }
+
+    private void UpdateIcons()
+    {
+        if (tabView is null || tabs is null) return;
+        for (var i = 0; i < tabs.Length; i++)
+        {
+            var item = (NavigationViewItem)tabView.MenuItems[i];
+            var name = state?.Tab == (uint)i ? tabs[i].ActiveIcon : tabs[i].Icon;
+            var asset = name.StartsWith("asset:", StringComparison.Ordinal)
+                ? WeftAssets.Current?.FindImage(name[6..], tabView.XamlRoot?.RasterizationScale ?? 1) : null;
+            if (asset is null) { item.Icon = null; continue; }
+            var uri = new Uri(WeftAssets.UriPrefix + asset.File);
+            item.Icon = new ImageIcon { Source = asset.IsSvg ? new SvgImageSource(uri) : new BitmapImage(uri) };
+        }
+    }
+
+    private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    {
+        if (selecting || state is null || args.SelectedItem is null) return;
+        var index = sender.MenuItems.IndexOf(args.SelectedItem);
+        if (index < 0 || index == state.Tab) return;
+        var next = state.SelectTab((uint)index);
+        if (next.Tabs[index] != 0) Apply(next);
+        session.Signal("navigation", next.SignalJson());
     }
 
     private static void AddSlide(Storyboard storyboard, TranslateTransform transform, double from, double to)
@@ -141,7 +211,7 @@ internal sealed class WeftNavigationHost
         foreach (var id in removed)
         {
             var page = pages[id];
-            container.Children.Remove(page.View);
+            if (!tabPages.Children.Remove(page.View)) container.Children.Remove(page.View);
             page.Detach();
             pages.Remove(id);
             session.DestroyPage(id);

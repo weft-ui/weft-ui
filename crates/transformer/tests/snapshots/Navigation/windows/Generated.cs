@@ -14,7 +14,7 @@ public static class WeftApp
     public const bool SafeArea = true;
 
     /// <summary>Starts the app's bundle in the kernel and returns its root view.</summary>
-    public static Microsoft.UI.Xaml.UIElement Start() => WeftSession.Start(LayoutHash, SafeArea, MakeScope);
+    public static Microsoft.UI.Xaml.UIElement Start() => WeftSession.Start(LayoutHash, SafeArea, MakeScope, tabs: [new("Home", "asset:tab_home", "asset:tab_home"), new("Settings", "asset:tab_settings", "asset:tab_settings")]);
 
     /// <summary>Scope of a <c>create</c> op.</summary>
     private static WeftScope? MakeScope(uint template, uint id, WeftSession session) => template switch
