@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { type EnvironmentOptions, type Plugin, defaultClientConditions, defaultServerConditions } from "vite";
 import { type AppResult, compileApp } from "@weft-ui/compiler";
 import { NATIVE_PLATFORMS, PLATFORMS, type NativePlatform, type Platform } from "@weft-ui/runtime/protocol";
-import { HERMES_TARGET, compileBytecode, nativeAdapter } from "./native.ts";
+import { HERMES_TARGET, type Links, compileBytecode, nativeAdapter } from "./native.ts";
 import { checkShellProtocol, nativeShell } from "./shells.ts";
 import { type Assets, hasAssets, scanAssets } from "./assets/scan.ts";
 import { WEB_ASSETS_ID, RESOLVED_WEB_ASSETS_ID, serveWebAssets, webAssets } from "./assets/web.ts";
@@ -26,7 +26,7 @@ export interface WeftOptions {
   /** Keep root content inside the host's safe area. Defaults to `true`. */
   safeArea?: boolean;
   /** Deep-link scheme and HTTPS hosts accepted by the application. */
-  links?: { scheme?: string; hosts?: string[] };
+  links?: Links;
   /** WeChat sub-package roots mapped to their page names. */
   wechat?: { subPackages?: Record<string, string[]> };
   /** Overrides the installed native shell packages with a directory containing the shells; absolute or relative to the Vite root. */
@@ -512,7 +512,7 @@ export default function weft(options: WeftOptions = {}): Plugin {
         this.warn(`there is no ${platform} project template yet; generated ${projectPath}/weft/ only`);
         return;
       }
-      adapter.writeGlue(generated, project);
+      adapter.writeGlue(generated, project, options.links ?? {});
       if (process.env.WEFT_NATIVE === "0") return;
       if (adapter.host !== undefined && process.platform !== adapter.host) {
         this.warn(`${adapter.hostWarning}; generated ${projectPath}/ without building it`);

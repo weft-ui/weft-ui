@@ -10,6 +10,12 @@ import { linuxAdapter } from "./linux.ts";
 import { nativeShell, nativeShellPackage } from "./shells.ts";
 import { windowsAdapter } from "./windows.ts";
 
+/** Deep-link scheme and HTTPS hosts accepted by the application. */
+export interface Links {
+  scheme?: string;
+  hosts?: string[];
+}
+
 export interface NativeAdapter {
   /** Bytecode path relative to the generated directory. */
   readonly bytecode: string;
@@ -17,8 +23,8 @@ export interface NativeAdapter {
   readonly host?: NodeJS.Platform;
   /** Warning when the host cannot build, e.g. "xcodebuild needs macOS". */
   readonly hostWarning?: string;
-  /** Writes the shell glue (Package.swift, settings.gradle.kts, Weft.targets, CMakeLists.txt). */
-  writeGlue(generated: string, project: string): void;
+  /** Writes the shell glue (Package.swift, settings.gradle.kts, Weft.targets, CMakeLists.txt) and the deep-link registration files. */
+  writeGlue(generated: string, project: string, links: Links): void;
   build(project: string, platform: NativePlatform, release: boolean): Promise<void>;
 }
 
