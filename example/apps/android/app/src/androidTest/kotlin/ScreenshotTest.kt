@@ -1,6 +1,8 @@
 package net.mioyi.weftui.app
 
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -25,14 +27,23 @@ class ScreenshotTest {
         val pages = arguments.getString("pages")
         assumeNotNull(pages)
         val ids = requireNotNull(pages).split(",")
+        val links = requireNotNull(arguments.getString("links")).split(",")
+        require(ids.size == links.size)
         val suffix = if (arguments.getString("appearance") == "dark") "-dark" else ""
         // Gradle pulls this directory before uninstalling the app and runner.
         val directory = File(requireNotNull(arguments.getString("additionalTestOutputDir")))
         directory.mkdirs()
-        for (id in ids) {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        for ((id, link) in ids.zip(links)) {
             clearStoredState()
-            ActivityScenario.launch(MainActivity::class.java).use {
-                compose.openPage(id)
+            val intent = Intent(context, MainActivity::class.java)
+            if (link != "/") {
+                intent.action = Intent.ACTION_VIEW
+                intent.data = Uri.parse("weftexample:/$link")
+            }
+            ActivityScenario.launch<MainActivity>(intent).use {
+                compose.waitForIdle()
+                Thread.sleep(1000)
                 // Auto-advance cancels infinite animations. Capture a stable frame after the
                 // animation has started, rather than freezing indicators at their initial value.
                 compose.mainClock.autoAdvance = false
@@ -47,7 +58,6 @@ class ScreenshotTest {
                 } finally {
                     compose.mainClock.autoAdvance = true
                 }
-                compose.returnToCatalog(id)
             }
         }
     }

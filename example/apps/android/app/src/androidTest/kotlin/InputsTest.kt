@@ -91,13 +91,15 @@ class InputsTest {
 
     @Test
     fun compactInputShowsItsHintAndFilledPickerSpansTheField() {
-        compose.onNodeWithText("page:form").performScrollTo().performClick()
-        val name = compose.onNode(hasSetTextAction() and hasText("Mara Chen"))
-        name.assertHeightIsEqualTo(28.dp)
-        compose.onNodeWithText("Mara Chen", useUnmergedTree = true).assertIsDisplayed()
+        compose.onAllNodes(hasText("发布"))[0].performClick()
+        val title = compose.onNode(hasSetTextAction() and hasText("Give your note a title"))
+        title.assertHeightIsEqualTo(36.dp)
+        compose.onNodeWithText("Give your note a title", useUnmergedTree = true).assertIsDisplayed()
 
         val picker = compose.onNode(hasClickAction() and hasText("Choose a region"))
-        picker.assertWidthIsEqualTo(name.getUnclippedBoundsInRoot().width)
+        picker.assertWidthIsEqualTo(title.getUnclippedBoundsInRoot().width)
+        compose.onNodeWithText("Cancel").performScrollTo().performClick()
+        compose.openPage("inputs")
     }
 
     private fun openInputs() {

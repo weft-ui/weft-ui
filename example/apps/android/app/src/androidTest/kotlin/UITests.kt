@@ -32,7 +32,16 @@ internal val clearStorageRule = TestRule { base: Statement, _: Description ->
     }
 }
 
+internal fun ComposeTestRule.enterCatalog() {
+    if (onAllNodes(hasText("page:", substring = true)).fetchSemanticsNodes().isNotEmpty()) return
+    onNodeWithText("发现").performClick()
+    waitUntil(5_000) { onAllNodes(hasText("组件画廊")).fetchSemanticsNodes().isNotEmpty() }
+    onNodeWithText("组件画廊").performClick()
+    waitUntil(5_000) { onAllNodes(hasText("page:", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+}
+
 internal fun ComposeTestRule.openPage(id: String) {
+    enterCatalog()
     onNodeWithText("page:$id").performScrollTo().performClick()
     waitUntil(5_000) { onAllNodes(hasText("page:$id")).fetchSemanticsNodes().isEmpty() }
     waitForIdle()
@@ -88,6 +97,7 @@ class UITests {
 
     @Test
     fun everyCatalogEntryOpensAndReturns() {
+        compose.enterCatalog()
         compose.waitUntil(5_000) { compose.onAllNodes(hasText("page:", substring = true)).fetchSemanticsNodes().isNotEmpty() }
         val entries = compose.onAllNodes(hasText("page:", substring = true)).fetchSemanticsNodes()
             .map { it.config[androidx.compose.ui.semantics.SemanticsProperties.Text].single().text.removePrefix("page:") }

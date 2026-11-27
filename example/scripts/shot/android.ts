@@ -18,6 +18,7 @@ try {
     command("apps/android/gradlew", ["-p", "apps/android", ":app:connectedDebugAndroidTest",
       "-Pandroid.testInstrumentationRunnerArguments.class=net.mioyi.weftui.app.ScreenshotTest",
       `-Pandroid.testInstrumentationRunnerArguments.pages=${batch.map(({ id }) => id).join(",")}`,
+      `-Pandroid.testInstrumentationRunnerArguments.links=${batch.map(({ link }) => link).join(",")}`,
       `-Pandroid.testInstrumentationRunnerArguments.appearance=${scheme}`]);
     for (const { name, path } of batch) {
       const files = globSync(join(gradleShots, "*", name));
