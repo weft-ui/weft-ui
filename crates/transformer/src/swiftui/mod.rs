@@ -167,6 +167,9 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
         let declaration = match &mount.kind {
             PointKind::Branch { .. } | PointKind::Slot => "WeftScope?".to_owned(),
             PointKind::List { template } => format!("[S{}] = []", template.0),
+            PointKind::Lazy { .. } => {
+                unreachable!("lazy lists are not supported on native platforms")
+            }
             PointKind::Instance { template } => format!("S{}?", template.0),
         };
         out.writer.line(format_args!("var p{point}: {declaration}"));
@@ -199,6 +202,9 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
                 PointKind::Branch { .. } | PointKind::Slot => "children.first".to_owned(),
                 PointKind::List { template } => {
                     format!("children.map {{ $0 as! S{} }}", template.0)
+                }
+                PointKind::Lazy { .. } => {
+                    unreachable!("lazy lists are not supported on native platforms")
                 }
                 PointKind::Instance { template } => {
                     format!("children.first.map {{ $0 as! S{} }}", template.0)

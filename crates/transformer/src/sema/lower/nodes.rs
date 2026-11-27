@@ -25,6 +25,19 @@ use super::{Instance, Lowerer};
 const PENDING_NODE: NodeId = NodeId(u32::MAX);
 const STYLE: &str = "style";
 
+fn nested_lists(nodes: &[Node], id: NodeId, found: &mut Vec<Span>) {
+    let node = &nodes[id.index()];
+    match &node.kind {
+        NodeKind::Element { element, .. } if element.spec().name == "List" => found.push(node.span),
+        NodeKind::Component { .. } | NodeKind::Slot { .. } => {}
+        kind => {
+            for child in kind.children() {
+                nested_lists(nodes, child, found);
+            }
+        }
+    }
+}
+
 /// One expected argument when matching call arguments.
 pub(super) struct ArgSlot<'n> {
     pub(super) name: &'n str,
@@ -294,12 +307,48 @@ impl<'cx> Lowerer<'cx, '_> {
                 span: arg.span,
             });
         }
+        if spec.name == "Grid"
+            && let Some(prop) = props.iter().find(|p| p.name == "columns")
+            && matches!(&prop.value, PropValue::Expr(Expr { kind: ExprKind::Int(n), .. }) if *n < 1)
+        {
+            self.error(prop.span, "`Grid.columns` must be at least 1");
+        }
+        if matches!(spec.name, "List" | "Grid") {
+            let count = e.children.as_ref().map_or(0, |block| {
+                block
+                    .nodes
+                    .iter()
+                    .filter(|n| matches!(n.kind, ast::NodeKind::For(_)))
+                    .count()
+            });
+            if count != 1 {
+                self.error(
+                    span,
+                    format!("`{}` needs exactly one `for` among its children", spec.name),
+                );
+            }
+        }
         let own = first_binding..self.bindings.len();
 
         let children = e
             .children
             .as_ref()
             .map_or_else(Vec::new, |block| self.builtin_children(spec, block));
+        let vertical_scroll = spec.name == "Scroll" && !props.iter().any(|p| {
+            p.name == "direction" && matches!(&p.value, PropValue::Expr(Expr { kind: ExprKind::Str(value), .. }) if value == "horizontal")
+        });
+        if spec.name == "List" || vertical_scroll {
+            let mut nested = Vec::new();
+            for &child in &children {
+                nested_lists(&self.nodes, child, &mut nested);
+            }
+            for span in nested {
+                self.error(
+                    span,
+                    "`List` cannot be inside a vertical `Scroll` or another `List`",
+                );
+            }
+        }
         self.push_node(
             NodeKind::Element {
                 element: spec.element,

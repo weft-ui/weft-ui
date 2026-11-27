@@ -36,6 +36,8 @@ export const ELEMENTS: Record<string, { main: string | null; children: "any" | "
   Checkbox: { main: "checked", children: "none" },
   Image: { main: "src", children: "none" },
   Stack: { main: null, children: "any" },
+  List: { main: null, children: "any" },
+  Grid: { main: null, children: "any" },
   Scroll: { main: null, children: "any" },
   Spacer: { main: null, children: "none" },
   Switch: { main: "checked", children: "none" },

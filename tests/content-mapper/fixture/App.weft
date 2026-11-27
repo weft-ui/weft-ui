@@ -1,8 +1,8 @@
 // 应用 😀
 import "./models.weft"
-model List { todos: Todo[] }
+model TodoCollection { todos: Todo[] }
 event Click
-component App(list: List) {
+component App(list: TodoCollection) {
   Column {
     Button(onClick = Click) { Text("+") }
     for (todo in list.todos; key = todo.id) {

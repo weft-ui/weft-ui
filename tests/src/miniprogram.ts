@@ -57,7 +57,7 @@ export interface TestView {
   data: Data;
   /** Every `setData` payload in order, deep-copied when it was sent. */
   calls: Data[];
-  setData(data: Data): void;
+  setData(data: Data, callback?: () => void): void;
   /** The view as the WXML would render it now. */
   render(): Element[];
   /** Text content of the rendered view, in document order. */
@@ -361,7 +361,7 @@ function fire(view: TestView & Data, element: Element, type: string, value: unkn
     result = handler.call(view, {
       type,
       currentTarget: { id: node.attrs.id, dataset },
-      detail: type === "load" || type === "keyboardheightchange" ? value : { value },
+      detail: type === "load" || type === "keyboardheightchange" || type === "scroll" ? value : { value },
     });
     handled = true;
     if (catchAttr in node.attrs) break;
@@ -520,7 +520,7 @@ function expression(expr: string, scope: Scope): unknown {
     }
     return data;
   }
-  const conditional = /^(.+?)\s*\?\s*('[^']*')\s*:\s*('[^']*')$/.exec(expr);
+  const conditional = /^(.+?)\s*\?\s*('[^']*'|[\w.[\]]+)\s*:\s*('[^']*'|[\w.[\]]+)$/.exec(expr);
   if (conditional) return expression(expression(conditional[1], scope) ? conditional[2] : conditional[3], scope);
   const disjunction = /^([\w.[\]]+\s*===\s*'[^']*')\s*\|\|\s*(.+)$/.exec(expr);
   if (disjunction) return expression(disjunction[1], scope) || expression(disjunction[2], scope);

@@ -319,7 +319,26 @@ impl Builder<'_> {
                 } else {
                     element_events(&mut draft.events, local, spec, props, edited)
                 };
-                let children: Vec<u32> = children.iter().map(|&c| self.node(draft, c)).collect();
+                let lazy = matches!(spec.name, "List" | "Grid");
+                let children: Vec<u32> = children
+                    .iter()
+                    .map(|&c| {
+                        let local = self.node(draft, c);
+                        if lazy && matches!(comp.node(c).kind, NodeKind::For { .. }) {
+                            let ViewNodeKind::Point(index) = draft.nodes[local as usize].kind
+                            else {
+                                unreachable!("a loop is a mount point");
+                            };
+                            let point = &mut draft.points[index as usize].kind;
+                            if let PointKind::List { template } = point {
+                                *point = PointKind::Lazy {
+                                    templates: vec![*template],
+                                };
+                            }
+                        }
+                        local
+                    })
+                    .collect();
                 if let ViewNodeKind::Element {
                     props, children: c, ..
                 } = &mut draft.nodes[local as usize].kind

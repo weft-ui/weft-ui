@@ -1,0 +1,26 @@
+model ListItem {
+  id: Int,
+  label: String,
+}
+
+model ListModel {
+  items: ListItem[],
+  cells: ListItem[],
+}
+
+component ListFixture(model: ListModel) {
+  Column {
+    List {
+      Text("header")
+      for (item in model.items; key = item.id) {
+        Text(item.label)
+      }
+      Text("footer")
+    }
+    Grid(columns = 3) {
+      for (cell in model.cells; key = cell.id) {
+        Text(cell.label)
+      }
+    }
+  }
+}

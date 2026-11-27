@@ -17,6 +17,7 @@
     "weft/pages/form-page/index",
     "weft/pages/settings-page/index",
     "weft/pages/empty-page/index",
+    "weft/pages/list-example-page/index",
     "weft/pages/overlays-page/index"
   ],
   "darkmode": true,

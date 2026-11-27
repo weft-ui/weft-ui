@@ -450,6 +450,29 @@
       ]
     },
     {
+      "name": "List",
+      "doc": { "en": "Displays a vertically scrolling lazy list.", "zh": "显示纵向滚动的惰性列表。" },
+      "support": { "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" },
+      "groups": ["layout", "visibility", "padding", "decoration"],
+      "children": "any",
+      "members": [
+        { "name": "gap", "type": "Int", "default": 0, "css": { "property": "gap", "unit": "px" }, "doc": { "en": "Space between items.", "zh": "列表项之间的间距。" } },
+        { "name": "indicators", "type": "Bool", "default": true, "css": { "property": "scrollbar-width", "unit": "keyword", "keywords": { "true": "auto", "false": "none" } }, "doc": { "en": "Controls whether scrollbars are shown.", "zh": "控制是否显示滚动条。" } }
+      ]
+    },
+    {
+      "name": "Grid",
+      "doc": { "en": "Displays a vertically scrolling lazy grid.", "zh": "显示纵向滚动的惰性网格。" },
+      "support": { "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" },
+      "groups": ["layout", "visibility", "padding", "decoration"],
+      "children": "any",
+      "members": [
+        { "name": "columns", "type": "Int", "required": true, "constant": true, "doc": { "en": "Number of equal-width columns, at least one.", "zh": "等宽列数，至少为一。" } },
+        { "name": "gap", "type": "Int", "default": 0, "css": { "property": "gap", "unit": "px" }, "doc": { "en": "Space between rows and columns.", "zh": "行列之间的间距。" } },
+        { "name": "indicators", "type": "Bool", "default": true, "css": { "property": "scrollbar-width", "unit": "keyword", "keywords": { "true": "auto", "false": "none" } }, "doc": { "en": "Controls whether scrollbars are shown.", "zh": "控制是否显示滚动条。" } }
+      ]
+    },
+    {
       "name": "Scroll",
       "doc": { "en": "Lays out children linearly and scrolls along its main axis.", "zh": "线性排列子元素，并可沿主轴滚动。" },
       "groups": ["layout", "visibility", "padding", "decoration"],

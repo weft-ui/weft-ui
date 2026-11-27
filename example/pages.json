@@ -41,6 +41,13 @@
   { "id": "empty", "title": "Empty saved notes" },
   { "id": "lifecycle", "title": "Lifecycle", "pending": ["ios", "macos", "android", "windows", "linux"], "props": { "lifecycleCounts": ["Foreground: 0", "Background: 0", "Memory warnings: 0"] } },
   {
+    "id": "list",
+    "title": "Lazy list",
+    "component": "ListExample",
+    "pending": ["ios", "macos", "android", "windows", "linux"],
+    "props": { "listRows": [] }
+  },
+  {
     "id": "overlays",
     "title": "Overlays",
     "props": { "overlayResult": ["No overlay opened yet."] }

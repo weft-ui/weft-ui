@@ -218,7 +218,7 @@ impl Body<'_> {
             }
         }
         match element {
-            Element::NavBar | Element::BarButton => {
+            Element::NavBar | Element::BarButton | Element::List | Element::Grid => {
                 unreachable!("navigation is not supported on native platforms")
             }
             Element::Column | Element::Row | Element::Stack | Element::Scroll => {
@@ -534,6 +534,9 @@ impl Body<'_> {
                     "ForEach({property}) {{ c in V{}(s: c) }}",
                     template.0
                 ));
+            }
+            PointKind::Lazy { .. } => {
+                unreachable!("lazy lists are not supported on native platforms")
             }
             PointKind::Instance { template } => {
                 out.writer.line(format_args!(

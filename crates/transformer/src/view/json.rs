@@ -143,6 +143,10 @@ impl Template {
                 PointKind::List { template } => {
                     format!("\"kind\": \"list\", \"template\": {}", template.0)
                 }
+                PointKind::Lazy { templates } => {
+                    let ids: Vec<u32> = templates.iter().map(|t| t.0).collect();
+                    format!("\"kind\": \"lazy\", \"templates\": {}", numbers(&ids))
+                }
                 PointKind::Instance { template } => {
                     format!("\"kind\": \"instance\", \"template\": {}", template.0)
                 }

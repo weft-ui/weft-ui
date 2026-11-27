@@ -221,6 +221,8 @@ Call        = IDENT "(" ArgList? ")" ;
 | `Checkbox` | `checked` | `onChange(Bool)` | 无 |
 | `Image` | `src` | `onTap` | 无 |
 | `Stack` | — | `onTap` | 不限 |
+| `List` | — | — | 不限 |
+| `Grid` | — | — | 不限 |
 | `Scroll` | — | — | 不限 |
 | `Spacer` | — | — | 无 |
 | `Switch` | `checked` | `onChange(Bool)` | 无 |

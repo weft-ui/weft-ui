@@ -147,7 +147,7 @@ impl Body<'_> {
         )
         .then(|| self.template.controlled(node));
         let names: &[&str] = match element {
-            Element::NavBar | Element::BarButton => {
+            Element::NavBar | Element::BarButton | Element::List | Element::Grid => {
                 unreachable!("navigation is not supported on native platforms")
             }
             Element::Column | Element::Row => {
@@ -267,7 +267,7 @@ impl Body<'_> {
             Element::Spacer | Element::Spinner | Element::Divider
         ));
         match element {
-            Element::NavBar | Element::BarButton => {
+            Element::NavBar | Element::BarButton | Element::List | Element::Grid => {
                 unreachable!("navigation is not supported on Android")
             }
             Element::Input | Element::TextArea => {
@@ -325,6 +325,9 @@ impl Body<'_> {
                 "for (c in s.p{point}) key(c.id) {{ V{}(c) }}",
                 template.0
             )),
+            PointKind::Lazy { .. } => {
+                unreachable!("lazy lists are not supported on native platforms")
+            }
             PointKind::Instance { template } => out
                 .writer
                 .line(format_args!("s.p{point}?.let {{ V{}(it) }}", template.0)),

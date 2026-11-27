@@ -32,6 +32,7 @@ export type { PageClass } from "./navigation.ts";
 import { NavigationController, activate, componentMounted, type ApplicationConfig, type NavigationEntry, type NavigationOperation, type PageFactories } from "./navigation.ts";
 import { routeURL, type RouteInfo } from "./route.ts";
 import { onSignal } from "./native.ts";
+import { Lazy } from "./lazy.ts";
 
 /* ------------------------------------------------------------------------ */
 /* Protocol                                                                  */
@@ -58,6 +59,8 @@ export interface Ops {
   rows(scope: number, point: number, children: readonly number[]): void;
   /** Mounts a component instance or slot content once; scope `0` point `0` is the root. */
   attach(scope: number, point: number, child: number): void;
+  splice?(scope: number, point: number, index: number, remove: number, items: readonly { item: number; template: number }[]): void;
+  bind?(scope: number, point: number, item: number, child: number): void;
   nav?(tab: number, tabs: readonly number[], stack: readonly number[], modal: number, style: "sheet" | "fullScreen"): void;
   routes?(routes: readonly { page: string; url: string }[], mode: "push" | "replace" | "pop" | "root" | "tab" | "host"): void;
   beforePush?(depth: number): void;
@@ -120,6 +123,7 @@ export class Block {
   v: unknown[] = [];
   /** Handlers by event slot. */
   h: Handler[] | null = null;
+  lazy = new Map<number, LazyList>();
   born = currentEpoch();
   dead = false;
   /** Set when the block was created through a component slot. */
@@ -364,6 +368,38 @@ export class List {
   }
 }
 
+/** A keyed lazy point. The host controls which rows have scopes. */
+export class LazyList {
+  private readonly lazy: Lazy<unknown, Row>;
+
+  constructor(private readonly up: Block, private readonly point: number, make: (item: unknown) => Row, keyOf: (item: unknown) => unknown) {
+    up.lazy.set(point, this);
+    this.lazy = new Lazy(keyOf, {
+      splice: (index, remove, items) => {
+        const sink = up.app.$sink!;
+        if (!sink.splice) throw new Error("weft: sink does not support lazy lists");
+        sink.splice(up.id, point, index, remove, items.map(({ id, template }) => ({ item: id, template })));
+      },
+      bind: (id, row) => {
+        const sink = up.app.$sink!;
+        if (!sink.bind) throw new Error("weft: sink does not support lazy lists");
+        sink.bind(up.id, point, id, row?.id ?? 0);
+      },
+      create: make,
+      change: (row, item) => row.setItem(item),
+      destroy: row => row.destroy(),
+    });
+  }
+
+  set(items: readonly unknown[]): void { this.lazy.set(items); }
+  window(start: number, end: number): void { this.lazy.window(start, end); }
+  update(): void {
+    const epoch = currentEpoch();
+    this.lazy.update(row => { if (row.born !== epoch) row.update(); });
+  }
+  destroy(): void { this.up.lazy.delete(this.point); this.lazy.destroy(); }
+}
+
 /**
  * The caller's block for a component's `Children` parameter. The callee
  * creates instances where it renders the slot; the caller updates them.
@@ -438,9 +474,7 @@ export class App extends AppBase {
     sink.open({
       hash: this.$hash,
       dispatch: (scope, slot, payload) => this.#dispatch(scope, slot, payload),
-      window: (scope, point, start, end) => {
-        console.error(`weft: lazy window requested for scope ${scope}, point ${point}, range [${start}, ${end}), but lazy points are not implemented`);
-      },
+      window: (scope, point, start, end) => this.$window(scope, point, start, end),
       signal: () => {},
       detach: () => this.$detach(),
     });
@@ -458,6 +492,17 @@ export class App extends AppBase {
       this.$sink = null;
       throw error;
     }
+  }
+
+  $window(scope: number, point: number, start: number, end: number): void {
+    const lazy = this.$scopes.get(scope)?.lazy.get(point);
+    if (!lazy) {
+      console.error(`weft: lazy window requested for scope ${scope}, point ${point}, range [${start}, ${end}), but no lazy point exists`);
+      return;
+    }
+    lazy.window(start, end);
+    schedule();
+    flushSync();
   }
 
   unmount(): void {
@@ -581,7 +626,7 @@ export class Application extends App {
       if (!block || !handler) return true;
       handler.f?.(payload); flushSync();
       return handler.k < 0 || block.dead || block.v[handler.k] === payload;
-    }, window: (scope, point, start, end) => console.error(`weft: lazy window requested for scope ${scope}, point ${point}, range [${start}, ${end}), but lazy points are not implemented`),
+    }, window: (scope, point, start, end) => { activate(this.controller); this.$window(scope, point, start, end); },
     signal: (name, json) => this.$signal(name, json), detach: () => this.$detach() });
     this.$sink = sink; mounted.add(this); activate(this.controller);
     if (globalThis.__weft) {

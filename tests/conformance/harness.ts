@@ -41,6 +41,8 @@ export interface Actions {
   dismiss(): void;
   /** Simulates selecting a tab by index. */
   tab(index: number): void;
+  /** Requests a list or grid's half-open materialization window. */
+  window(type: "List" | "Grid", index: number, start: number, end: number): void;
   /** Fires the named event, or the element's first event, without a payload. */
   click(type: string, index: number, event?: string): void;
   /** Gives or takes away user focus. */
@@ -193,6 +195,7 @@ export function headless<A extends AppLike>(script: Script<A>, built: Built<A>):
     back: () => renderer.back(),
     dismiss: () => renderer.dismiss(),
     tab: (index) => renderer.selectTab(index),
+    window: (type, index, start, end) => renderer.window(find(type, index), start, end),
     click: (type, index, event) => renderer.click(find(type, index), event),
     focus: (type, index, value) => renderer.focus(find(type, index), value),
     edit: (type, index, value) => {
@@ -207,6 +210,8 @@ const CONTAINERS = {
   "w-column": "Column",
   "w-row": "Row",
   "w-stack": "Stack",
+  "w-list": "List",
+  "w-grid": "Grid",
   "w-scroll-v": "Scroll",
   "w-scroll-h": "Scroll",
   "w-spacer": "Spacer",
@@ -259,7 +264,14 @@ function wxClassify(e: WxElement | string): Classified<WxElement | string> | nul
       if (!content || typeof content === "string" || !String(content.attrs.class).startsWith("w-scroll-content-")) {
         throw new Error("expected a Weft scroll content view");
       }
-      return { type: "Scroll", props: {}, children: content.children };
+      const classes = String(e.attrs.class).split(/\s+/);
+      const type = classes.includes("w-list") ? "List" : classes.includes("w-grid") ? "Grid" : "Scroll";
+      const flatten = (children: readonly (WxElement | string)[]): (WxElement | string)[] => children.flatMap((child) => {
+        if (typeof child === "string") return [child];
+        const names = String(child.attrs.class ?? "").split(/\s+/);
+        return names.includes("w-lazy-segment") || names.includes("w-lazy-row") ? flatten(child.children) : [child];
+      });
+      return { type, props: {}, children: type === "Scroll" ? content.children : flatten(content.children) };
     }
     case "text":
       return { type: "Text", props: { value: text(e) }, children: [] };
@@ -306,6 +318,12 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
     back: () => navigation?.back(),
     dismiss: () => navigation?.dismiss(),
     tab: (index) => navigation?.tab(index),
+    window: (type, index, start, end) => {
+      const element = find(type, index);
+      // The interpreter exposes the real mini program sink on its root component.
+      const component = root as unknown as { $sink: { window(scope: number, point: number, start: number, end: number): void } };
+      component.$sink.window(Number(element.attrs["data-scope"]), Number(element.attrs["data-point"]), start, end);
+    },
     dispose: () => navigation?.dispose(),
     tree: () => reduce(view().render().flatMap((root) => root.children), wxClassify),
     click: (type, index, event) => {
@@ -322,7 +340,10 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
 }
 
 function domClassify(e: Element): Classified<Element> {
-  const children = [...e.children];
+  const flatten = (elements: readonly Element[]): Element[] => elements.flatMap((element) =>
+    element.classList.contains("w-virtual-spacer") || element.classList.contains("w-virtual-item")
+      ? flatten([...element.children]) : [element]);
+  const children = flatten([...e.children]);
   switch (e.tagName) {
     case "DIV": {
       const type = containerType((name) => e.classList.contains(name));
@@ -395,6 +416,10 @@ export function web<A extends AppLike>(script: Script<A>): Driver<A> {
       const button = target.querySelectorAll<HTMLElement>('.w-tabbar [role="tab"]')[index];
       if (!button) throw new RangeError(`weft: invalid tab index ${index}`);
       button.click();
+    },
+    window: (type, index, start, end) => {
+      const element = find(type, index) as Element & { $weftLazy: { window(start: number, end: number): void } };
+      element.$weftLazy.window(start, end);
     },
     tree: () => reduce(roots(), domClassify),
     click: (type, index, name) => {

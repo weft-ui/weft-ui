@@ -86,7 +86,8 @@ pub(crate) fn target(element: Element, prop: &str) -> Target {
         (Element::Image, "src") => Target::ImageSource,
         (Element::Image, "fit") => Target::ImageFit,
         (Element::Scroll, "direction") => Target::Direction,
-        (Element::Scroll, "indicators") => Target::Flag {
+        (Element::Grid, "columns") => Target::Attr("data-columns"),
+        (Element::Scroll | Element::List | Element::Grid, "indicators") => Target::Flag {
             name: "show-scrollbar",
             default: true,
         },

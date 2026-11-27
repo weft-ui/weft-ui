@@ -1,0 +1,52 @@
+{
+  "hash": "c3693e913dbb329f",
+  "safeArea": true,
+  "templates": [
+    {
+      "label": "Lists",
+      "kind": "component",
+      "roots": [0],
+      "nodes": [
+        {"element": "Column", "props": {}, "children": [1, 5]},
+        {"element": "List", "props": {"gap": 8}, "children": [2, 3, 4]},
+        {"element": "Text", "props": {"value": "Header"}, "children": []},
+        {"point": 0},
+        {"element": "Text", "props": {"value": "Footer"}, "children": []},
+        {"element": "Grid", "props": {"columns": 3, "gap": 4}, "children": [6]},
+        {"point": 1}
+      ],
+      "values": [],
+      "events": [],
+      "points": [
+        {"node": 3, "kind": "lazy", "templates": [1]},
+        {"node": 6, "kind": "lazy", "templates": [2]}
+      ]
+    },
+    {
+      "label": "Lists:for2",
+      "kind": "row",
+      "roots": [0],
+      "nodes": [
+        {"element": "Text", "props": {}, "children": []}
+      ],
+      "values": [
+        {"node": 0, "prop": "value", "type": "String"}
+      ],
+      "events": [],
+      "points": []
+    },
+    {
+      "label": "Lists:for6",
+      "kind": "row",
+      "roots": [0],
+      "nodes": [
+        {"element": "Text", "props": {}, "children": []}
+      ],
+      "values": [
+        {"node": 0, "prop": "value", "type": "String"}
+      ],
+      "events": [],
+      "points": []
+    }
+  ]
+}

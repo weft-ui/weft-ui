@@ -1,0 +1,25 @@
+model Item {
+  id: Int,
+  title: String,
+}
+
+model ListsModel {
+  items: Item[],
+}
+
+component Lists(model: ListsModel) {
+  Column {
+    List(gap = 8) {
+      Text("Header")
+      for (item in model.items; key = item.id) {
+        Text(item.title)
+      }
+      Text("Footer")
+    }
+    Grid(columns = 3, gap = 4) {
+      for (item in model.items; key = item.id) {
+        Text(item.title)
+      }
+    }
+  }
+}

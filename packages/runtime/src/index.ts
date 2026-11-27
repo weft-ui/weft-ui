@@ -23,6 +23,8 @@ import {
 import { declarations } from "./css.ts";
 import { CSS, CSS_PROPS, type InputType } from "./elements.ts";
 import type { Value } from "./remote.ts";
+import { Lazy } from "./lazy.ts";
+import { Virtual } from "./virtual.ts";
 
 export * from "./core.ts";
 export type { PageClass } from "./navigation.ts";
@@ -350,6 +352,45 @@ export class List {
   destroy(): void {
     for (const row of this.rows) row.destroy(false);
     this.rows = [];
+  }
+}
+
+/** Virtualized keyed loop used by List and Grid elements. */
+export class LazyList {
+  private readonly lazy: Lazy<unknown, Row>;
+  private readonly virtual: Virtual;
+  private readonly parent: HTMLElement & { $weftLazy?: LazyList };
+
+  constructor(anchor: Node, make: (item: unknown) => Row, key: (item: unknown) => unknown, columns = 1) {
+    this.parent = anchor.parentNode as HTMLElement & { $weftLazy?: LazyList };
+    this.virtual = new Virtual(anchor, columns, (start, end) => this.window(start, end));
+    this.lazy = new Lazy(key, {
+      splice: (index, remove, items) => this.virtual.splice(index, remove, items),
+      bind: (id, row) => this.virtual.bind(id, row ? (element) => row.mount(element, null) : null),
+      create: make,
+      change: (row, item) => row.setItem(item),
+      destroy: (row) => row.destroy(false),
+    });
+    this.parent.$weftLazy = this;
+  }
+
+  set(items: readonly unknown[]): void {
+    this.lazy.set(items);
+  }
+
+  window(start: number, end: number): void {
+    this.lazy.window(start, end);
+  }
+
+  update(): void {
+    const epoch = currentEpoch();
+    this.lazy.update((row) => { if (row.born !== epoch) row.update(); });
+  }
+
+  destroy(): void {
+    this.lazy.destroy();
+    this.virtual.destroy();
+    if (this.parent.$weftLazy === this) delete this.parent.$weftLazy;
   }
 }
 

@@ -17,13 +17,13 @@ event Remove(id: Int)
 const APP: &str = "// 列表 😀
 import \"./models.weft\"
 
-model List {
+model TodoCollection {
   todos: Todo[],
 }
 
 event Click
 
-component App(list: List, title: String = \"清单\") {
+component App(list: TodoCollection, title: String = \"清单\") {
   Column {
     Text(title)
     Button(onClick = Click) { Text(\"+\") }
@@ -83,7 +83,7 @@ fn declaration_names_map_to_their_utf16_spans() {
     assert_eq!(
         pairs,
         [
-            ("List", "List", SpanMapKind::Verbatim),
+            ("TodoCollection", "TodoCollection", SpanMapKind::Verbatim),
             ("todos", "todos", SpanMapKind::Verbatim),
             ("Click", "Click", SpanMapKind::Verbatim),
             ("App", "App", SpanMapKind::Verbatim),

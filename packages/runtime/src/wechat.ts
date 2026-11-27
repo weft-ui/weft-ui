@@ -44,7 +44,7 @@ export function wechatRouteURL(pages: readonly PageClass[], path: string, query:
 type AssetVariants = Readonly<Record<string, readonly [scale: number, src: string][]>>;
 
 declare const wx: {
-  getWindowInfo?(): { pixelRatio: number };
+  getWindowInfo?(): { pixelRatio: number; windowHeight?: number };
   setNavigationBarTitle(options: { title: string }): void;
   navigateTo(options: { url: string }): void;
   redirectTo(options: { url: string }): void;
@@ -83,6 +83,8 @@ export interface TemplateKeys {
   q?: [label: string, selected: string, options: string, placeholder?: string][];
   /** Key per mount point; `[indexKey, dataKey]` for branches. */
   p?: (string | [string, string])[];
+  /** Grid column count by lazy point. */
+  g?: Readonly<Record<number, number>>;
   /** Constants that cannot be inlined into WXML. */
   d?: Data;
 }
@@ -98,6 +100,8 @@ export interface Layout {
 /** The generated view component instance (`Component(view(layout))`). */
 export interface View {
   setData(data: Data, callback?: () => void): void;
+  createIntersectionObserver?(options: { observeAll: boolean }): IntersectionObserver;
+  createSelectorQuery?(): SelectorQuery;
   $sink?: WechatSink;
   $keyboardRevision?: number;
 }
@@ -106,8 +110,44 @@ export interface View {
 interface ViewEvent {
   type: string;
   currentTarget: { id?: string; dataset: Data };
-  detail?: { value?: unknown; width?: number; height?: number };
+  detail?: { value?: unknown; width?: number; height?: number; scrollTop?: number };
 }
+
+interface IntersectionObserver {
+  relativeTo(selector: string, margins: { top: number; bottom: number }): IntersectionObserver;
+  observe(selector: string, callback: (entry: { intersectionRatio: number; dataset: Data }) => void): void;
+  disconnect(): void;
+}
+
+interface Rect { dataset: Data; top: number; bottom: number; height: number }
+interface SelectorQuery {
+  select(selector: string): { boundingClientRect(callback: (rect: Rect | null) => void): SelectorQuery };
+  selectAll(selector: string): { boundingClientRect(callback: (rects: Rect[]) => void): SelectorQuery };
+  exec(): void;
+}
+
+interface LazyItem { item: number; template: number; child: Scope | null }
+interface LazyPoint {
+  scope: Scope;
+  point: number;
+  key: string;
+  columns: number;
+  size: number;
+  items: LazyItem[];
+  heights: Map<number, number>;
+  positions: Map<number, number>;
+  scrollTop: number;
+  measuring: boolean;
+  measureAgain: boolean;
+  requestedStart: number;
+  requestedEnd: number;
+  dirty: boolean;
+  observer?: IntersectionObserver;
+  view?: View;
+}
+
+const SEGMENT_SIZE = 20;
+const ESTIMATED_HEIGHT = 44;
 
 interface Scope {
   id: number;
@@ -155,6 +195,7 @@ export class WechatSink implements Sink {
   #modal = 0;
   #modalStyle: "sheet" | "fullScreen" = "sheet";
   #modalViews = new Map<number, { view: View; page: View }>();
+  #lazy = new Map<string, LazyPoint>();
 
   constructor(view: View, layout: Layout, assets?: AssetVariants) {
     this.#view = view;
@@ -289,6 +330,163 @@ export class WechatSink implements Sink {
     }
   }
 
+  splice(id: number, point: number, index: number, remove: number, items: readonly { item: number; template: number }[]): void {
+    const scope = this.#scope(id);
+    const token = `${id}:${point}`;
+    let lazy = this.#lazy.get(token);
+    if (!lazy) {
+      const columns = scope.keys.g?.[point] ?? 1;
+      const size = Math.max(columns, Math.floor(SEGMENT_SIZE / columns) * columns);
+      lazy = { scope, point, key: scope.keys.p![point] as string, columns, size, items: [], heights: new Map(), positions: new Map(), scrollTop: 0, measuring: false, measureAgain: false, requestedStart: -1, requestedEnd: -1, dirty: false };
+      scope.o[`z${lazy.key.slice(1)}`] = 0;
+      this.#lazy.set(token, lazy);
+    }
+    const kept = new Map(lazy.items.map((item) => [item.item, item]));
+    const inserted = items.map(({ item, template }) => kept.get(item) ?? { item, template, child: null });
+    const removed = lazy.items.splice(index, remove, ...inserted);
+    const remaining = new Set(lazy.items);
+    for (const item of removed) if (!remaining.has(item) && item.child) this.#destroy(item.child);
+    lazy.heights.clear();
+    lazy.requestedStart = -1;
+    lazy.requestedEnd = -1;
+    lazy.observer?.disconnect();
+    lazy.observer = undefined;
+    lazy.dirty = true;
+  }
+
+  bind(id: number, point: number, item: number, child: number): void {
+    const lazy = this.#lazy.get(`${id}:${point}`);
+    const entry = lazy?.items.find((row) => row.item === item);
+    if (!lazy || !entry) throw new Error(`weft: unknown lazy item ${item}`);
+    if (entry.child && entry.child.id !== child) this.#destroy(entry.child);
+    entry.child = child ? this.#scope(child) : null;
+    lazy.dirty = true;
+  }
+
+  /** Records user scrolling independently of programmatic scroll-top corrections. */
+  scroll(event: ViewEvent): void {
+    const { scope, point } = event.currentTarget.dataset;
+    const lazy = this.#lazy.get(`${Number(scope)}:${Number(point)}`);
+    if (lazy && typeof event.detail?.scrollTop === "number") {
+      lazy.scrollTop = event.detail.scrollTop;
+      this.#measure(lazy);
+    }
+  }
+
+  /** Requests a half-open range, as an IntersectionObserver or a test host does. */
+  window(scope: number, point: number, start: number, end: number): void {
+    this.#session?.window(scope, point, start, end);
+  }
+
+  #segments(lazy: LazyPoint): void {
+    const { scope, key, items } = lazy;
+    const segments: Data[] = [];
+    let measuredHeight = 0;
+    let measuredRows = 0;
+    for (const [index, height] of lazy.heights) {
+      const count = Math.min(lazy.size, Math.max(0, items.length - index * lazy.size));
+      measuredHeight += height;
+      measuredRows += Math.ceil(count / lazy.columns);
+    }
+    const estimate = measuredRows ? measuredHeight / measuredRows : ESTIMATED_HEIGHT;
+    for (let start = 0; start < items.length; start += lazy.size) {
+      const index = segments.length;
+      const slice = items.slice(start, start + lazy.size);
+      const materialized = slice.some((item) => item.child !== null);
+      const rows = materialized ? slice.map((item, offset) => {
+        if (!item.child) return { k: item.item, t: item.template };
+        item.child.up = scope;
+        item.child.seg = `${key}[${index}].r[${offset}]`;
+        item.child.o.k = item.item;
+        item.child.o.t = item.template;
+        item.child.o.w = true;
+        return item.child.o;
+      }) : null;
+      const height = lazy.heights.get(index) ?? Math.ceil(slice.length / lazy.columns) * estimate;
+      segments.push({ k: index, h: height, s: `height:${height}px`, r: rows });
+    }
+    scope.o[key] = segments;
+    if (!scope.fresh) this.#pend(scope, key);
+  }
+
+  #observeView(view: View): void {
+    for (const lazy of this.#lazy.values()) if (this.#viewFor(lazy.scope) === view) {
+      this.#observe(lazy);
+      this.#measure(lazy);
+    }
+  }
+
+  #observe(lazy: LazyPoint): void {
+    if (lazy.scope.dead || !this.#locate(lazy.scope, lazy.key)) return;
+    const view = this.#viewFor(lazy.scope);
+    if (lazy.view === view && lazy.observer) return;
+    lazy.observer?.disconnect();
+    lazy.view = view;
+    const observer = view.createIntersectionObserver?.({ observeAll: true });
+    if (!observer) return;
+    lazy.observer = observer;
+    const selector = `#wl-${lazy.scope.id}-${lazy.point}`;
+    const margin = typeof wx === "undefined" ? 0 : wx.getWindowInfo?.().windowHeight ?? 0;
+    observer.relativeTo(selector, { top: margin, bottom: margin }).observe(`.wl-segment-${lazy.scope.id}-${lazy.point}`, () => {
+      if (!lazy.scope.dead) this.#measure(lazy);
+    });
+  }
+
+  #measure(lazy: LazyPoint): void {
+    if (lazy.measuring) {
+      lazy.measureAgain = true;
+      return;
+    }
+    const query = lazy.view?.createSelectorQuery?.();
+    if (!query) return;
+    lazy.measuring = true;
+    const selector = `#wl-${lazy.scope.id}-${lazy.point}`;
+    const bounds: { viewport: Rect | null } = { viewport: null };
+    query.select(selector).boundingClientRect((rect) => { bounds.viewport = rect; });
+    query.selectAll(`.wl-segment-${lazy.scope.id}-${lazy.point}`).boundingClientRect((rects) => {
+      lazy.measuring = false;
+      const viewport = bounds.viewport;
+      if (lazy.scope.dead || !viewport) return;
+      const next = new Map<number, number>();
+      let correction: number | undefined;
+      let first = Infinity;
+      let last = -1;
+      for (const rect of rects) {
+        const index = Number(rect.dataset.segment);
+        const position = rect.top - viewport.top + lazy.scrollTop;
+        next.set(index, position);
+        if (rect.bottom > viewport.top - viewport.height && rect.top < viewport.bottom + viewport.height) {
+          first = Math.min(first, index);
+          last = Math.max(last, index);
+        }
+        const old = lazy.positions.get(index);
+        if (correction === undefined && rect.bottom > viewport.top && old !== undefined) correction = position - old;
+        if (lazy.items.slice(index * lazy.size, (index + 1) * lazy.size).every((item) => item.child) && rect.height > 0) lazy.heights.set(index, rect.height);
+      }
+      lazy.positions = next;
+      if (correction !== undefined && Math.abs(correction) > 0.5) {
+        lazy.scrollTop = Math.max(0, lazy.scrollTop + correction);
+        const key = `z${lazy.key.slice(1)}`;
+        lazy.scope.o[key] = lazy.scrollTop;
+        const path = this.#locate(lazy.scope, key);
+        if (path !== null) lazy.view?.setData({ [path]: lazy.scrollTop });
+      }
+      if (last >= 0) {
+        const start = first * lazy.size;
+        const end = Math.min(lazy.items.length, (last + 1) * lazy.size);
+        if (start !== lazy.requestedStart || end !== lazy.requestedEnd) {
+          lazy.requestedStart = start;
+          lazy.requestedEnd = end;
+          this.window(lazy.scope.id, lazy.point, start, end);
+        }
+      }
+      if (lazy.measureAgain) {
+        lazy.measureAgain = false;
+        this.#measure(lazy);
+      }
+    }).exec();
+  }
+
   attach(id: number, point: number, child: number): void {
     const next = this.#scope(child);
     if (id === 0) {
@@ -373,7 +571,7 @@ export class WechatSink implements Sink {
     this.#views.set(index, view);
     view.$sink = this;
     const scope = this.#scopes.get(this.#pages[index]);
-    if (scope) view.setData({ t: scope.keys.n, r: scope.o });
+    if (scope) view.setData({ t: scope.keys.n, r: scope.o }, () => this.#observeView(view));
   }
 
   /** Associates the modal component and its page-container owner with a stack position. */
@@ -466,6 +664,12 @@ export class WechatSink implements Sink {
 
   /** Sends the batch with one `setData`. */
   commit(): void {
+    for (const lazy of this.#lazy.values()) {
+      if (lazy.dirty && !lazy.scope.dead) {
+        lazy.dirty = false;
+        this.#segments(lazy);
+      }
+    }
     const data = new Map<string, unknown>();
     for (const [scope, key] of this.#pending) {
       if (scope.dead) continue;
@@ -483,10 +687,10 @@ export class WechatSink implements Sink {
     if (this.#pages.length) {
       for (const [index, view] of this.#views) {
         const scope = this.#scopes.get(this.#pages[index]);
-        if (scope) view.setData({ t: scope.keys.n, r: scope.o });
+        if (scope) view.setData({ t: scope.keys.n, r: scope.o }, () => this.#observeView(view));
       }
       this.#renderModal(this.#pages.length - 1);
-    } else if (data.size > 0) this.#view.setData(uncovered(data));
+    } else if (data.size > 0) this.#view.setData(uncovered(data), () => this.#observeView(this.#view));
   }
 
   #renderModal(index: number): void {
@@ -495,7 +699,7 @@ export class WechatSink implements Sink {
     const scope = this.#scopes.get(this.#modal);
     const bar = scope?.keys.bar;
     const title = bar?.key === undefined ? bar?.title : scope?.o[bar.key];
-    binding.view.setData({ t: scope?.keys.n ?? "", r: scope?.o ?? null });
+    binding.view.setData({ t: scope?.keys.n ?? "", r: scope?.o ?? null }, () => this.#observeView(binding.view));
     const hidden = scope?.keys.barHiddenKey ? scope.o[scope.keys.barHiddenKey] : scope?.keys.barHidden;
     binding.page.setData({ m: !!scope, ms: this.#modalStyle === "sheet" ? 0 : 1, mc: this.#modalStyle === "sheet" ? "max-height:90vh" : "height:100vh", mt: typeof title === "string" ? title : "", mh: !!hidden });
   }
@@ -614,7 +818,14 @@ export class WechatSink implements Sink {
 
   /** Destroys a scope and its descendants. */
   #destroy(scope: Scope): void {
+    if (scope.dead) return;
     scope.dead = true;
+    for (const [key, lazy] of this.#lazy) {
+      if (lazy.scope !== scope) continue;
+      lazy.observer?.disconnect();
+      this.#lazy.delete(key);
+      for (const item of lazy.items) if (item.child) this.#destroy(item.child);
+    }
     this.#scopes.delete(scope.id);
     for (const handler of scope.hs) this.#handlers.delete(handler);
     for (const kid of scope.kids) {
@@ -684,6 +895,9 @@ export function view(layout: Layout, assets?: AssetVariants) {
         this.setData({ kh: height, kf: "" }, () => {
           if (target && this.$keyboardRevision === revision) this.setData({ kf: target });
         });
+      },
+      $scroll(this: View, event: ViewEvent): void {
+        this.$sink?.scroll(event);
       },
       $image(this: View, event: ViewEvent): void {
         this.$sink?.imageLoaded(event);

@@ -17,9 +17,10 @@ import "./pages/Form.weft"
 import "./pages/Settings.weft"
 import "./pages/Empty.weft"
 import "./pages/Lifecycle.weft"
+import "./pages/List.weft"
 import "./pages/Overlays.weft"
 
-model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], fieldRegions: String[], lifecycleCounts: String[], overlayResult: String[] }
+model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], fieldRegions: String[], lifecycleCounts: String[], listRows: String[], overlayResult: String[] }
 event Open(id: String)
 
 page Catalog() {
@@ -44,6 +45,7 @@ page Catalog() {
             Button(onClick = { Open("settings") }) { Text("page:settings") }
             Button(onClick = { Open("empty") }) { Text("page:empty") }
             Button(onClick = { Open("lifecycle") }) { Text("page:lifecycle") }
+            Button(onClick = { Open("list") }) { Text("page:list") }
             Button(onClick = { Open("overlays") }) { Text("page:overlays") }
         }
     }
@@ -119,6 +121,10 @@ page EmptyPage(model: ShowcaseModel) path "/showcase/empty" {
 page LifecyclePage(model: ShowcaseModel) path "/showcase/lifecycle" {
     NavBar(title = "Lifecycle")
     Lifecycle(model.lifecycleCounts)
+}
+page ListExamplePage(model: ShowcaseModel) path "/showcase/list" {
+    NavBar(title = "Lazy list")
+    ListExample(model.listRows)
 }
 page OverlaysPage(model: ShowcaseModel) path "/showcase/overlays" {
     NavBar(title = "Overlays")

@@ -195,6 +195,8 @@ pub enum PointKind {
     Branch { templates: Vec<TemplateId> },
     /// A `for` loop: ordered children of the row template.
     List { template: TemplateId },
+    /// A virtualized list with its row templates.
+    Lazy { templates: Vec<TemplateId> },
     /// A component call: one child of the callee's body template.
     Instance { template: TemplateId },
     /// A component's `Children` parameter: at most one child, whose

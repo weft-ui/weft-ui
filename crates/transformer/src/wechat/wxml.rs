@@ -107,6 +107,16 @@ fn tag(element: Element) -> (&'static str, &'static str, &'static str) {
             "w-scroll-v",
             " scroll-y enable-flex enhanced",
         ),
+        Element::List => (
+            "scroll-view",
+            "w-list w-scroll-v",
+            " scroll-y enable-flex enhanced",
+        ),
+        Element::Grid => (
+            "scroll-view",
+            "w-grid w-scroll-v",
+            " scroll-y enable-flex enhanced",
+        ),
         Element::Spacer => ("view", "w-spacer", ""),
         Element::Text => ("text", "w-text", ""),
         Element::Span => ("text", "w-span", ""),
@@ -279,9 +289,11 @@ impl Markup<'_> {
         {
             fixed = "";
         }
-        let mut default_scrollbar = element == Element::Scroll;
-        let mut default_grow = element == Element::Scroll;
-        let mut default_fill = element == Element::Scroll;
+        let scrolling = matches!(element, Element::Scroll | Element::List | Element::Grid);
+        let lazy = matches!(element, Element::List | Element::Grid);
+        let mut default_scrollbar = scrolling;
+        let mut default_grow = scrolling;
+        let mut default_fill = scrolling;
         let mut attrs = String::new();
         if matches!(element, Element::Input | Element::TextArea) {
             let _ = write!(
@@ -454,7 +466,7 @@ impl Markup<'_> {
                         }
                     }
                     let style = if css.target == CssTarget::Inner
-                        || element == Element::Scroll && matches!(prop.name, "gap" | "align")
+                        || scrolling && matches!(prop.name, "gap" | "align")
                     {
                         &mut inner_style
                     } else {
@@ -582,6 +594,18 @@ impl Markup<'_> {
                 }
             }
         }
+        if lazy {
+            let node = children
+                .iter()
+                .find(|child| matches!(self.comp.node(**child).kind, NodeKind::For { .. }))
+                .expect("lazy list has one for");
+            let point = self.layout.point(self.id, *node);
+            let _ = write!(
+                out,
+                " id=\"wl-{{{{{prefix}ws}}}}-{point}\" data-scope=\"{{{{{prefix}ws}}}}\" data-point=\"{point}\" bindscroll=\"$scroll\" scroll-top=\"{{{{{prefix}z{}}}}}\"",
+                node.0
+            );
+        }
         if !style.is_empty() {
             let _ = write!(out, " style=\"{style}\"");
         }
@@ -609,7 +633,7 @@ impl Markup<'_> {
             }
             None => {}
         }
-        if element == Element::Scroll {
+        if scrolling {
             let axis = if class == "w-scroll-h" { 'h' } else { 'v' };
             let _ = write!(
                 out,
@@ -634,8 +658,52 @@ impl Markup<'_> {
                 "<view class=\"w-picker w-wx{picker_classes}\">{{{{{prefix}{label}}}}}</view>"
             );
         }
-        self.nodes(children, prefix, Parent::of(element), out);
-        if element == Element::Scroll {
+        if lazy {
+            for &child in children {
+                if let NodeKind::For { children: rows, .. } = &self.comp.node(child).kind {
+                    let name = format!("{}-l{}", self.comp.name, child.0);
+                    let mut body = String::new();
+                    self.nodes(rows, "", Parent::Ordinary, &mut body);
+                    self.slots.push((name.clone(), body));
+                    let columns = props
+                        .iter()
+                        .enumerate()
+                        .find(|(_, prop)| prop.name == "columns")
+                        .and_then(|(index, prop)| {
+                            match prop_value(
+                                self.layout,
+                                self.id,
+                                id,
+                                index,
+                                prop,
+                                target(element, prop.name),
+                            ) {
+                                Value::Inline(Constant::Int(value)) => Some(*value),
+                                _ => None,
+                            }
+                        })
+                        .unwrap_or(1);
+                    let grid = if element == Element::Grid {
+                        format!(
+                            "display:grid;grid-template-columns:repeat({columns},minmax(0,1fr));{inner_style};"
+                        )
+                    } else {
+                        format!("display:flex;flex-direction:column;{inner_style};")
+                    };
+                    let point = self.layout.point(self.id, child);
+                    let _ = write!(
+                        out,
+                        "<block wx:for=\"{{{{{prefix}l{}}}}}\" wx:for-item=\"segment\" wx:key=\"k\"><view class=\"w-lazy-segment wl-segment-{{{{{prefix}ws}}}}-{point}\" data-segment=\"{{{{segment.k}}}}\" style=\"{grid}{{{{segment.r ? '' : segment.s}}}}\"><block wx:for=\"{{{{segment.r}}}}\" wx:for-item=\"lazyrow\" wx:key=\"k\"><block wx:if=\"{{{{lazyrow.w}}}}\"><view class=\"w-lazy-row\"><template is=\"{name}\" data=\"{{{{...lazyrow}}}}\"/></view></block><view wx:else class=\"w-lazy-row\" style=\"height:44px\"></view></block></view></block>",
+                        child.0
+                    );
+                } else {
+                    self.node(child, prefix, Parent::Scroll, out);
+                }
+            }
+        } else {
+            self.nodes(children, prefix, Parent::of(element), out);
+        }
+        if scrolling {
             out.push_str("</view>");
         } else if wraps_text {
             out.push_str("</text>");

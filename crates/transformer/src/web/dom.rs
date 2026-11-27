@@ -117,6 +117,8 @@ fn tag(element: Element, props: &[Prop]) -> (&'static str, &'static str, &'stati
         Element::Column => ("div", "", "w-column"),
         Element::Row => ("div", "", "w-row"),
         Element::Stack => ("div", "", "w-stack"),
+        Element::List => ("div", "", "w-list w-scroll-v"),
+        Element::Grid => ("div", "", "w-grid w-scroll-v"),
         Element::Scroll => {
             let horizontal = props.iter().any(|prop| {
                 let PropValue::Expr(value) = &prop.value else {
@@ -166,7 +168,7 @@ fn tag(element: Element, props: &[Prop]) -> (&'static str, &'static str, &'stati
 fn child_context(element: Element) -> &'static str {
     match element {
         Element::Stack => " w-in-stack",
-        Element::Scroll => " w-in-scroll",
+        Element::Scroll | Element::List | Element::Grid => " w-in-scroll",
         _ => "",
     }
 }
@@ -336,8 +338,8 @@ impl Gen {
         let mut style = String::new();
         let mut inner_style = String::new();
         let mut text = None;
-        let mut fill = element == Element::Scroll;
-        let mut grow = element == Element::Scroll;
+        let mut fill = matches!(element, Element::Scroll | Element::List | Element::Grid);
+        let mut grow = fill;
         out.push('<');
         out.push_str(tag);
         out.push_str(fixed);
@@ -350,6 +352,9 @@ impl Gen {
             out.push_str(" role=\"button\" tabindex=\"0\"");
         }
         for prop in props {
+            if element == Element::Grid && prop.name == "columns" {
+                continue;
+            }
             let PropValue::Expr(expr) = &prop.value else {
                 continue;
             };
@@ -538,6 +543,9 @@ impl Backend for Gen {
         }
         let mut listens_for_edits = false;
         for prop in props {
+            if element == Element::Grid && prop.name == "columns" {
+                continue;
+            }
             match &prop.value {
                 PropValue::Expr(value) => {
                     let target = target(element, prop.name, has_clamp, has_placeholder);

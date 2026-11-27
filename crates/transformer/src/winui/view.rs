@@ -30,6 +30,9 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                 .peekable();
             let declaration = if slots.peek().is_some() { "" } else { "var " };
             let args = std::fmt::from_fn(|out| match element {
+                Element::List | Element::Grid => {
+                    unreachable!("lazy lists are not supported on native platforms")
+                }
                 Element::NavBar => Ok(()),
                 Element::BarButton => match template.event(index, "onTap") {
                     Some(slot) => write!(out, "() => Dispatch({slot})"),
@@ -138,6 +141,9 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
+        Element::List | Element::Grid => {
+            unreachable!("lazy lists are not supported on native platforms")
+        }
         Element::NavBar => "WeftNavigationBar",
         Element::BarButton => "WeftBarButton",
         Element::Column | Element::Row => "WeftStack",

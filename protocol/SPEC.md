@@ -164,10 +164,12 @@ WXML renders only `{{key}}`. The `setData` paths are paths in the block data tre
 | `n{N}_{i}`      | Property value or text. |
 | `e{N}_{k}`      | Handler ID (assigned by the sink) for the element's `k`-th event, zero-based. WXML binds `bind<type>="$e"` and `data-e<type>="{{e{N}_{k}}}"`, where `type` is the lowercase mini program event name. The `tap` type uses `catchtap` instead of `bindtap` so only the innermost handler runs. |
 | `i{N}` / `b{N}` | Current `if` branch index / branch data. |
-| `l{N}`          | Array of `for` rows. Each row carries `k` (the row's scope ID, used as `wx:key`). |
+| `l{N}`          | Ordinary `for`: array of rows, each with `k` (the row's scope ID). Lazy point: array of segments `{k, h, r}`; `k` is the segment number, `h` the placeholder height in pixels, and `r` is the item array or `null` outside the window. Each item has `k` (item ID), `t` (template index), and the materialized scope data when bound. |
 | `c{N}`          | Component instance data. |
 | `y{N}`          | Data for the first `Children` parameter. |
 | `y{N}_{p}`      | Data for another `Children` parameter, where `p` is its zero-based index in the full parameter list. |
+
+List segments contain up to 20 items. Grid segment capacity is the largest multiple of `columns` at most 20, or one row when `columns` exceeds 20, so a row never crosses a segment boundary. Outside the requested window, `r` is `null` and `h` reserves the measured height, or an estimate based on the mean measured height for the template (44 logical pixels before any measurement). Grid segments render items by rows. An IntersectionObserver relative to the scroll view requests a window extending about one viewport on each side.
 
 Slot data holds `t`, the slot content template name. In the calling component, that name is `{Component}-s{N}` for the callee's first `Children` parameter and `{Component}-s{N}_{p}` for any other slot. Here `N` is the call node ID, rather than the slot node ID used in the receiving component's data key.
 

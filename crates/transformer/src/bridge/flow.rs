@@ -133,14 +133,34 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
                     .backend
                     .element(&self.ir, id, parent, *element, props, parts);
                 for &child in children {
-                    self.node(child, ctx, parent, parts);
+                    if matches!(element.spec().name, "List" | "Grid")
+                        && matches!(self.ir.comp.node(child).kind, NodeKind::For { .. })
+                    {
+                        let columns = props.iter().find(|p| p.name == "columns").and_then(|p| {
+                            if let crate::ir::PropValue::Expr(value) = &p.value {
+                                Some(expr(value, Env::default()))
+                            } else {
+                                None
+                            }
+                        });
+                        self.for_node(
+                            child,
+                            &self.ir.comp.node(child).kind,
+                            ctx,
+                            parent,
+                            parts,
+                            Some(columns),
+                        );
+                    } else {
+                        self.node(child, ctx, parent, parts);
+                    }
                 }
                 lifecycle(self.ir.program, lifecycle_handlers(props), parts);
             }
             NodeKind::If { branches, binding } => {
                 self.if_node(id, branches, *binding, ctx, parent, parts);
             }
-            NodeKind::For { .. } => self.for_node(id, kind, ctx, parent, parts),
+            NodeKind::For { .. } => self.for_node(id, kind, ctx, parent, parts, None),
             NodeKind::Component { .. } => self.component_node(id, kind, ctx, parent, parts),
             NodeKind::Slot { param } => {
                 let slot = format!("y{}", id.0);
@@ -206,6 +226,7 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
         ctx: &Ctx,
         parent: &str,
         parts: &mut Parts,
+        lazy: Option<Option<String>>,
     ) {
         let NodeKind::For {
             loop_id,
@@ -235,8 +256,9 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
         );
         let words = words(self.ir.comp.loops[loop_id.index()].slots.len());
 
+        let constructor = if lazy.is_some() { "LazyList" } else { "List" };
         parts.create.open(format!(
-            "const {var} = new $.List({}, (item) => {{",
+            "const {var} = new $.{constructor}({}, (item) => {{",
             self.backend.anchor(id, parent)
         ));
         parts.create.line(format!(
@@ -246,7 +268,10 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
         ));
         self.block(children, &ctx.with_loop(loop_id), &row, &mut parts.create);
         parts.create.line(format!("return {row};"));
-        parts.create.close(format!("}}, ($it) => {key});"));
+        let extra = lazy
+            .flatten()
+            .map_or_else(String::new, |columns| format!(", {columns}"));
+        parts.create.close(format!("}}, ($it) => {key}{extra});"));
         parts.create.line(format!("{var}.set({list});"));
 
         if let Some(cond) = binding_cond(self.ir.comp, *list_binding) {

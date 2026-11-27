@@ -26,6 +26,9 @@ fn node(out: &mut Code, template: &Template, index: u32, parent: Option<u32>) {
             children,
         } => {
             let args = match element {
+                Element::List | Element::Grid => {
+                    unreachable!("lazy lists are not supported on native platforms")
+                }
                 Element::NavBar => String::new(),
                 Element::BarButton => match template.event(index, "onTap") {
                     Some(slot) => format!("[this] {{ dispatch({slot}); }}"),
@@ -185,6 +188,9 @@ fn member(template: &Template, index: u32) -> String {
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
+        Element::List | Element::Grid => {
+            unreachable!("lazy lists are not supported on native platforms")
+        }
         Element::NavBar => "NavBar",
         Element::BarButton => "BarButton",
         Element::Column | Element::Row => "Linear",

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
 import { tick } from "@weft-ui/runtime/remote";
+import { WechatSink } from "@weft-ui/runtime/wechat";
 import { type Element, type TestView, compile, loadView } from "../src/miniprogram.ts";
 
 // The shared feature fixture: nested components, slots, defaults,
@@ -192,4 +193,49 @@ test("a changed item inside slot content is sent alone", async () => {
   expect(Object.keys(calls[0])).toHaveLength(1);
   expect(Object.keys(calls[0])[0]).toMatch(/^r\.l\d+\[1\]\.c\d+\.y\d+\.l\d+\[0\]\.c\d+\.n\d+_\d+$/);
   expect(labels(view)).toEqual(["a", "b", "C"]);
+});
+
+test("scrolling a segmented list requests the visible window even without observer notifications", () => {
+  type Rect = { dataset: Record<string, unknown>; top: number; bottom: number; height: number };
+  type Query = {
+    select(selector: string): { boundingClientRect(callback: (rect: Rect | null) => void): Query };
+    selectAll(selector: string): { boundingClientRect(callback: (rects: Rect[]) => void): Query };
+    exec(): void;
+  };
+  let scrollTop = 0;
+  const requests: [number, number][] = [];
+  const view = {
+    setData(_data: Record<string, unknown>, callback?: () => void) { callback?.(); },
+    createSelectorQuery(): Query {
+      let viewport: ((rect: Rect | null) => void) | undefined;
+      let segments: ((rects: Rect[]) => void) | undefined;
+      const query: Query = {
+        select(selector) {
+          expect(selector).toBe("#wl-1-0");
+          return { boundingClientRect(callback) { viewport = callback; return query; } };
+        },
+        selectAll(selector) {
+          expect(selector).toBe(".wl-segment-1-0");
+          return { boundingClientRect(callback) { segments = callback; return query; } };
+        },
+        exec() {
+          viewport?.({ dataset: {}, top: 0, bottom: 600, height: 600 });
+          segments?.(Array.from({ length: 5 }, (_, index) => ({
+            dataset: { segment: index }, top: index * 880 - scrollTop,
+            bottom: (index + 1) * 880 - scrollTop, height: 880,
+          })));
+        },
+      };
+      return query;
+    },
+  };
+  const sink = new WechatSink(view, { hash: "test", templates: [{ n: "Root", m: true, p: ["l5"] }] });
+  sink.open({ hash: "test", dispatch: () => true, window: (_scope, _point, start, end) => requests.push([start, end]), signal: () => {}, detach: () => {} });
+  sink.create(1, 0);
+  sink.splice(1, 0, 0, 0, Array.from({ length: 100 }, (_, index) => ({ item: index + 1, template: 0 })));
+  sink.attach(0, 0, 1);
+  sink.commit();
+  scrollTop = 3000;
+  sink.scroll({ type: "scroll", currentTarget: { dataset: { scope: 1, point: 0 } }, detail: { scrollTop } });
+  expect(requests.at(-1)).toEqual([40, 100]);
 });

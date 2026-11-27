@@ -396,6 +396,95 @@ Overlays children in declaration order.
 | --- | --- | --- | --- |
 | `onTap` | — | Runs when the element is activated; this event has no payload and does not bubble. | — |
 
+## List
+
+Displays a vertically scrolling lazy list.
+
+**Platform exceptions:** Unsupported: `ios`; Unsupported: `macos`; Unsupported: `android`; Unsupported: `windows`; Unsupported: `linux`.
+
+**Children:** Any.
+
+| Property | Type | Default | Description | Platform exceptions |
+| --- | --- | --- | --- | --- |
+| `width` | `Int` | — | Sets the width of the content box. | — |
+| `height` | `Int` | — | Sets the height of the content box. | — |
+| `grow` | `Float` | `0` | Sets the share of remaining main-axis space for a child in a linear container. | — |
+| `minWidth` | `Int` | — | Sets the minimum content width. | — |
+| `maxWidth` | `Int` | — | Sets the maximum content width. | — |
+| `minHeight` | `Int` | — | Sets the minimum content height. | — |
+| `maxHeight` | `Int` | — | Sets the maximum content height. | — |
+| `fill` | `Bool` | `false` | Fills the cross axis in a linear container or both axes in a Stack. | — |
+| `aspectRatio` | `Float` | — | Sets width divided by height when one dimension determines the other. | — |
+| `margin` | `Int` | `0` | Sets the outer spacing on all four sides. | — |
+| `marginX` | `Int` | `0` | Sets the outer spacing on the left and right. | — |
+| `marginY` | `Int` | `0` | Sets the outer spacing on the top and bottom. | — |
+| `marginTop` | `Int` | `0` | Sets the top margin. | — |
+| `marginBottom` | `Int` | `0` | Sets the bottom margin. | — |
+| `marginStart` | `Int` | `0` | Sets the left margin in left-to-right layout. | — |
+| `marginEnd` | `Int` | `0` | Sets the right margin in left-to-right layout. | — |
+| `opacity` | `Float` | `1` | Sets the opacity of the element and its children. | — |
+| `hidden` | `Bool` | `false` | Hides the element and removes it from layout. | — |
+| `padding` | `Int` | `0` | Sets the inset on all four sides. | — |
+| `paddingX` | `Int` | `0` | Sets the left and right insets. | — |
+| `paddingY` | `Int` | `0` | Sets the top and bottom insets. | — |
+| `paddingTop` | `Int` | `0` | Sets the top inset. | — |
+| `paddingBottom` | `Int` | `0` | Sets the bottom inset. | — |
+| `paddingStart` | `Int` | `0` | Sets the left inset in left-to-right layout. | — |
+| `paddingEnd` | `Int` | `0` | Sets the right inset in left-to-right layout. | — |
+| `background` | `Color` | — | Fills the padding box, including the area underneath the border. | — |
+| `radius` | `Int` | `0` | Rounds the corners of the background and border. | — |
+| `border` | `Int` | `0` | Draws a solid border of the given width outside the padding box. | — |
+| `borderColor` | `Color` | `"#0000001f"` | Sets the border color; the dark-mode default is `#ffffff26`. | — |
+| `shadow` | `Shadow` | `"none"` | Draws a preset shadow outside the border box. | — |
+| `clip` | `Bool` | `false` | Clips overflowing content to the rounded padding box. | — |
+| `gap` | `Int` | `0` | Space between items. | — |
+| `indicators` | `Bool` | `true` | Controls whether scrollbars are shown. | — |
+
+## Grid
+
+Displays a vertically scrolling lazy grid.
+
+**Platform exceptions:** Unsupported: `ios`; Unsupported: `macos`; Unsupported: `android`; Unsupported: `windows`; Unsupported: `linux`.
+
+**Children:** Any.
+
+| Property | Type | Default | Description | Platform exceptions |
+| --- | --- | --- | --- | --- |
+| `width` | `Int` | — | Sets the width of the content box. | — |
+| `height` | `Int` | — | Sets the height of the content box. | — |
+| `grow` | `Float` | `0` | Sets the share of remaining main-axis space for a child in a linear container. | — |
+| `minWidth` | `Int` | — | Sets the minimum content width. | — |
+| `maxWidth` | `Int` | — | Sets the maximum content width. | — |
+| `minHeight` | `Int` | — | Sets the minimum content height. | — |
+| `maxHeight` | `Int` | — | Sets the maximum content height. | — |
+| `fill` | `Bool` | `false` | Fills the cross axis in a linear container or both axes in a Stack. | — |
+| `aspectRatio` | `Float` | — | Sets width divided by height when one dimension determines the other. | — |
+| `margin` | `Int` | `0` | Sets the outer spacing on all four sides. | — |
+| `marginX` | `Int` | `0` | Sets the outer spacing on the left and right. | — |
+| `marginY` | `Int` | `0` | Sets the outer spacing on the top and bottom. | — |
+| `marginTop` | `Int` | `0` | Sets the top margin. | — |
+| `marginBottom` | `Int` | `0` | Sets the bottom margin. | — |
+| `marginStart` | `Int` | `0` | Sets the left margin in left-to-right layout. | — |
+| `marginEnd` | `Int` | `0` | Sets the right margin in left-to-right layout. | — |
+| `opacity` | `Float` | `1` | Sets the opacity of the element and its children. | — |
+| `hidden` | `Bool` | `false` | Hides the element and removes it from layout. | — |
+| `padding` | `Int` | `0` | Sets the inset on all four sides. | — |
+| `paddingX` | `Int` | `0` | Sets the left and right insets. | — |
+| `paddingY` | `Int` | `0` | Sets the top and bottom insets. | — |
+| `paddingTop` | `Int` | `0` | Sets the top inset. | — |
+| `paddingBottom` | `Int` | `0` | Sets the bottom inset. | — |
+| `paddingStart` | `Int` | `0` | Sets the left inset in left-to-right layout. | — |
+| `paddingEnd` | `Int` | `0` | Sets the right inset in left-to-right layout. | — |
+| `background` | `Color` | — | Fills the padding box, including the area underneath the border. | — |
+| `radius` | `Int` | `0` | Rounds the corners of the background and border. | — |
+| `border` | `Int` | `0` | Draws a solid border of the given width outside the padding box. | — |
+| `borderColor` | `Color` | `"#0000001f"` | Sets the border color; the dark-mode default is `#ffffff26`. | — |
+| `shadow` | `Shadow` | `"none"` | Draws a preset shadow outside the border box. | — |
+| `clip` | `Bool` | `false` | Clips overflowing content to the rounded padding box. | — |
+| `columns` | `Int` | Required | Number of equal-width columns, at least one. | — |
+| `gap` | `Int` | `0` | Space between rows and columns. | — |
+| `indicators` | `Bool` | `true` | Controls whether scrollbars are shown. | — |
+
 ## Scroll
 
 Lays out children linearly and scrolls along its main axis.

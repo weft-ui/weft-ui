@@ -34,7 +34,7 @@ export type NodeLayout =
   | { point: number };
 
 export type PointLayout =
-  | { node: number; kind: "branch"; templates: number[] }
+  | { node: number; kind: "branch" | "lazy"; templates: number[] }
   | { node: number; kind: "list" | "instance"; template: number }
   | { node: number; kind: "slot" };
 
@@ -57,6 +57,8 @@ interface Scope {
   values: (Value | undefined)[];
   /** Mounted children by point. */
   kids: (Scope | Scope[] | null)[];
+  lazy: Map<number, { id: number; template: number; child: Scope | null }[]>;
+  lazyIds: Map<number, Set<number>>;
   mounted: boolean;
 }
 
@@ -88,11 +90,6 @@ export class Renderer extends OpWriter implements Sink {
     const batch = this.take();
     if (!batch) return;
     const ops = decode(batch);
-    for (const op of ops) {
-      if (op.op === "splice" || op.op === "bind") {
-        throw new Error(`weft protocol: unsupported ${op.op} for this layout`);
-      }
-    }
     const lines: string[] = [];
     for (const op of ops) {
       lines.push(this.#annotate(op));
@@ -157,6 +154,19 @@ export class Renderer extends OpWriter implements Sink {
     return out;
   }
 
+  /** Requests a half-open range of items from a rendered List or Grid. */
+  window(element: ViewElement, start: number, end: number): void {
+    const [scope, local] = this.#node(element);
+    const node = scope.template.nodes[local];
+    if (!("element" in node)) throw new Error("weft: element has no lazy point");
+    const points = node.children.flatMap(index => {
+      const child = scope.template.nodes[index];
+      return "point" in child && scope.template.points[child.point]?.kind === "lazy" ? [child.point] : [];
+    });
+    if (points.length !== 1) throw new Error("weft: element has no lazy point");
+    this.#session!.window(scope.id, points[0], start, end);
+  }
+
   /** Fires the named event (or the element's first event) without a payload. */
   click(element: ViewElement, event?: string): void {
     this.#emit(element, event, undefined);
@@ -206,6 +216,8 @@ export class Renderer extends OpWriter implements Sink {
   #expand(scope: Scope, local: number): ViewElement[] {
     const node = scope.template.nodes[local];
     if ("point" in node) {
+      const lazy = scope.lazy.get(node.point);
+      if (lazy) return lazy.flatMap(item => item.child ? this.#expandScope(item.child) : []);
       const kid = scope.kids[node.point];
       if (!kid) return [];
       return Array.isArray(kid) ? kid.flatMap((row) => this.#expandScope(row)) : this.#expandScope(kid);
@@ -299,6 +311,8 @@ export class Renderer extends OpWriter implements Sink {
           props: template.nodes.map((node) => ("element" in node ? { ...node.props } : {})),
           values: [],
           kids: template.points.map(() => null),
+          lazy: new Map(),
+          lazyIds: new Map(),
           mounted: false,
         });
         return;
@@ -341,6 +355,41 @@ export class Renderer extends OpWriter implements Sink {
         scope.kids[op.point] = rows;
         return;
       }
+      case "splice": {
+        const scope = this.#scope(op.scope);
+        const point = this.#point(scope, op.point, "lazy") as { templates: number[] };
+        const old = scope.lazy.get(op.point) ?? [];
+        if (op.index > old.length || op.remove > old.length - op.index) throw new Error("weft protocol: invalid lazy splice range");
+        const byId = new Map(old.map(item => [item.id, item]));
+        const used = scope.lazyIds.get(op.point) ?? new Set<number>();
+        const inserted = op.items.map(({ item: id, template }) => {
+          if (!id || !Number.isInteger(template) || template >= point.templates.length) throw new Error("weft protocol: invalid lazy item");
+          const retained = byId.get(id);
+          if (retained && retained.template !== template) throw new Error(`weft protocol: item ${id} changed template`);
+          if (!retained && used.has(id)) throw new Error(`weft protocol: lazy item ${id} was already used`);
+          return retained ?? { id, template, child: null };
+        });
+        const next = [...old.slice(0, op.index), ...inserted, ...old.slice(op.index + op.remove)];
+        const ids = new Set<number>();
+        for (const item of next) {
+          if (ids.has(item.id)) throw new Error(`weft protocol: duplicate lazy item ${item.id}`);
+          ids.add(item.id);
+        }
+        for (const item of old) if (!ids.has(item.id) && item.child) this.#destroy(item.child);
+        for (const item of inserted) used.add(item.id);
+        scope.lazyIds.set(op.point, used);
+        scope.lazy.set(op.point, next);
+        return;
+      }
+      case "bind": {
+        const scope = this.#scope(op.scope);
+        const point = this.#point(scope, op.point, "lazy") as { templates: number[] };
+        const item = scope.lazy.get(op.point)?.find(item => item.id === op.item);
+        if (!item) throw new Error(`weft protocol: unknown lazy item ${op.item}`);
+        if (item.child) this.#destroy(item.child);
+        item.child = op.child ? this.#child(op.child, [point.templates[item.template]]) : null;
+        return;
+      }
       case "attach": {
         if (op.scope === 0) {
           if (op.point !== 0 || this.#root) throw new Error(`weft protocol: invalid root ${formatOp(op)}`);
@@ -367,6 +416,7 @@ export class Renderer extends OpWriter implements Sink {
   /** Implicit destruction of a scope and its descendants. */
   #destroy(scope: Scope): void {
     this.#scopes.delete(scope.id);
+    for (const items of scope.lazy.values()) for (const item of items) if (item.child) this.#destroy(item.child);
     for (const kid of scope.kids) {
       if (Array.isArray(kid)) kid.forEach((row) => this.#destroy(row));
       else if (kid) this.#destroy(kid);

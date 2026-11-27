@@ -201,6 +201,33 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
             .collect();
         fields.push(format!("e: [{}]", events.join(", ")));
     }
+    let grids: Vec<String> = template
+        .nodes
+        .iter()
+        .filter_map(|node| {
+            let ViewNodeKind::Element {
+                element: Element::Grid,
+                props,
+                children,
+            } = &node.kind
+            else {
+                return None;
+            };
+            let columns = props.iter().find(|prop| prop.name == "columns")?;
+            let point = children.iter().find_map(|&child| {
+                if let ViewNodeKind::Point(index) = template.nodes[child as usize].kind {
+                    matches!(template.points[index as usize].kind, PointKind::Lazy { .. })
+                        .then_some(index)
+                } else {
+                    None
+                }
+            })?;
+            Some(format!("{point}: {}", columns.value))
+        })
+        .collect();
+    if !grids.is_empty() {
+        fields.push(format!("g: {{ {} }}", grids.join(", ")));
+    }
     if !template.points.is_empty() {
         let points: Vec<String> = template
             .points
@@ -210,7 +237,7 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
                 let n = node.0;
                 match point.kind {
                     PointKind::Branch { .. } => format!("[\"i{n}\", \"b{n}\"]"),
-                    PointKind::List { .. } => format!("\"l{n}\""),
+                    PointKind::List { .. } | PointKind::Lazy { .. } => format!("\"l{n}\""),
                     PointKind::Instance { .. } => format!("\"c{n}\""),
                     PointKind::Slot => {
                         let NodeKind::Slot { param } = comp.node(node).kind else {
@@ -256,7 +283,12 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
         *needs_assets = true;
         fields.push(format!("a: {{ {} }}", local_assets.join(", ")));
     }
-    if tracks_images {
+    if tracks_images
+        || template
+            .points
+            .iter()
+            .any(|point| matches!(point.kind, PointKind::Lazy { .. }))
+    {
         fields.push("m: true".to_owned());
     }
     format!("{{ {} }}", fields.join(", "))

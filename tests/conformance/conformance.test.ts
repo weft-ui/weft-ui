@@ -17,6 +17,7 @@ import { script as gallery } from "../fixtures/gallery/script.ts";
 import { script as inputs } from "../fixtures/inputs/script.ts";
 import { script as language } from "../fixtures/language/script.ts";
 import { script as navigation } from "../fixtures/navigation/script.ts";
+import { script as list } from "../fixtures/list/script.ts";
 import { script as tap } from "../fixtures/tap/script.ts";
 import { script as theme } from "../fixtures/theme/script.ts";
 import { script as todo } from "../fixtures/todo/script.ts";
@@ -28,6 +29,7 @@ const fixtures: [string, Script<AppLike>][] = [
   ["gallery", gallery as unknown as Script<AppLike>],
   ["inputs", inputs as unknown as Script<AppLike>],
   ["language", language as unknown as Script<AppLike>],
+  ["list", list as unknown as Script<AppLike>],
   ["navigation", navigation as unknown as Script<AppLike>],
   ["tap", tap as unknown as Script<AppLike>],
   ["theme", theme as unknown as Script<AppLike>],

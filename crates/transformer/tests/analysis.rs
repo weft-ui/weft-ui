@@ -9,6 +9,57 @@ use weft_ui_transformer::{Compilation, check, dependency_report};
 const DEMO: &str = include_str!("fixtures/TodoList.weft");
 
 #[test]
+fn lazy_lists_validate_structure_and_ancestors() {
+    let cases = [
+        (
+            "component A() { List { Text(\"x\") } }",
+            "`List` needs exactly one `for` among its children",
+        ),
+        (
+            "component A() { Grid(columns = 0) {} }",
+            "`Grid.columns` must be at least 1",
+        ),
+        (
+            "component A() { Grid(columns = 2) {} }",
+            "`Grid` needs exactly one `for` among its children",
+        ),
+        (
+            "model M { xs: Int[] } component A(m: M) { List { for (x in m.xs; key = x) { Text(\"x\") } for (y in m.xs; key = y) { Text(\"y\") } } }",
+            "`List` needs exactly one `for` among its children",
+        ),
+        (
+            "model M { xs: Int[] } component A(m: M) { Scroll { List { for (x in m.xs; key = x) { Text(\"x\") } } } }",
+            "`List` cannot be inside a vertical `Scroll` or another `List`",
+        ),
+        (
+            "model M { xs: Int[] } component A(m: M) { List { for (x in m.xs; key = x) { List { for (y in m.xs; key = y) { Text(\"x\") } } } } }",
+            "`List` cannot be inside a vertical `Scroll` or another `List`",
+        ),
+    ];
+    for (source, expected) in cases {
+        let found = diagnostics(&[("lists.weft", source)]);
+        assert!(
+            found.iter().any(|d| d.contains(expected)),
+            "{source}: {found:?}"
+        );
+    }
+    let valid = r#"
+        model M { xs: Int[] }
+        component A(m: M) {
+            Scroll(direction = "horizontal") {
+                List {
+                    Text("header")
+                    for (x in m.xs; key = x) { Text("row") }
+                    Text("footer")
+                }
+            }
+        }
+    "#;
+    let found = diagnostics(&[("lists.weft", valid)]);
+    assert!(found.is_empty(), "{found:?}");
+}
+
+#[test]
 fn pages_validate_routes_and_record_paths() {
     let compilation = compile(&[(
         "pages.weft",

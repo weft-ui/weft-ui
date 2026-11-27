@@ -48,6 +48,12 @@ const ALL_NATIVES: &[Platform] = &[
     Platform::Windows,
     Platform::Linux,
 ];
+const LISTS: Fixture = Fixture {
+    name: "Lists",
+    source: include_str!("fixtures/Lists.weft"),
+    natives: &[],
+    diverges: &[],
+};
 const TODO_LIST: Fixture = Fixture {
     name: "TodoList",
     source: include_str!("fixtures/TodoList.weft"),
@@ -218,6 +224,11 @@ fn read_snapshots(dir: &Path, prefix: &str, stored: &mut BTreeMap<String, String
             stored.insert(format!("{prefix}{name}"), contents);
         }
     }
+}
+
+#[test]
+fn lists() {
+    check_fixture(&LISTS);
 }
 
 #[test]
