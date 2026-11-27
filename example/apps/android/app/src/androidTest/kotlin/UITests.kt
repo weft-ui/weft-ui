@@ -53,6 +53,35 @@ class UITests {
     val rules = org.junit.rules.RuleChain.outerRule(clearStorageRule).around(compose)
 
     @Test
+    fun lifecyclePageShowsInitialCounts() {
+        compose.openPage("lifecycle")
+        compose.onNodeWithText("Foreground: 0").assertExists()
+        compose.onNodeWithText("Background: 0").assertExists()
+        compose.onNodeWithText("Memory warnings: 0").assertExists()
+    }
+
+    @Test
+    fun lifecycleReportsHomeAndReturn() {
+        compose.openPage("lifecycle")
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.uiAutomation.executeShellCommand("input keyevent KEYCODE_HOME").close()
+        Thread.sleep(1_500) // ProcessLifecycleOwner delays ON_STOP across activity transitions.
+        val context = instrumentation.targetContext
+        context.startActivity(android.content.Intent(context, MainActivity::class.java).addFlags(
+            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT,
+        ))
+        compose.waitUntil(5_000) {
+            compose.onAllNodes(hasText("Foreground: 1")).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Background: 1").assertExists()
+        instrumentation.uiAutomation.executeShellCommand(
+            "am send-trim-memory ${context.packageName} RUNNING_LOW",
+        ).close()
+        compose.waitForIdle()
+        compose.onNodeWithText("Memory warnings: 0").assertExists()
+    }
+
+    @Test
     fun launches() {
         compose.onRoot().assertExists()
     }

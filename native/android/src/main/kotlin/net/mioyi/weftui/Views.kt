@@ -31,7 +31,13 @@ import androidx.compose.ui.unit.dp
 fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.Empty, tabs: List<WeftTab> = emptyList(), make: WeftMake) {
     val context = LocalContext.current
     val session = remember { WeftSession.start(context, layoutHash.toLong(), make) }
-    DisposableEffect(session) { onDispose { session.close() } }
+    DisposableEffect(session) {
+        val lifecycle = LifecycleSubscription(context, session::signal)
+        onDispose {
+            lifecycle.close()
+            session.close()
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val safe = WindowInsets.safeDrawing
