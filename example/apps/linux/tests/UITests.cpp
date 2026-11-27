@@ -494,6 +494,12 @@ void catalog_walkthrough(GtkWidget *root) {
 
 void fieldnotes(GtkWidget *root) {
   check(label(root, "Latest notes"), "Feed missing");
+  auto *publish_label = label(root, "发布");
+  auto *publish_button = publish_label ? gtk_widget_get_ancestor(publish_label, GTK_TYPE_BUTTON) : nullptr;
+  graphene_rect_t publish_bounds;
+  check(publish_button && gtk_widget_compute_bounds(publish_button, root, &publish_bounds) &&
+        gtk_widget_get_width(root) - (publish_bounds.origin.x + publish_bounds.size.width) >= 20,
+        "Trailing navigation button is not inset");
   click(root, "发现");
   check(label(root, "Find inspiration for your next walk."), "Discover missing");
   click(root, "消息");

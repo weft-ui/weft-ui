@@ -54,6 +54,7 @@ void BarButton::update() {
 NavBar::NavBar() : Element(gtk_center_box_new()), title_(gtk_label_new("")),
                    actions_(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)) {
   gtk_center_box_set_center_widget(GTK_CENTER_BOX(widget()), title_);
+  gtk_widget_set_margin_end(actions_, 20);
   gtk_center_box_set_end_widget(GTK_CENTER_BOX(widget()), actions_);
 }
 void NavBar::set_title(std::string_view title) { gtk_label_set_text(GTK_LABEL(title_), std::string(title).c_str()); }
