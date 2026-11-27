@@ -122,6 +122,36 @@ struct Session::Environment {
   guint idle = 0;
 };
 
+namespace {
+std::string launch_json;
+
+std::string link_json(const char *url) {
+  JsonBuilder *builder = json_builder_new();
+  json_builder_begin_object(builder);
+  json_builder_set_member_name(builder, "url");
+  json_builder_add_string_value(builder, url);
+  json_builder_end_object(builder);
+  JsonNode *node = json_builder_get_root(builder);
+  JsonGenerator *generator = json_generator_new();
+  json_generator_set_root(generator, node);
+  g_autofree char *json = json_generator_to_data(generator, nullptr);
+  std::string result(json);
+  g_object_unref(generator);
+  json_node_free(node);
+  g_object_unref(builder);
+  return result;
+}
+}  // namespace
+
+void set_launch_url(const char *url) {
+  launch_json = url ? link_json(url) : std::string();
+}
+
+void open_link(GtkWidget *root, const char *url) {
+  auto *session = static_cast<Session *>(g_object_get_data(G_OBJECT(root), "weft-session"));
+  if (session && url) session->signal("link", link_json(url));
+}
+
 GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area, Factory make, bool app, std::vector<Tab> tabs) {
   register_asset_fonts();
   GtkWidget *page = linear_new(Axis::Vertical);
@@ -332,7 +362,7 @@ void Session::open(const std::string &bundle, uint64_t layout_hash) {
       .log = on_log,
       .version = version.c_str(),
       .environment = environment,
-      .launch = nullptr,
+      .launch = launch_json.empty() ? nullptr : launch_json.c_str(),
   };
   runtime_ = weft_runtime_new(&host, reinterpret_cast<const uint8_t *>(g_mapped_file_get_contents(bytecode_)),
                               g_mapped_file_get_length(bytecode_), layout_hash);

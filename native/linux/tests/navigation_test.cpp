@@ -44,6 +44,10 @@ class NavigationTest {
     {
       Session session(page, make_page, true);
       session.runtime_ = reinterpret_cast<weft_runtime *>(1);
+      g_object_set_data(G_OBJECT(page), "weft-session", &session);
+      open_link(page, "weftexample://showcase/list?value=\"quoted\"");
+      assert(signal_name == "link" && signal_json == "{\"url\":\"weftexample://showcase/list?value=\\\"quoted\\\"\"}");
+      g_object_set_data(G_OBJECT(page), "weft-session", nullptr);
       signal_name.clear();
       session.lifecycle_state(GdkToplevelState(0));
       assert(signal_name.empty());

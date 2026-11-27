@@ -39,6 +39,17 @@ struct Point;
 /// `weft/bundle.hbc` next to the executable and returns its root widget,
 /// a vertical container that shows the app or its startup error.
 GtkWidget *start_app();
+/// Sets the cold-start URL for the next generated app start.
+void set_launch_url(const char *url);
+/// Starts the generated app with an optional cold-start URL.
+inline GtkWidget *start_app_with_url(const char *url) {
+  set_launch_url(url);
+  GtkWidget *root = start_app();
+  set_launch_url(nullptr);
+  return root;
+}
+/// Delivers a URL to the session belonging to the root returned above.
+void open_link(GtkWidget *root, const char *url);
 
 // Values of value slots.
 

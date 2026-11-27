@@ -9,20 +9,37 @@ namespace {
 constexpr const char *kAppId = "net.mioyi.weftui.showcase";
 constexpr const char *kAppName = "Weft Showcase";
 
-void activate(GtkApplication *app) {
+void show_window(GtkApplication *app, const char *url) {
+  GList *windows = gtk_application_get_windows(app);
+  GtkWindow *existing = windows ? GTK_WINDOW(windows->data) : nullptr;
+  if (existing) {
+    if (url) weft::open_link(gtk_window_get_child(existing), url);
+    gtk_window_present(existing);
+    return;
+  }
   GtkWidget *window = gtk_application_window_new(app);
   gtk_window_set_title(GTK_WINDOW(window), kAppName);
   gtk_window_set_default_size(GTK_WINDOW(window), 480, 640);
-  gtk_window_set_child(GTK_WINDOW(window), weft::start_app());
+  gtk_window_set_child(GTK_WINDOW(window), weft::start_app_with_url(url));
   gtk_window_present(GTK_WINDOW(window));
+}
+
+void activate(GtkApplication *app) { show_window(app, nullptr); }
+
+void open(GtkApplication *app, GFile **files, int count, const char *) {
+  for (int i = 0; i < count; ++i) {
+    g_autofree char *url = g_file_get_uri(files[i]);
+    show_window(app, url);
+  }
 }
 
 }  // namespace
 
 int main(int argc, char **argv) {
   GtkApplication *app =
-      gtk_application_new(g_application_id_is_valid(kAppId) ? kAppId : nullptr, G_APPLICATION_DEFAULT_FLAGS);
+      gtk_application_new(g_application_id_is_valid(kAppId) ? kAppId : nullptr, G_APPLICATION_HANDLES_OPEN);
   g_signal_connect(app, "activate", G_CALLBACK(activate), nullptr);
+  g_signal_connect(app, "open", G_CALLBACK(open), nullptr);
   int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
   return status;

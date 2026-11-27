@@ -181,6 +181,8 @@ pnpm --filter example test:linux
 
 The plugin builds the CMake project in `apps/linux/`, which links the generated GTK views in `weft/Generated.cpp`. The executable is `apps/linux/build/app`. Use a desktop session or another available display for the CTest UI test.
 
+With `links.scheme`, the plugin generates `apps/linux/weft/app.desktop` with the scheme handler and the build executable's absolute path. Register a copy in the user's desktop applications directory and select it with `xdg-mime default app.desktop x-scheme-handler/<scheme>`; refresh the desktop database with `update-desktop-database`. Packaging and installation are not yet automated. Re-register the file if the project moves.
+
 ### Linux in Docker
 
 The [Docker Compose setup](https://github.com/weft-ui/weft-ui/blob/master/native/linux/docker/compose.yaml) includes the Linux build tools and an XFCE desktop. From the workspace root on the host, build the compiler WASM, then start and enter the container:

@@ -181,6 +181,8 @@ pnpm --filter example test:linux
 
 插件构建 `apps/linux/` 中的 CMake 工程，链接 `weft/Generated.cpp` 中生成的 GTK 视图。可执行文件在 `apps/linux/build/app`。通过 CTest 运行 UI 测试时，需要桌面会话或其他可用的显示环境。
 
+配置 `links.scheme` 后，插件生成 `apps/linux/weft/app.desktop`，其中包含 scheme 处理器和构建所得可执行文件的绝对路径。将其复制到用户的桌面应用目录，用 `update-desktop-database` 更新数据库，再用 `xdg-mime default app.desktop x-scheme-handler/<scheme>` 选择它。打包和安装尚未自动化；项目移动后需要重新注册。
+
 ### 在 Docker 中构建 Linux 应用
 
 [Docker Compose 配置](https://github.com/weft-ui/weft-ui/blob/master/native/linux/docker/compose.yaml)包含 Linux 构建工具和 XFCE 桌面。先在主机的工作区根目录构建编译器的 WASM，再启动并进入容器：

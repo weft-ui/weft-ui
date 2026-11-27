@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
 import type { NativeAdapter, RunTool } from "./native.ts";
 
@@ -29,8 +29,15 @@ export function linuxAdapter(runTool: RunTool, shell: string): NativeAdapter {
     bytecode: "bundle.hbc",
     host: "linux",
     hostWarning: "the Linux build needs a Linux host",
-    writeGlue(generated) {
+    writeGlue(generated, project, links) {
       writeFileSync(join(generated, "CMakeLists.txt"), cmakeLists(generated, shell));
+      const desktop = join(generated, "app.desktop");
+      if (!links.scheme) {
+        rmSync(desktop, { force: true });
+      } else {
+        const executable = join(project, "build", "app").replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("`", "\\`").replaceAll("$", "\\$").replaceAll("%", "%%");
+        writeFileSync(desktop, `[Desktop Entry]\nType=Application\nName=Weft App\nExec="${executable}" %u\nTerminal=false\nMimeType=x-scheme-handler/${links.scheme};\n`);
+      }
     },
     // Configure first, then build the executable at project/build/app.
     async build(project, _platform, release) {
