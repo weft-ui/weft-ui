@@ -26,7 +26,7 @@
     "title": "Assets"
   },
   { "id": "safearea", "title": "Safe area" },
-  { "id": "keyboard", "title": "Keyboard", "pending": ["ios", "macos", "android", "windows", "linux"] },
+  { "id": "keyboard", "title": "Keyboard" },
   { "id": "feed", "title": "Fieldnotes feed" },
   { "id": "detail", "title": "Trail note" },
   { "id": "profile", "title": "Member profile" },
@@ -39,7 +39,7 @@
   },
   { "id": "settings", "title": "Journal settings", "dark": true },
   { "id": "empty", "title": "Empty saved notes" },
-  { "id": "lifecycle", "title": "Lifecycle", "pending": ["ios", "macos", "android", "windows", "linux"], "props": { "lifecycleCounts": ["Foreground: 0", "Background: 0", "Memory warnings: 0"] } },
+  { "id": "lifecycle", "title": "Lifecycle", "props": { "lifecycleCounts": ["Foreground: 0", "Background: 0", "Memory warnings: 0"] } },
   {
     "id": "list",
     "title": "Lazy list",
