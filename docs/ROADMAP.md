@@ -41,24 +41,24 @@ C 端流量集中在手机和小程序上。7 个平台同步推进的成本是 
 
 ## 2. 现状评估
 
-依据：[PLAN.md](PLAN.md)、[PLAN-M0.md](PLAN-M0.md) 和 [PLAN-M1.md](PLAN-M1.md) 的执行记录。
+依据：[PLAN.md](PLAN.md)、[PLAN-M0.md](PLAN-M0.md)、[PLAN-M1.md](PLAN-M1.md) 和 [PLAN-M2.md](PLAN-M2.md) 的执行记录。
 
 | 领域 | 现状 | 对 C 端的差距 | 严重度 |
 | --- | --- | --- | --- |
-| 元素 | 18 个，含滚动、叠放、富文本、开关、多行输入、进度和选择控件；支持打包图片与自定义字体 | 缺虚拟列表、浮层、WebView、视频 | 高 |
+| 元素 | 22 个，含惰性列表与网格、导航栏、滚动、富文本和输入控件；支持打包图片与自定义字体 | 缺 WebView、视频 | 高 |
 | 样式 | 支持伸缩与对齐、四边内外间距、尺寸约束、圆角、边框、阴影、透明度、字重和截断；可复用样式，主题跟随系统深浅模式 | 缺动画与过渡 | 中 |
-| 交互 | 按钮、容器和部分内容元素支持点击；受控输入支持输入类型、提交和焦点控制 | 缺长按、滑动等手势与键盘避让 | 高 |
-| 应用结构 | 单根组件；小程序只有一个页面 `weft/index`；原生是单 session | 缺导航（栈、Tab、模态）、返回键与侧滑、深链、前后台生命周期、小程序多页面与分包 | 高 |
-| 列表 | `rows` 一次性实例化全部行（`packages/runtime/src/remote.ts:262-335`） | 长列表的内存和首帧都不可接受；没有下拉刷新和加载更多 | 高 |
-| 平台 API | `run`、`fetch`（无响应头、超时、取消、上传）、字符串 `storage`、`platform` | 缺扩展机制（自定义原生模块 / 原生视图），以及相册、相机、权限、推送、分享、剪贴板、安全存储、文件、WebSocket、登录、支付 | 高 |
-| 语言 | 类型化 model、event、component、state、if/for、字面量联合、组件回调、具名插槽和局部 `let` | 缺页面与导航声明 | 中 |
+| 交互 | 按钮、容器和部分内容元素支持点击；受控输入支持输入类型、提交和焦点控制；支持键盘避让 | 缺长按、滑动等手势 | 高 |
+| 应用结构 | 类型化页面、栈与 Tab 导航、模态、返回、深链和前后台生命周期；小程序支持多页面与分包 | Universal Links、App Links 的域名验证和部分小程序行为待真机确认 | 中 |
+| 列表 | `List`、`Grid` 按可见窗口惰性物化，支持分组头、加载更多及下拉刷新（桌面原生平台无效果） | 10k 条性能预算待真机测量，超预算项留待 M5.6 复核 | 中 |
+| 平台 API | `run`、`fetch`（无响应头、超时、取消、上传）、字符串 `storage`、`platform`，以及 `navigation`、`ui`、`lifecycle` | 缺扩展机制（自定义原生模块 / 原生视图），以及相册、相机、权限、推送、分享、剪贴板、安全存储、文件、WebSocket、登录、支付 | 高 |
+| 语言 | 类型化 model、event、component、page、app、state、if/for、字面量联合、组件回调、具名插槽和局部 `let` | 缺原生视图扩展声明 | 中 |
 | 无障碍 | 没有 label、role 等 API；Android `Image` 的 `contentDescription = null` | 上架合规和可用性要求 | 中 |
 | 国际化 | Hermes 构建时关闭了 Intl（`native/core/hermes.cmake`）；Android 区域设置有 TODO | 缺日期和数字格式、RTL、语言切换 | 中 |
 | 开发循环 | Web 有 Vite 开发服务器；原生和小程序只能整包构建；Hermes 调试器被关闭；生成的 JS 没有 source map | 改一行要重编原生工程；原生上无法断点调试 | 高 |
 | 分发 | TS 包 0.1.0 已发布；原生壳与预编译内核拆成 `@weft-ui/native-<target>`，`@weft-ui/vite` 按包解析壳和 hermesc（M0.4），已在仓库外用 tarball 验证 Android、iOS；Release 工作流在各平台构建全部内核，打包后通过可信发布暂存到 npm，维护者批准后上线；0.2.0 等待首次暂存（[PLAN-M0](PLAN-M0.md) R1）；没有脚手架 | native 包发布前，外部项目仍只能用 Web 和小程序 | 高 |
-| CI | PR 流水线（`ci.yml`）跑 C-rust、C-ts、C-core、C-linux、C-apple、C-android、C-windows；夜间流水线（`nightly.yml`）配置了 Android、iOS 点击流程及 Web、iOS、Android 截图回归 | 尚待维护者触发截图工作流；桌面点击流程与小程序截图在本地运行；缺性能基准 | 低 |
+| CI | PR 流水线（`ci.yml`）跑 C-rust、C-ts、C-core、C-linux、C-apple、C-android、C-windows；夜间流水线（`nightly.yml`）运行 Android、iOS 点击流程及 Web、iOS、Android 截图回归 | 桌面点击流程与小程序截图在本地运行；性能基准尚未纳入 CI，真机数据待测 | 低 |
 | 编辑器 | `weft lsp` 支持诊断、补全、悬停、跳转、格式化；Zed 扩展；TS content mapper | 缺 VS Code 扩展、重命名、查找引用、代码操作 | 中 |
-| 测试 | 协议共享样例覆盖所有宿主；编译产物快照与跨平台一致性测试覆盖 M1 能力，example 在七个平台可截图 | 缺性能基准和真机覆盖 | 中 |
+| 测试 | 协议版本 3 的共享样例覆盖所有宿主；编译产物快照与跨平台一致性测试覆盖 M1、M2 能力，example 在七个平台可截图；已有模拟器性能基准 | 缺 CI 性能基准和真机覆盖 | 中 |
 
 ### 已确认的缺陷（M0 修）
 
@@ -82,8 +82,8 @@ C 端流量集中在手机和小程序上。7 个平台同步推进的成本是 
 | --- | --- | --- | --- | --- |
 | D1 | 元素定义如何扩展到几十个元素、7 个后端 | 仿照 `protocol/weft.protocol.json` 建 `elements` schema：属性、类型、事件 payload、子节点规则、各平台支持情况、各后端映射。由它生成 `elements.rs` 的目录、文档表格、TS 类型和各后端的桩代码 | 现在每加一个元素要手改 7 个生成器和 5 个壳。单一来源是 PLAN.md 已经验证过的路线 | M1 开工 |
 | D2 | 样式模型 | 保持**封闭、有类型的属性集合**，不引入通用 CSS。新增 `style Name { ... }` 声明和 `style = Name` 引用，用来复用；颜色和尺寸支持主题 token（`color = theme.primary`），按浅色/深色解析 | 通用 CSS 在 SwiftUI、Compose、WinUI、GTK 上无法如实实现。封闭集合能做编译期检查，也能为每个平台生成原生修饰符 | M1 开工 |
-| D3 | 导航模型 | 在 `.weft` 里声明 `page`（带类型化参数），逻辑层通过 `navigation.push(Page, params)`、`pop()`、`replace()`、`switchTab()` 控制。小程序每个 page 生成一个独立页面；iOS 用 `NavigationStack`；Android 用 Navigation Compose；Windows 用 `Frame`；GTK 用 `AdwNavigationView` 或 `GtkStack` | 页面必须是编译期已知的集合，小程序要求如此，生成原生代码也要求如此。参数有类型，深链才能做解析和校验 | M2 开工 |
-| D4 | 虚拟列表的协议 | 协议 v2 新增惰性列表：JS 只下发行数和键，宿主按可见窗口请求 `materialize(range)`，离开窗口的行由宿主回收，并通知 JS 销毁对应 scope。这是破坏性升级，借机定下协议版本协商规则 | 原生平台的列表回收机制（`List`、`LazyColumn`、`ItemsRepeater`、`GtkListView`）都要求按需创建。现在的 `rows` 会一次性建出全部行 | M2 开工 |
+| D3 | 导航模型 | 已定稿，见 [PLAN-M2 规范 §2](PLAN-M2.md#2-导航模型d3)：类型化 `page`，逻辑层持有单一导航栈与 Tab，支持一层模态；小程序每页生成独立页面，Android 使用 Navigation 3，Windows 使用自建宿主面板，GTK 使用 `GtkStack` | 页面集合编译期已知，类型化参数用于深链解析与校验；宿主导航变化由 JS 采纳 | M2 已定稿 |
+| D4 | 虚拟列表的协议 | 已定稿，见 [PLAN-M2 规范 §4](PLAN-M2.md#4-协议版本-3d4-与导航)、[§5](PLAN-M2.md#5-惰性列表d4)：协议版本 3 用 `splice`、`bind` 和宿主窗口请求按需物化与回收，并协商协议版本 | 原生列表按需创建可见项，避免一次性实例化全部行 | M2 已定稿 |
 | D5 | 扩展机制 | 两种扩展：① **原生模块**：在 schema 里声明方法签名，生成 TS 声明和 Swift、Kotlin、C#、C++ 的协议桩，复用现有的平台调用帧（`frame`/`unframe`）；② **原生视图**：在 `.weft` 里用 `extern component Map(lat: Float, ...)` 声明，宿主注册视图工厂。第一方能力（相册、推送等）也走这套机制，以此验证它 | 框架不可能内置全部 SDK（支付、地图、统计）。第一方能力自己用扩展机制实现，是对机制最好的验证 | M3 开工 |
 | D6 | 原生开发循环 | 分两层：① 逻辑热更新：调试构建里内核从开发服务器加载 JS（WebSocket），保存后重载并保留 model；② 视图变更：原生视图是生成的源码（SwiftUI、Compose、C#、C++），结构变化必须重新编译。短期做增量重编加自动重启；长期评估调试态的通用渲染器（直接解释 `layout.json`）是否值得做 | 视图编译成原生代码是性能和原生度的来源，不能为热重载放弃。先把逻辑热更新做到秒级，就能覆盖大部分改动 | M4 开工 |
 | D7 | Hermes 构建开关 | 调试构建打开 Hermes 调试器（CDP，可以用 Chrome DevTools 连接）；Intl 按平台打开或用 polyfill，在 M5 用包体积数据定 | 调试器只进调试构建，不影响发布体积；Intl 会增加体积，要实测 | 调试器 M4，Intl M5 |
@@ -131,7 +131,7 @@ M4 和 M1–M3 并行。M4 越早完成，A 线的迭代越快，所以 M4 里�
 
 **目标**：参考应用的每一个静态页面都能用 `.weft` 精确写出来，并在第一梯队平台上一致地渲染。
 
-**状态**：功能已完成，见 [PLAN-M1.md](PLAN-M1.md)。夜间截图工作流已配置，尚待维护者首次手动触发。
+**状态**：功能已完成，见 [PLAN-M1.md](PLAN-M1.md)。夜间截图工作流已触发并定时运行，见 [PLAN-M2.md](PLAN-M2.md)。
 
 | 编号 | 状态 | 内容 |
 | --- | --- | --- |
@@ -157,7 +157,7 @@ M4 和 M1–M3 并行。M4 越早完成，A 线的迭代越快，所以 M4 里�
 
 **目标**：参考应用能在页面之间跳转，信息流能流畅滚动 10k 条。
 
-**状态**：执行计划见 [PLAN-M2.md](PLAN-M2.md)，其「规范」一节是 D3、D4 的定稿草案。M1 已把协议升到版本 2，因此本里程碑的「协议 v2」实际是协议版本 3。
+**状态**：已完成，见 [PLAN-M2.md](PLAN-M2.md)；D3、D4 已定稿，协议为版本 3。性能预算的真机测量和域名验证仍需维护者完成，超预算项留待 M5.6 复核。
 
 **前置**：D3、D4 定稿；M1.1、M1.3 完成。
 
@@ -165,16 +165,16 @@ M4 和 M1–M3 并行。M4 越早完成，A 线的迭代越快，所以 M4 里�
 | --- | --- |
 | M2.1 | 页面与导航（D3）：`page` 声明、类型化参数、`navigation.push/pop/replace/popToRoot`；页面级生命周期 `onShow`/`onHide`；标题栏配置（标题、返回按钮、右侧按钮） |
 | M2.2 | Tab 导航：`tabs` 声明（图标、文字、角标）；小程序映射到 `tabBar` |
-| M2.3 | 模态与浮层：`sheet`、`fullScreenModal`；`alert`、`confirm`、`actionSheet`、`toast` 作为逻辑层 API |
+| M2.3 | 模态与浮层：`sheet`、`fullScreen`；`alert`、`confirm`、`actionSheet`、`toast` 作为逻辑层 API |
 | M2.4 | 返回行为：Android 返回键和预测性返回手势、iOS 侧滑返回、Web 的 history 与刷新后恢复、小程序的 `navigateBack` |
 | M2.5 | 小程序多页面：每个 page 生成一个独立页面、`app.json` 的 `pages`、分包（`subPackages`）、主包体积检查（2 MB 上限，超出报错） |
-| M2.6 | 虚拟列表（D4）：`List` 元素加协议 v2 的惰性行；`onEndReached`（加载更多）、`refreshing` 加 `onRefresh`（下拉刷新）、分组头、`Grid`；各平台映射到原生回收列表；小程序使用分段 `setData` 或官方的 recycle-view |
+| M2.6 | 虚拟列表（D4）：`List` 和 `Grid` 使用协议版本 3 的惰性行；`onEndReached`（加载更多）、`refreshing` 加 `onRefresh`（下拉刷新，桌面原生平台无效果）、分组头；原生平台使用惰性列表，小程序使用分段渲染 |
 | M2.7 | 协议版本协商：内核和壳上报所支持的协议版本，不匹配时启动报错，错误信息里给出两边的版本 |
-| M2.8 | 应用生命周期：`app.onForeground`、`app.onBackground`、`app.onLaunch(options)`（冷启动参数，供推送和深链使用）、系统内存告警 |
+| M2.8 | 应用生命周期：`lifecycle.onForeground`、`lifecycle.onBackground`、`lifecycle.launch`（冷启动参数）、系统内存告警 |
 | M2.9 | 深链：URL 映射到 page 和参数（来自 `page` 声明的类型化参数），iOS 的 Universal Links、Android App Links、Web 路由、小程序的页面路径与 query 统一 |
-| M2.10 | 键盘避让：输入框获得焦点时内容不被键盘遮挡，各平台行为一致 |
+| M2.10 | 键盘避让：输入框获得焦点时内容不被键盘遮挡；macOS、Windows、Linux 无效果 |
 
-**退出标准**：参考应用的导航骨架在第一梯队平台跑通，包括 Tab、栈、模态、返回、深链冷启动；10k 条信息流满足[性能预算](#6-质量预算)；协议 v2 的样例进入 `protocol/corpus/` 并在全部宿主通过。
+**退出标准**：参考应用的导航骨架在第一梯队平台跑通，包括 Tab、栈、模态、返回、深链冷启动；10k 条信息流的[性能预算](#6-质量预算)待真机验证；协议版本 3 的样例进入 `protocol/corpus/` 并在全部宿主通过。
 
 ---
 

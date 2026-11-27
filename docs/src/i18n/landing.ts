@@ -92,7 +92,7 @@ export const landing: Record<Lang, LandingStrings> = {
       items: [
         {
           title: "原生视图",
-          body: "18 个内置元素，支持富文本、滚动布局和安全区。容器可以用 onTap 接收点击，输入框支持多种类型和焦点控制。",
+          body: "22 个内置元素，支持富文本、安全区和惰性列表与网格。列表支持分组、下拉刷新和加载更多；页面支持栈、Tab 和模态导航。",
         },
         {
           title: "编译期依赖分析",
@@ -108,7 +108,7 @@ export const landing: Record<Lang, LandingStrings> = {
         },
         {
           title: "统一平台 API",
-          body: "@weft-ui/platform 在每个平台签名一致：run、fetch、storage、platform。不支持的调用以 PlatformError 拒绝。",
+          body: "@weft-ui/platform 提供 navigation、ui 和 lifecycle，以及 run、fetch、storage、platform；支持深链、对话框与应用生命周期。不支持的调用以 PlatformError 拒绝。",
         },
         {
           title: "完整工具链",
@@ -175,7 +175,7 @@ export const landing: Record<Lang, LandingStrings> = {
       items: [
         {
           title: "Native views",
-          body: "18 built-in elements cover rich text, scrolling, and safe-area layout. Containers handle taps with onTap, and inputs support multiple types and focus control.",
+          body: "22 built-in elements cover rich text, safe-area layout, and lazy lists and grids. Lists support sections, pull-to-refresh and load-more; pages support stack, tab and modal navigation.",
         },
         {
           title: "Compile-time dependency analysis",
@@ -191,7 +191,7 @@ export const landing: Record<Lang, LandingStrings> = {
         },
         {
           title: "One platform API",
-          body: "@weft-ui/platform has the same signatures everywhere: run, fetch, storage, platform. Unsupported calls reject with PlatformError.",
+          body: "@weft-ui/platform provides navigation, ui and lifecycle alongside run, fetch, storage and platform, including deep links, dialogs and app lifecycle events. Unsupported calls reject with PlatformError.",
         },
         {
           title: "Complete tooling",

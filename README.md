@@ -1,6 +1,6 @@
 # Weft UI
 
-A cross-platform UI library for Web, WeChat mini programs, iOS, macOS, Android, Windows, and Linux. Build views with [18 built-in elements](https://weftui.mioyi.net/reference/elements/) and write logic in JavaScript or TypeScript. Weft supports reusable styles and light/dark themes, bundled images and fonts, `onTap` on views, input types and focus control, and safe-area layout.
+A cross-platform UI library for Web, WeChat mini programs, iOS, macOS, Android, Windows, and Linux. Build views with [22 built-in elements](https://weftui.mioyi.net/reference/elements/) and write logic in JavaScript or TypeScript. Weft supports reusable styles and light/dark themes, bundled images and fonts, input and safe-area layout, typed pages with stack, tab and modal navigation, and lazy lists and grids with refresh and load-more. Platform APIs provide navigation, dialogs, lifecycle and deep links.
 
 ## Example
 
@@ -83,7 +83,7 @@ Use `@weft-ui/native-apple` for iOS or macOS, `@weft-ui/native-windows` for Wind
 
 The plugin resolves the installed shell package by target. Set `native` to override it with a directory containing the shell packages (`apple/`, `android/`, `windows/`, `linux/`). It accepts an absolute path or a path relative to the Vite root.
 
-`WEFT_PLATFORM=<platform> vite build` (comma-separated for several) builds into `apps/<platform>/`. The project template there is copied on the first build and then belongs to you; `apps/<platform>/weft/` is regenerated on every build. Open `apps/wechat/` in WeChat DevTools. Platform APIs come from `@weft-ui/platform` (`run`, `fetch`, `storage`, `platform`, `isSupported`); unsupported ones reject with `PlatformError`.
+`WEFT_PLATFORM=<platform> vite build` (comma-separated for several) builds into `apps/<platform>/`. The project template there is copied on the first build and then belongs to you; `apps/<platform>/weft/` is regenerated on every build. Open `apps/wechat/` in WeChat DevTools. Platform APIs come from `@weft-ui/platform` (`run`, `fetch`, `storage`, `platform`, `navigation`, `ui`, `lifecycle`, `isSupported`); unsupported calls reject with `PlatformError`.
 
 Native builds generate `layout.json`, Hermes bytecode (`weft/bundle.hbc`, or an Android asset), and platform views. On macOS and iOS, the `WeftApp` Swift package in `weft/` links the WeftKit shell and builds with `xcodebuild`. Windows links the Weft.WinUI shell and builds `App.csproj` with `dotnet build`. Android links its shell through the generated `weft/` Gradle module and builds with `./gradlew assembleDebug` by default. Linux links its C++ shell and builds `apps/linux/build/app` with CMake. Set `WEFT_NATIVE=0` to generate the project without running the native build tool.
 
