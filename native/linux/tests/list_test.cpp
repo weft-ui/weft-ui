@@ -51,6 +51,11 @@ std::unique_ptr<Scope> make_scope(uint32_t tpl, uint32_t id, Session &session) {
 void append(std::vector<uint8_t> &bytes, uint32_t value) {
   for (unsigned shift = 0; shift < 32; shift += 8) bytes.push_back(uint8_t(value >> shift));
 }
+void bound_rows(GtkWidget *widget, std::vector<GtkWidget *> &rows) {
+  if (GTK_IS_LABEL(widget) && std::string_view(gtk_label_get_text(GTK_LABEL(widget))) == "bound row") rows.push_back(widget);
+  for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child))
+    bound_rows(child, rows);
+}
 bool has_bound_row(GtkWidget *widget) {
   if (GTK_IS_LABEL(widget) && std::string_view(gtk_label_get_text(GTK_LABEL(widget))) == "bound row") return true;
   for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child))
@@ -151,7 +156,8 @@ class ListTest {
       // changing its identity. It must replace the placeholder immediately.
       create(5, 0);
       auto *visible = static_cast<Owner *>(session.scopes_.at(5).get());
-      splice(5, 0, 0, {50});
+      visible->list->set_gap(14);
+      splice(5, 0, 0, {50, 51});
       auto *window = gtk_window_new();
       gtk_window_set_default_size(GTK_WINDOW(window), 320, 300);
       gtk_window_set_child(GTK_WINDOW(window), visible->list->widget());
@@ -163,6 +169,20 @@ class ListTest {
       create(22, 1);
       bind(5, 50, 22);
       assert(has_bound_row(window));
+      create(23, 1);
+      bind(5, 51, 23);
+      for (int i = 0; i < 50; ++i) {
+        while (g_main_context_pending(nullptr)) g_main_context_iteration(nullptr, false);
+        g_usleep(1000);
+      }
+      std::vector<GtkWidget *> labels;
+      bound_rows(window, labels);
+      assert(labels.size() == 2);
+      graphene_rect_t first, second;
+      assert(gtk_widget_compute_bounds(labels[0], window, &first));
+      assert(gtk_widget_compute_bounds(labels[1], window, &second));
+      assert(second.origin.y - (first.origin.y + first.size.height) == 14);
+      bind(5, 51, 0);
       bind(5, 50, 0);
       assert(!has_bound_row(window));
       gtk_window_destroy(GTK_WINDOW(window));

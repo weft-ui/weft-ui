@@ -535,6 +535,14 @@ void fieldnotes(GtkWidget *root) {
 #ifdef GDK_WINDOWING_X11
   auto *note = label(root, "NOTE 1  /  MOUNTAINS  /  6 MIN READ");
   check(note, "First note missing");
+  auto *next_note = label(root, "NOTE 2  /  COAST  /  4 MIN READ");
+  check(next_note, "Second note missing");
+  graphene_rect_t first_card, second_card;
+  check(gtk_widget_compute_bounds(tap_target(note), root, &first_card) &&
+        gtk_widget_compute_bounds(tap_target(next_note), root, &second_card), "Could not measure Feed cards");
+  const auto card_gap = second_card.origin.y - first_card.origin.y - first_card.size.height;
+  if (std::abs(card_gap - 14) >= 1) std::fprintf(stderr, "Feed card gap: %.1f\n", card_gap);
+  check(std::abs(card_gap - 14) < 1, "Feed card spacing does not match the list gap");
   point_at(note);
   xdotool(root, {"click", "1"});
   check(label(root, "Trail comments (2)"), "Detail missing");
@@ -562,11 +570,19 @@ void fieldnotes(GtkWidget *root) {
   auto *adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll));
   const auto deadline = g_get_monotonic_time() + 15 * G_TIME_SPAN_SECOND;
   while (!label(root, "NOTE 500  /  COAST  /  4 MIN READ") && g_get_monotonic_time() < deadline) {
-    gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_page_size(adjustment));
+    const auto count = g_list_model_get_n_items(G_LIST_MODEL(gtk_list_view_get_model(GTK_LIST_VIEW(feed))));
+    const double range = gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_page_size(adjustment);
+    // Once row 500 has been loaded, stop jumping to the growing tail.
+    gtk_adjustment_set_value(adjustment, count > 501 ? range * 500 / (count - 1) : range);
     g_usleep(10000);
     pump();
   }
-  check(label(root, "NOTE 500  /  COAST  /  4 MIN READ"), "Feed did not load row 500");
+  if (!label(root, "NOTE 500  /  COAST  /  4 MIN READ")) {
+    std::fprintf(stderr, "Feed count %u, scroll %.1f/%.1f\n",
+                 g_list_model_get_n_items(G_LIST_MODEL(gtk_list_view_get_model(GTK_LIST_VIEW(feed)))),
+                 gtk_adjustment_get_value(adjustment), gtk_adjustment_get_upper(adjustment));
+    check(false, "Feed did not load row 500");
+  }
 }
 
 void deep_link_open(GApplication *application, GFile **files, int count, const char *, gpointer) {

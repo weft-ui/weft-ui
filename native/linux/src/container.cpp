@@ -229,7 +229,8 @@ void measure(GtkLayoutManager *manager, GtkWidget *widget, GtkOrientation orient
   const auto fixed = x ? size.width : size.height;
   // GtkViewport uses the minimum to decide its scrollable extent. Elsewhere
   // keep GTK's minimum flexible, since a Weft parent already chose the size.
-  *minimum = scroll_extent || fixed ? *natural : std::min(*natural, pixels(min_padding + min_size.value_or(0)));
+  *minimum = scroll_extent || fixed || (!x && gtk_widget_has_css_class(widget, "weft-list-row"))
+      ? *natural : std::min(*natural, pixels(min_padding + min_size.value_or(0)));
   *minimum_baseline = *natural_baseline = -1;
 }
 

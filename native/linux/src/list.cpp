@@ -94,7 +94,7 @@ struct List::Impl {
   std::vector<uint32_t> templates;
   std::vector<Row> rows;
   std::unordered_map<uint32_t, std::pair<double, unsigned>> heights;
-  std::unordered_map<GtkWidget *, uint32_t> placeholders;
+  std::unordered_map<GtkWidget *, std::pair<uint32_t, WidgetLayout *>> placeholders;
   std::unordered_set<GtkListItem *> realized;
   guint idle = 0;
   uint32_t requested_start = 0, requested_end = 0;
@@ -103,10 +103,13 @@ struct List::Impl {
     scroll = GTK_SCROLLED_WINDOW(gtk_widget_get_first_child(list.widget()));
     model = reinterpret_cast<WeftListModel *>(g_object_new(weft_list_model_get_type(), nullptr));
     auto *factory = gtk_signal_list_item_factory_new();
-    g_signal_connect(factory, "setup", G_CALLBACK(+[](GtkSignalListItemFactory *, GtkListItem *item, gpointer) {
-      auto *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-      gtk_widget_set_hexpand(box, true);
-      gtk_list_item_set_child(item, box);
+    g_signal_connect(factory, "setup", G_CALLBACK(+[](GtkSignalListItemFactory *, GtkListItem *item, gpointer data) {
+      auto &self = *static_cast<Impl *>(data);
+      auto *row = self.columns > 1 ? gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0)
+                                   : linear_new(Axis::Horizontal, CrossAlign::Stretch);
+      if (self.columns == 1) gtk_widget_add_css_class(row, "weft-list-row");
+      gtk_widget_set_hexpand(row, true);
+      gtk_list_item_set_child(item, row);
     }), this);
     g_signal_connect(factory, "bind", G_CALLBACK(+[](GtkSignalListItemFactory *, GtkListItem *item, gpointer data) {
       auto &self = *static_cast<Impl *>(data);
@@ -122,6 +125,20 @@ struct List::Impl {
     }), this);
     auto *selection = gtk_no_selection_new(G_LIST_MODEL(g_object_ref(model)));
     view = gtk_list_view_new(GTK_SELECTION_MODEL(selection), GTK_LIST_ITEM_FACTORY(factory));
+    // GtkListView's theme supplies a background and row padding/minimum height.
+    // List spacing and backgrounds belong to Weft, not the desktop theme.
+    static bool css_installed = false;
+    if (!css_installed) {
+      auto *css = gtk_css_provider_new();
+      gtk_css_provider_load_from_data(css,
+          ".weft-list, .weft-list > row { background: transparent; }"
+          ".weft-list > row { padding: 0; margin: 0; min-width: 0; min-height: 0; }", -1);
+      gtk_style_context_add_provider_for_display(gtk_widget_get_display(view), GTK_STYLE_PROVIDER(css),
+                                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+      g_object_unref(css);
+      css_installed = true;
+    }
+    gtk_widget_add_css_class(view, "weft-list");
     gtk_scrolled_window_set_child(scroll, view);
     auto *adjustment = gtk_scrolled_window_get_vadjustment(scroll);
     g_signal_connect(adjustment, "value-changed", G_CALLBACK(+[](GtkAdjustment *, gpointer data) { static_cast<Impl *>(data)->queue_window(); }), this);
@@ -181,32 +198,43 @@ struct List::Impl {
         scope->roots_.container_ = nullptr;
         scope->roots_.scope_ = scope;
       }
-      gtk_box_remove(GTK_BOX(box), child);
+      if (columns > 1) gtk_box_remove(GTK_BOX(box), child);
+      else gtk_widget_unparent(child);
     }
   }
   void show(GtkListItem *item) {
     auto position = gtk_list_item_get_position(item);
     if (position >= rows.size()) return;
     auto *box = gtk_list_item_get_child(item);
-    gtk_box_set_spacing(GTK_BOX(box), gap);
+    if (columns > 1) gtk_box_set_spacing(GTK_BOX(box), gap);
     gtk_widget_set_margin_bottom(box, position + 1 < rows.size() ? gap : 0);
+    auto append = [&](GtkWidget *child) {
+      if (columns > 1) gtk_box_append(GTK_BOX(box), child);
+      else gtk_widget_set_parent(child, box);
+    };
     const Row &row = rows[position];
     if (row.fixed) {
-      gtk_box_set_homogeneous(GTK_BOX(box), false);
+      if (columns > 1) gtk_box_set_homogeneous(GTK_BOX(box), false);
       if (gtk_widget_get_parent(row.fixed)) gtk_widget_unparent(row.fixed);
       auto *cell = linear_new(Axis::Vertical, CrossAlign::Stretch, true);
       gtk_widget_set_hexpand(cell, true);
+      auto &layout = attach_layout(cell);
+      layout.grow = 1;
+      layout.fill = true;
       gtk_widget_set_parent(row.fixed, cell);
       g_object_set_data(G_OBJECT(cell), "weft-list-fixed", row.fixed);
-      gtk_box_append(GTK_BOX(box), cell);
+      append(cell);
       return;
     }
-    gtk_box_set_homogeneous(GTK_BOX(box), columns > 1);
+    if (columns > 1) gtk_box_set_homogeneous(GTK_BOX(box), true);
     for (size_t i = row.first; i < row.first + row.count; ++i) {
       auto &entry = items[i];
       auto *cell = linear_new(Axis::Vertical, CrossAlign::Stretch, true);
       gtk_widget_set_hexpand(cell, true);
       gtk_widget_set_valign(cell, GTK_ALIGN_START);
+      auto &layout = attach_layout(cell);
+      layout.grow = 1;
+      layout.fill = true;
       if (entry.scope) {
         auto *scope = entry.scope;
         scope->roots_.container_ = cell;
@@ -225,16 +253,22 @@ struct List::Impl {
           sample.first += height - measurement->height;
           if (!measurement->height) ++sample.second;
           measurement->height = height;
-          for (auto &[placeholder, tpl] : measurement->owner->placeholders)
-            if (tpl == measurement->tpl)
-              gtk_widget_set_size_request(placeholder, -1, int(std::ceil(measurement->owner->estimate(tpl))));
+          for (auto &[placeholder, entry] : measurement->owner->placeholders) {
+            if (entry.first != measurement->tpl) continue;
+            const auto height = int(std::ceil(measurement->owner->estimate(entry.first)));
+            entry.second->size.min_height = height;
+            gtk_widget_set_size_request(placeholder, -1, height);
+            gtk_widget_queue_resize(placeholder);
+          }
           measurement->owner->queue_window();
         });
       } else {
-        placeholders.emplace(cell, entry.tpl);
-        gtk_widget_set_size_request(cell, -1, int(std::ceil(estimate(entry.tpl))));
+        placeholders.emplace(cell, std::pair{entry.tpl, &layout});
+        const auto height = int(std::ceil(estimate(entry.tpl)));
+        layout.size.min_height = height;
+        gtk_widget_set_size_request(cell, -1, height);
       }
-      gtk_box_append(GTK_BOX(box), cell);
+      append(cell);
     }
     for (size_t i = row.count; i < size_t(columns); ++i) {
       auto *empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -291,7 +325,11 @@ struct List::Impl {
         first_visible = std::min(first_visible, size_t(position));
         last_visible = std::max(last_visible, size_t(position));
       }
-      if (first_visible != self.rows.size()) {
+      // Immediately after a jump to the end GTK may still report allocations
+      // from the previous frame. Keep the fraction-derived tail in that case.
+      if (first_visible != self.rows.size() &&
+          !(range > 0 && gtk_adjustment_get_value(adjustment) >= range - 1 &&
+            last_visible + 1 < self.rows.size())) {
         size_t first = first_visible, last = last_visible + 1;
         double before = 0, after = 0;
         while (first > 0 && before < page) { --first; before += row_height(self.rows[first]) + self.gap; }
