@@ -1,5 +1,8 @@
 import SwiftUI
 import Observation
+#if os(iOS)
+import UIKit
+#endif
 
 struct WeftOverlayOptions: Decodable {
     var title: String?
@@ -168,6 +171,7 @@ private struct WeftPushedTab: ViewModifier {
 public struct WeftRoot: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.scenePhase) private var scenePhase
     private let session: WeftSession
 
     public init(session: WeftSession) {
@@ -195,6 +199,14 @@ public struct WeftRoot: View {
                 session.update(environment: updated)
             }
         }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            session.update(phase: phase)
+        }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+            session.signal(name: "memory", json: "{}")
+        }
+        #endif
     }
 
     private func content(size: CGSize) -> some View {

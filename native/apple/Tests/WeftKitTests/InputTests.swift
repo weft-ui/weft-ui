@@ -27,6 +27,17 @@ func limitsEditsWithoutSplittingUTF16Pairs(limit: CGFloat?, expected: String) {
     #expect(request.update(true) == true)
 }
 
+@Test func lifecycleDeduplicatesAndIgnoresInactive() {
+    var state = LifecycleState()
+    #expect(state.update(.active) == nil)
+    #expect(state.update(.inactive) == nil)
+    #expect(state.update(.background) == "background")
+    #expect(state.update(.background) == nil)
+    #expect(state.update(.inactive) == nil)
+    #expect(state.update(.active) == "foreground")
+    #expect(state.update(.active) == nil)
+}
+
 #if os(macOS)
 import AppKit
 

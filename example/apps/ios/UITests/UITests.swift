@@ -4,6 +4,19 @@ import XCTest
 /// `xcodebuild test -scheme App -destination 'platform=iOS Simulator,name=<device>'`.
 final class UITests: XCTestCase {
     @MainActor
+    func testLifecyclePage() {
+        let app = XCUIApplication()
+        app.launch()
+        let entry = app.buttons["page:lifecycle"]
+        for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        entry.tap()
+        XCTAssertTrue(app.staticTexts["Foreground: 0"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Background: 0"].exists)
+        XCTAssertTrue(app.staticTexts["Memory warnings: 0"].exists)
+    }
+
+    @MainActor
     func testLaunches() throws {
         continueAfterFailure = false
         let app = XCUIApplication()

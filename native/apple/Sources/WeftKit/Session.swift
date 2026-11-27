@@ -23,6 +23,22 @@ struct NavigationModal: Identifiable, Equatable {
     let style: UInt32
 }
 
+struct LifecycleState {
+    private var foreground = true
+
+    mutating func update(_ phase: ScenePhase) -> String? {
+        let next: Bool
+        switch phase {
+        case .active: next = true
+        case .background: next = false
+        default: return nil
+        }
+        guard next != foreground else { return nil }
+        foreground = next
+        return next ? "foreground" : "background"
+    }
+}
+
 enum NavigationTransition { case push, pop, replace }
 
 func navigationTransition(from old: [UInt32], to new: [UInt32]) -> NavigationTransition {
@@ -62,6 +78,10 @@ public final class WeftSession {
     @ObservationIgnored private var scopes: [UInt32: WeftScope] = [:]
     @ObservationIgnored private let host = Host()
     @ObservationIgnored private var environment = WeftEnvironment.initial()
+    @ObservationIgnored private var lifecycle = LifecycleState()
+    #if os(macOS)
+    @ObservationIgnored private var memoryPressure: DispatchSourceMemoryPressure?
+    #endif
     /// Whether a batch of ops is being applied; the kernel is not reentrant.
     @ObservationIgnored private var committing = false
     // The runtime and the bytecode it executes are released by `deinit`,
@@ -101,6 +121,19 @@ public final class WeftSession {
         if runtime == nil {
             fail(host.lastError ?? "weft: the app failed to start")
         }
+        #if os(macOS)
+        let source = DispatchSource.makeMemoryPressureSource(eventMask: .warning, queue: .main)
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated { self?.signal(name: "memory", json: "{}") }
+        }
+        memoryPressure = source
+        source.resume()
+        #endif
+    }
+
+    func update(phase: ScenePhase) {
+        guard let state = lifecycle.update(phase) else { return }
+        signal(name: "lifecycle", json: "{\"state\":\"\(state)\"}")
     }
 
     deinit {
