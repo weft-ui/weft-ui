@@ -5,6 +5,7 @@ import { setTimeout } from "node:timers/promises";
 import automator from "miniprogram-automator";
 import type Element from "miniprogram-automator/out/Element.js";
 import type { ScrollViewElement } from "miniprogram-automator/out/Element.js";
+import { componentName, pages } from "../pages.ts";
 import { build, prepareShots, settleMs } from "./cases.ts";
 import { compare } from "./compare.ts";
 
@@ -46,20 +47,21 @@ const miniProgram = await automator.launch({ cliPath, projectPath }).catch((caus
 });
 let activeScheme: "light" | "dark" | undefined;
 try {
+  await miniProgram.callWxMethod("clearStorageSync");
   for (const { id, scheme, path } of shots) {
     if (hasDarkShots && scheme !== activeScheme) {
       setScheme(scheme);
       activeScheme = scheme;
     }
-    const page = await miniProgram.reLaunch("/weft/index");
-    if (!page) throw new Error("Could not open /weft/index");
+    const page = await miniProgram.reLaunch("/weft/pages/catalog/index");
+    if (!page) throw new Error("Could not open the catalog");
     if (hasDarkShots) {
       const theme = await miniProgram.evaluate("() => wx.getAppBaseInfo().theme");
       if (theme !== scheme) throw new Error(`Expected WeChat appearance ${scheme}, got ${theme}`);
     }
     await page.waitFor("#weft");
     const view = await page.$("#weft");
-    if (!view) throw new Error("Could not find the Weft view on /weft/index");
+    if (!view) throw new Error("Could not find the Weft view on the catalog");
     let button: Element | undefined;
     const deadline = Date.now() + 5000;
     do {
@@ -78,8 +80,23 @@ try {
       await viewport.scrollTo(0, top);
     }
     await button.tap();
+    const entry = pages("wechat").find((item) => item.id === id)!;
+    const component = componentName(entry);
+    const slug = `${component}Page`.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+    const expectedPath = `weft/pages/${slug}/index`;
+    let destination = await miniProgram.currentPage();
+    const navigationDeadline = Date.now() + 5000;
+    while (destination?.path.replace(/^\//, "") !== expectedPath && Date.now() < navigationDeadline) {
+      await setTimeout(100);
+      destination = await miniProgram.currentPage();
+    }
+    if (destination?.path.replace(/^\//, "") !== expectedPath) throw new Error(`Could not navigate to ${expectedPath}`);
+    await destination.waitFor("#weft");
     await setTimeout(settleMs);
     await miniProgram.screenshot({ path });
+    const catalog = await miniProgram.navigateBack();
+    if (catalog?.path.replace(/^\//, "") !== "weft/pages/catalog/index") throw new Error("Could not return to the catalog");
+    await catalog.waitFor("#weft");
   }
 } finally {
   try {

@@ -6,11 +6,15 @@ See [Screenshot regression](../CONTRIBUTING.md#screenshot-regression) for platfo
 
 If WeChat DevTools rejects the template's `touristappid`, set `appid` to an AppID your signed-in account can use in `apps/wechat/project.private.config.json`. That file stays local. Dark shots use the `wechatide` CLI to switch the simulator's appearance. Set `WEFT_WECHAT_IDE_CLI` if it isn't on `PATH`; authorize the CLI client `Weft Showcase` or set `WEFT_WECHAT_IDE_CLIENT` to an authorized name. If DevTools requires a CLI token, pass it in `WEFT_WECHAT_IDE_TOKEN`.
 
+The generated app starts at the catalog. Select an entry to push its showcase page, and use the platform back control to return. Each page has its own model and event handlers, created by its generated page factory.
+
 ## Fieldnotes reference screens
 
 The six `feed`, `detail`, `profile`, `form`, `settings`, and `empty` pages are independent snapshots of an outdoor journal. They share the screen layout, card styles, and settings rows in `src/Fieldnotes.weft`. All content and artwork ship with the example. Controls update local state only; registration does not send data, and Settings follows the system’s light or dark appearance.
 
 ## 中文
+
+生成的应用从目录页启动；点击条目进入对应展示页，通过平台的返回控件回到目录。每个页面的模型和事件处理器由生成的页面工厂分别创建。
 
 `feed`、`detail`、`profile`、`form`、`settings` 和 `empty` 是户外手记应用 Fieldnotes 的六个独立页面，共用 `src/Fieldnotes.weft` 中的页面布局、卡片样式和设置行。内容和插图随应用打包。控件只修改本地状态，注册表单不发送数据，设置页的深浅配色跟随系统。
 

@@ -1,5 +1,8 @@
 using System.Reflection;
+using System.Text.Json;
 using FlaUI.Core;
+using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Tools;
 using FlaUI.UIA3;
 
 namespace UITests;
@@ -11,16 +14,43 @@ public sealed class UITests
     [TestMethod]
     public void Launches()
     {
+        ClearStorage();
         using var automation = new UIA3Automation();
         using var app = Application.Launch(AppPath());
         try
         {
-            Assert.IsNotNull(app.GetMainWindow(automation, TimeSpan.FromSeconds(10)));
+            var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+            Assert.IsNotNull(window);
+            var project = typeof(UITests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+                .Single(a => a.Key == "AppProject").Value!;
+            using var pages = JsonDocument.Parse(File.ReadAllText(Path.Combine(project, "..", "..", "pages.json")));
+            foreach (var page in pages.RootElement.EnumerateArray())
+            {
+                var label = $"page:{page.GetProperty("id").GetString()}";
+                var entry = Screenshots.FindButton(window, label);
+                Assert.IsNotNull(entry, $"Missing catalog entry {label}");
+                entry.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
+                entry.AsButton().Invoke();
+                var back = Screenshots.FindButton(window, "Back");
+                Assert.IsNotNull(back, $"Navigation to {label} did not complete");
+                back.AsButton().Invoke();
+                var returned = Retry.WhileFalse(() => Screenshots.FindButton(window, label) is not null,
+                    TimeSpan.FromSeconds(5), ignoreException: true).Result;
+                Assert.IsTrue(returned, $"Returning from {label} did not restore the catalog");
+                Thread.Sleep(TimeSpan.FromMilliseconds(300)); // Let the native pop animation finish.
+            }
         }
         finally
         {
             app.Close();
         }
+    }
+
+    internal static void ClearStorage()
+    {
+        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "net.mioyi.weftui.showcase", "storage.json");
+        if (File.Exists(path)) File.Delete(path);
     }
 
     /// <summary>The most recently built App.exe of the app project.</summary>

@@ -34,6 +34,7 @@ public sealed class Screenshots
             var start = new ProcessStartInfo(UITests.AppPath()) { UseShellExecute = false };
             start.Environment["WEFT_SHOT_APPEARANCE"] = scheme;
             start.Environment["WEFT_SHOT_PAGE"] = id;
+            UITests.ClearStorage();
             using var automation = new UIA3Automation();
             using var app = FlaUI.Core.Application.Launch(start);
             try
@@ -50,7 +51,9 @@ public sealed class Screenshots
                 }
                 button.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
                 button.AsButton().Invoke();
-                Thread.Sleep(TimeSpan.FromSeconds(1));
+                var back = FindButton(window, "Back");
+                Assert.IsNotNull(back, $"Navigation to {id} did not complete");
+                Thread.Sleep(TimeSpan.FromSeconds(1)); // Allow the push animation to finish before capture.
 
                 var suffix = scheme == "dark" ? "-dark" : "";
                 var path = Path.Combine(directory, $"{id}{suffix}.png");
@@ -61,6 +64,9 @@ public sealed class Screenshots
                 if (id == "inputs") VerifyInputs(window);
                 if (id == "tap") VerifyTaps(window);
                 if (id == "overlays") VerifyOverlays(window);
+                back.AsButton().Invoke();
+                Assert.IsNotNull(FindButton(window, label), $"Returning from {id} did not restore the catalog");
+                Thread.Sleep(TimeSpan.FromMilliseconds(300)); // Let the native pop animation finish.
             }
             finally
             {
@@ -69,7 +75,7 @@ public sealed class Screenshots
         }
     }
 
-    private static AutomationElement? FindButton(Window window, string label) =>
+    internal static AutomationElement? FindButton(Window window, string label) =>
         Retry.WhileNull(() => window.FindAllDescendants(cf => cf.ByControlType(ControlType.Button))
             .FirstOrDefault(candidate => candidate.Properties.Name.ValueOrDefault == label ||
                 candidate.FindFirstDescendant(cf => cf.ByName(label)) is not null),

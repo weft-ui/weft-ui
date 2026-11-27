@@ -14,6 +14,7 @@ try {
   const browser = await chromium.launch();
   try {
     for (const { id, scheme, path } of shots) {
+      // A new browser context per page starts with empty local and session storage.
       const page = await browser.newPage({
         viewport: { width: 390, height: 844 },
         deviceScaleFactor: 2,
@@ -21,9 +22,14 @@ try {
       });
       try {
         await page.goto("http://127.0.0.1:4179/");
-        await page.getByRole("button", { name: `page:${id}`, exact: true }).click();
+        const entry = page.getByRole("button", { name: `page:${id}`, exact: true });
+        await entry.click();
+        await page.waitForURL(`**/showcase/${id}`);
+        await page.getByRole("button", { name: "Back", exact: true }).waitFor();
         await setTimeout(settleMs);
         await page.screenshot({ path });
+        await page.goBack();
+        await entry.waitFor({ state: "visible" });
       } finally {
         await page.close();
       }

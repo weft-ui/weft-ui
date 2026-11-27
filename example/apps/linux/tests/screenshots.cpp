@@ -33,6 +33,27 @@ GtkWidget *find_catalog_button(GtkWidget *widget, std::string_view label, GtkWid
   return nullptr;
 }
 
+void wait_for_page(GtkStack *stack, GtkWidget *previous) {
+  const auto deadline = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
+  while (g_get_monotonic_time() < deadline) {
+    pump();
+    if (gtk_stack_get_visible_child(stack) != previous && !gtk_stack_get_transition_running(stack)) return;
+    g_usleep(1000);
+  }
+  fail("Navigation did not complete");
+}
+
+GtkWidget *back_button(GtkWidget *widget) {
+  if (GTK_IS_BUTTON(widget)) {
+    const char *icon = gtk_button_get_icon_name(GTK_BUTTON(widget));
+    if (icon && std::string_view(icon) == "go-previous-symbolic" && gtk_widget_is_visible(widget)) return widget;
+  }
+  for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child)) {
+    if (auto *found = back_button(child)) return found;
+  }
+  return nullptr;
+}
+
 void capture(GtkWidget *window, const std::filesystem::path &path) {
   const int width = gtk_widget_get_width(window);
   const int height = gtk_widget_get_height(window);
@@ -58,6 +79,9 @@ void capture(GtkWidget *window, const std::filesystem::path &path) {
 
 int main(int argc, char **argv) {
   if (argc < 3) fail("Usage: screenshots DIRECTORY <id:light|id:dark> ...");
+  g_autofree char *data = g_dir_make_tmp("weft-screenshots-XXXXXX", nullptr);
+  if (!data || !g_setenv("XDG_DATA_HOME", data, true)) fail("Could not isolate screenshot storage");
+  struct Cleanup { const char *path; ~Cleanup() { std::filesystem::remove_all(path); } } cleanup{data};
   if (!gtk_init_check()) fail("Screenshots need a GTK desktop (DISPLAY or WAYLAND_DISPLAY)");
   // The Docker desktop ships Inter Variable so the weight ladder shows all five weights.
   g_object_set(gtk_settings_get_default(), "gtk-font-name", "Inter Variable, Sans 10", nullptr);
@@ -84,15 +108,21 @@ int main(int argc, char **argv) {
       g_usleep(1000);
     } while (g_get_monotonic_time() < timeout);
     if (!button) fail("No catalog button " + label);
+    auto *stack_widget = gtk_widget_get_ancestor(button, GTK_TYPE_STACK);
+    if (!stack_widget) fail("Catalog navigation stack missing");
+    auto *stack = GTK_STACK(stack_widget);
+    auto *catalog = gtk_stack_get_visible_child(stack);
     gtk_widget_grab_focus(button);  // The scrolled parent brings its focused child into view.
     if (!gtk_widget_activate(button)) fail("Could not click " + label);
-
-    const auto settled = g_get_monotonic_time() + G_TIME_SPAN_SECOND;
-    while (g_get_monotonic_time() < settled) {
-      pump();
-      g_usleep(1000);
-    }
+    wait_for_page(stack, catalog);
+    auto *page_widget = gtk_stack_get_visible_child(stack);
     capture(window, std::filesystem::path(argv[1]) / (id + (dark ? "-dark.png" : ".png")));
+    auto *back = back_button(page_widget);
+    if (!back) fail("Native back button missing for " + id);
+    g_signal_emit_by_name(back, "clicked");
+    wait_for_page(stack, page_widget);
+    if (gtk_stack_get_visible_child(stack) != catalog || !find_catalog_button(root, label))
+      fail("Back did not restore the catalog for " + id);
     gtk_window_destroy(GTK_WINDOW(window));
   }
 }

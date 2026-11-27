@@ -1,4 +1,5 @@
 /apps/web/
 /src/App.weft
+/src/catalog.ts
 /screenshots/actual/
 /screenshots/diff/

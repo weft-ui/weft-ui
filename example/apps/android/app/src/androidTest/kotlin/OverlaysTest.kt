@@ -4,7 +4,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -16,8 +15,9 @@ class OverlaysTest {
     @get:Rule val compose = createEmptyComposeRule()
 
     @Test fun opensAndClosesEveryOverlay() {
+        clearStoredState()
         ActivityScenario.launch(MainActivity::class.java).use {
-            compose.onNodeWithText("page:overlays").performScrollTo().performClick()
+            compose.openPage("overlays")
             compose.onNodeWithText("Alert").performClick()
             compose.onNodeWithText("This is an alert.").assertIsDisplayed()
             compose.onNodeWithText("OK").performClick()
@@ -33,6 +33,7 @@ class OverlaysTest {
             compose.onNodeWithText("This is a toast.").assertIsDisplayed()
             compose.waitUntil(5000) { compose.onAllNodes(androidx.compose.ui.test.hasText("This is a toast.")).fetchSemanticsNodes().isEmpty() }
             compose.onNodeWithText("This is a toast.").assertDoesNotExist()
+            compose.returnToCatalog("overlays")
         }
     }
 }

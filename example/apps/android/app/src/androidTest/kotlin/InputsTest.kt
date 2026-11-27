@@ -31,8 +31,13 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class InputsTest {
-    @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val rules = org.junit.rules.RuleChain.outerRule(clearStorageRule).around(compose)
+
+    @org.junit.After
+    fun returnToCatalog() = compose.returnToCatalog("inputs")
 
     private val search = SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Search)
 
@@ -96,7 +101,7 @@ class InputsTest {
     }
 
     private fun openInputs() {
-        compose.onNodeWithText("page:inputs").performScrollTo().performClick()
+        compose.openPage("inputs")
     }
 
     private fun focusButton(label: String) {

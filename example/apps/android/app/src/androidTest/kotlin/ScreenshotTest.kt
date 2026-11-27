@@ -4,10 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -33,13 +30,13 @@ class ScreenshotTest {
         val directory = File(requireNotNull(arguments.getString("additionalTestOutputDir")))
         directory.mkdirs()
         for (id in ids) {
+            clearStoredState()
             ActivityScenario.launch(MainActivity::class.java).use {
-                val page = compose.onNodeWithText("page:$id").performScrollTo()
+                compose.openPage(id)
                 // Auto-advance cancels infinite animations. Capture a stable frame after the
                 // animation has started, rather than freezing indicators at their initial value.
                 compose.mainClock.autoAdvance = false
                 try {
-                    page.performClick()
                     compose.mainClock.advanceTimeBy(3_000)
                     compose.waitForIdle()
                     Thread.sleep(1000)
@@ -50,6 +47,7 @@ class ScreenshotTest {
                 } finally {
                     compose.mainClock.autoAdvance = true
                 }
+                compose.returnToCatalog(id)
             }
         }
     }

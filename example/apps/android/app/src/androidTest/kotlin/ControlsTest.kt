@@ -28,8 +28,13 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ControlsTest {
-    @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val rules = org.junit.rules.RuleChain.outerRule(clearStorageRule).around(compose)
+
+    @org.junit.After
+    fun returnToCatalog() = compose.returnToCatalog("controls")
 
     @Test
     fun controlledEditsAreAcceptedUntilLocked() {
@@ -86,7 +91,7 @@ class ControlsTest {
     }
 
     private fun openControls() {
-        compose.onNodeWithText("page:controls").performScrollTo().performClick()
+        compose.openPage("controls")
         compose.onNodeWithText("控件设置").assertIsDisplayed()
     }
 

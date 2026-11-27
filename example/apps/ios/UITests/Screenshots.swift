@@ -20,6 +20,8 @@ final class Screenshots: XCTestCase {
             for _ in 0..<10 where !button.isHittable { app.swipeUp() }
             XCTAssertTrue(button.isHittable, "Catalog button page:\(id) is off screen")
             button.tap()
+            let back = app.navigationBars.buttons.firstMatch
+            XCTAssertTrue(back.waitForExistence(timeout: 5), "No navigation back button for page:\(id)")
             Thread.sleep(forTimeInterval: 1)
 
             let screenshot = XCUIScreen.main.screenshot()
@@ -30,6 +32,9 @@ final class Screenshots: XCTestCase {
             if id == "tap" { checkTap(in: app) }
             if id == "form" { checkForm(in: app) }
             if id == "overlays" { checkOverlays(in: app) }
+
+            back.tap()
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Catalog did not return after page:\(id)")
         }
     }
 

@@ -10,8 +10,10 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -62,6 +64,30 @@ void click(GtkWidget *root, std::string_view text) {
   pump();
 }
 
+GtkStack *catalog_stack(GtkWidget *root, std::string_view entry) {
+  auto *caption = label(root, entry);
+  auto *stack = caption ? gtk_widget_get_ancestor(caption, GTK_TYPE_STACK) : nullptr;
+  check(stack, "Catalog navigation stack missing");
+  return GTK_STACK(stack);
+}
+
+void wait_for_page(GtkStack *stack, GtkWidget *previous) {
+  const auto deadline = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
+  while (g_get_monotonic_time() < deadline) {
+    pump();
+    if (gtk_stack_get_visible_child(stack) != previous && !gtk_stack_get_transition_running(stack)) return;
+    g_usleep(1000);
+  }
+  check(false, "Navigation did not complete");
+}
+
+void open_page(GtkWidget *root, std::string_view entry) {
+  auto *stack = catalog_stack(root, entry);
+  auto *previous = gtk_stack_get_visible_child(stack);
+  click(root, entry);
+  wait_for_page(stack, previous);
+}
+
 bool active(GtkWidget *widget, bool value) {
   auto *control = GTK_SWITCH(widget);
   return gtk_switch_get_active(control) == value && gtk_switch_get_state(control) == value;
@@ -107,7 +133,7 @@ GtkWidget *dialog_with(std::string_view text) {
 }
 
 void overlays(GtkWidget *root) {
-  click(root, "page:overlays");
+  open_page(root, "page:overlays");
   click(root, "Alert");
   auto *dialog = dialog_with("This is an alert.");
   check(dialog, "Alert not shown"); click(dialog, "OK");
@@ -133,7 +159,7 @@ void overlays(GtkWidget *root) {
 }
 
 void controls(GtkWidget *root) {
-  click(root, "page:controls");
+  open_page(root, "page:controls");
 
   const auto switches = all(root, GTK_TYPE_SWITCH, 4);
   const auto checkboxes = all(root, GTK_TYPE_CHECK_BUTTON, 2);
@@ -193,7 +219,7 @@ void controls(GtkWidget *root) {
 }
 
 void inputs(GtkWidget *root) {
-  click(root, "page:inputs");
+  open_page(root, "page:inputs");
   const auto entries = all(root, GTK_TYPE_ENTRY, 5);
   const auto textareas = all(root, GTK_TYPE_TEXT_VIEW, 1);
   auto *draft = gtk_editable_get_delegate(GTK_EDITABLE(entries[0]));
@@ -291,7 +317,7 @@ GtkWidget *tap_target(GtkWidget *widget) {
 
 void taps(GtkWidget *root) {
   xdotool(root, {"mouseup", "1"});
-  click(root, "page:tap");
+  open_page(root, "page:tap");
   auto expect_counts = [&](int rows, int cards, int buttons, int texts) {
     check(label(root, "Rows: " + std::to_string(rows)) && label(root, "Cards: " + std::to_string(cards)) &&
           label(root, "Buttons: " + std::to_string(buttons)) && label(root, "Text: " + std::to_string(texts)),
@@ -383,7 +409,45 @@ void button_containing_tappables() {
 }
 #endif
 
-void run(void (*verify)(GtkWidget *)) {
+void return_to_catalog(GtkStack *stack, GtkWidget *catalog) {
+  auto *page = gtk_stack_get_visible_child(stack);
+  check(page != catalog, "Showcase page was not pushed");
+  std::vector<GtkWidget *> buttons;
+  collect(page, GTK_TYPE_BUTTON, buttons);
+  GtkWidget *back = nullptr;
+  for (auto *button : buttons) {
+    const char *icon = gtk_button_get_icon_name(GTK_BUTTON(button));
+    if (icon && std::string_view(icon) == "go-previous-symbolic" && gtk_widget_is_visible(button)) {
+      back = button;
+      break;
+    }
+  }
+  check(back, "Native back button missing");
+  g_signal_emit_by_name(back, "clicked");
+  wait_for_page(stack, page);
+  check(gtk_stack_get_visible_child(stack) == catalog && label(catalog, "page:controls"),
+        "Back did not restore the catalog");
+}
+
+void catalog_walkthrough(GtkWidget *root) {
+  auto *stack = catalog_stack(root, "page:controls");
+  auto *catalog = gtk_stack_get_visible_child(stack);
+  std::vector<GtkWidget *> labels;
+  collect(catalog, GTK_TYPE_LABEL, labels);
+  std::vector<std::string> entries;
+  for (auto *item : labels) {
+    std::string text = gtk_label_get_text(GTK_LABEL(item));
+    if (text.rfind("page:", 0) == 0 && gtk_widget_get_ancestor(item, GTK_TYPE_BUTTON))
+      entries.push_back(std::move(text));
+  }
+  check(!entries.empty(), "Catalog has no entries");
+  for (const auto &entry : entries) {
+    open_page(root, entry);
+    return_to_catalog(stack, catalog);
+  }
+}
+
+void run(void (*verify)(GtkWidget *), bool returns_to_catalog = false) {
   GtkWidget *window = gtk_window_new();
   GtkWidget *root = weft::start_app();
   gtk_window_set_child(GTK_WINDOW(window), root);
@@ -395,7 +459,10 @@ void run(void (*verify)(GtkWidget *)) {
   // shows its reason in a label styled `error` instead of the catalog.
   GtkWidget *first = gtk_widget_get_first_child(root);
   check(first && !gtk_widget_has_css_class(first, "error"), "The app did not start");
+  auto *stack = catalog_stack(root, "page:controls");
+  auto *catalog = gtk_stack_get_visible_child(stack);
   verify(root);
+  if (!returns_to_catalog) return_to_catalog(stack, catalog);
   gtk_window_destroy(GTK_WINDOW(window));
   pump();
 }
@@ -403,6 +470,9 @@ void run(void (*verify)(GtkWidget *)) {
 }  // namespace
 
 int main(int argc, char **argv) {
+  g_autofree char *data = g_dir_make_tmp("weft-ui-tests-XXXXXX", nullptr);
+  check(data && g_setenv("XDG_DATA_HOME", data, true), "Could not isolate test storage");
+  struct Cleanup { const char *path; ~Cleanup() { std::filesystem::remove_all(path); } } cleanup{data};
   if (!gtk_init_check()) {
     std::fprintf(stderr, "UI tests need a display (DISPLAY or WAYLAND_DISPLAY)\n");
     return 1;
@@ -420,6 +490,7 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Tap pointer tests need X11 and xdotool\n");
     return 77;
   }
+  run(catalog_walkthrough, true);
   run(controls);
   run(inputs);
   run(overlays);

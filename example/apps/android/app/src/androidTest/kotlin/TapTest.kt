@@ -11,7 +11,6 @@ import androidx.compose.ui.test.hasParent
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,12 +20,17 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TapTest {
-    @get:Rule
     val compose = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val rules = org.junit.rules.RuleChain.outerRule(clearStorageRule).around(compose)
+
+    @org.junit.After
+    fun returnToCatalog() = compose.returnToCatalog("tap")
 
     @Test
     fun physicalTapsActivateOnlyTheInnermostTarget() {
-        compose.onNodeWithText("page:tap").performScrollTo().performClick()
+        compose.openPage("tap")
         assertCounters(rows = 0, cards = 0, buttons = 0, texts = 0)
 
         val buttonRole = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)

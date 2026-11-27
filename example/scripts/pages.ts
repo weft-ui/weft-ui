@@ -14,6 +14,10 @@ interface Page {
 
 const manifest: Page[] = JSON.parse(readFileSync(new URL("../pages.json", import.meta.url), "utf8"));
 
+export function componentName({ id, component }: Page): string {
+  return component ?? id.split(/[-_]/).map((word) => word[0]!.toUpperCase() + word.slice(1)).join("");
+}
+
 export function pages(platform?: Platform): Page[] {
   return platform === undefined ? manifest : manifest.filter(({ pending }) => !pending?.includes(platform));
 }

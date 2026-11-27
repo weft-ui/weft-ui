@@ -13,8 +13,12 @@ final class Screenshots: XCTestCase {
             let id = parts[0]
             let dark = parts[1] == "dark"
             let app = XCUIApplication()
+            let bundleID = "net.mioyi.weftui.showcase"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: bundleID))
+            defaults.removePersistentDomain(forName: bundleID)
+            defaults.synchronize()
             app.launchEnvironment["WEFT_SHOT_APPEARANCE"] = dark ? "dark" : "light"
-            app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO"]
+            app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistenceIgnoreState", "YES"]
             app.launch()
             defer { app.terminate() }
             app.activate()
@@ -28,6 +32,7 @@ final class Screenshots: XCTestCase {
             for _ in 0..<10 where !button.isHittable { catalog.scroll(byDeltaX: 0, deltaY: -250) }
             XCTAssertTrue(button.isHittable, "Catalog button page:\(id) is off screen")
             button.click()
+            XCTAssertTrue(button.waitForNonExistence(timeout: 5), "Catalog did not navigate to page:\(id)")
             Thread.sleep(forTimeInterval: 1)
             if id == "controls" { XCTAssertTrue(window.staticTexts["控件设置"].exists) }
 
@@ -40,6 +45,9 @@ final class Screenshots: XCTestCase {
             if id == "controls" { checkControls(in: window, app: app) }
             if id == "tap" { checkTap(in: window) }
             if id == "overlays" { checkOverlays(in: app) }
+
+            app.typeKey("[", modifierFlags: .command)
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "Catalog did not return after page:\(id)")
         }
     }
 

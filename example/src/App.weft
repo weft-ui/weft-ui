@@ -18,48 +18,99 @@ import "./pages/Empty.weft"
 import "./pages/Overlays.weft"
 
 model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], fieldRegions: String[], overlayResult: String[] }
+event Open(id: String)
 
-component Showcase(model: ShowcaseModel) {
-    state page = ""
-
-    if (page == "") {
-        Scroll {
-            Column(padding = 16, gap = 8) {
-                Button(onClick = { page = "hello" }) { Text("page:hello") }
-                Button(onClick = { page = "layout" }) { Text("page:layout") }
-                Button(onClick = { page = "appearance" }) { Text("page:appearance") }
-                Button(onClick = { page = "theme" }) { Text("page:theme") }
-                Button(onClick = { page = "text" }) { Text("page:text") }
-                Button(onClick = { page = "controls" }) { Text("page:controls") }
-                Button(onClick = { page = "inputs" }) { Text("page:inputs") }
-                Button(onClick = { page = "tap" }) { Text("page:tap") }
-                Button(onClick = { page = "assets" }) { Text("page:assets") }
-                Button(onClick = { page = "safearea" }) { Text("page:safearea") }
-                Button(onClick = { page = "feed" }) { Text("page:feed") }
-                Button(onClick = { page = "detail" }) { Text("page:detail") }
-                Button(onClick = { page = "profile" }) { Text("page:profile") }
-                Button(onClick = { page = "form" }) { Text("page:form") }
-                Button(onClick = { page = "settings" }) { Text("page:settings") }
-                Button(onClick = { page = "empty" }) { Text("page:empty") }
-                Button(onClick = { page = "overlays" }) { Text("page:overlays") }
-            }
+page Catalog() {
+    NavBar(title = "Showcase")
+    Scroll {
+        Column(padding = 16, gap = 8) {
+            Button(onClick = { Open("hello") }) { Text("page:hello") }
+            Button(onClick = { Open("layout") }) { Text("page:layout") }
+            Button(onClick = { Open("appearance") }) { Text("page:appearance") }
+            Button(onClick = { Open("theme") }) { Text("page:theme") }
+            Button(onClick = { Open("text") }) { Text("page:text") }
+            Button(onClick = { Open("controls") }) { Text("page:controls") }
+            Button(onClick = { Open("inputs") }) { Text("page:inputs") }
+            Button(onClick = { Open("tap") }) { Text("page:tap") }
+            Button(onClick = { Open("assets") }) { Text("page:assets") }
+            Button(onClick = { Open("safearea") }) { Text("page:safearea") }
+            Button(onClick = { Open("feed") }) { Text("page:feed") }
+            Button(onClick = { Open("detail") }) { Text("page:detail") }
+            Button(onClick = { Open("profile") }) { Text("page:profile") }
+            Button(onClick = { Open("form") }) { Text("page:form") }
+            Button(onClick = { Open("settings") }) { Text("page:settings") }
+            Button(onClick = { Open("empty") }) { Text("page:empty") }
+            Button(onClick = { Open("overlays") }) { Text("page:overlays") }
         }
     }
-    if (page == "hello") { Hello() }
-    if (page == "layout") { Layout() }
-    if (page == "appearance") { Appearance() }
-    if (page == "theme") { Theme() }
-    if (page == "text") { Typography() }
-    if (page == "controls") { Controls(model.regions, model.channels, model.unavailable) }
-    if (page == "inputs") { Inputs() }
-    if (page == "tap") { Tap() }
-    if (page == "assets") { Assets() }
-    if (page == "safearea") { Safearea(model.safeArea) }
-    if (page == "feed") { Feed() }
-    if (page == "detail") { Detail() }
-    if (page == "profile") { Profile() }
-    if (page == "form") { Form(model.fieldRegions) }
-    if (page == "settings") { Settings() }
-    if (page == "empty") { Empty() }
-    if (page == "overlays") { Overlays(model.overlayResult) }
 }
+page HelloPage(model: ShowcaseModel) path "/showcase/hello" {
+    NavBar(title = "Hello")
+    Hello()
+}
+page LayoutPage(model: ShowcaseModel) path "/showcase/layout" {
+    NavBar(title = "Layout")
+    Layout()
+}
+page AppearancePage(model: ShowcaseModel) path "/showcase/appearance" {
+    NavBar(title = "Appearance")
+    Appearance()
+}
+page ThemePage(model: ShowcaseModel) path "/showcase/theme" {
+    NavBar(title = "Theme")
+    Theme()
+}
+page TypographyPage(model: ShowcaseModel) path "/showcase/text" {
+    NavBar(title = "Typography")
+    Typography()
+}
+page ControlsPage(model: ShowcaseModel) path "/showcase/controls" {
+    NavBar(title = "Controls")
+    Controls(model.regions, model.channels, model.unavailable)
+}
+page InputsPage(model: ShowcaseModel) path "/showcase/inputs" {
+    NavBar(title = "Inputs")
+    Inputs()
+}
+page TapPage(model: ShowcaseModel) path "/showcase/tap" {
+    NavBar(title = "Tap")
+    Tap()
+}
+page AssetsPage(model: ShowcaseModel) path "/showcase/assets" {
+    NavBar(title = "Assets")
+    Assets()
+}
+page SafeareaPage(model: ShowcaseModel) path "/showcase/safearea" {
+    NavBar(title = "Safe area")
+    Safearea(model.safeArea)
+}
+page FeedPage(model: ShowcaseModel) path "/showcase/feed" {
+    NavBar(title = "Fieldnotes feed")
+    Feed()
+}
+page DetailPage(model: ShowcaseModel) path "/showcase/detail" {
+    NavBar(title = "Trail note")
+    Detail()
+}
+page ProfilePage(model: ShowcaseModel) path "/showcase/profile" {
+    NavBar(title = "Member profile")
+    Profile()
+}
+page FormPage(model: ShowcaseModel) path "/showcase/form" {
+    NavBar(title = "Registration")
+    Form(model.fieldRegions)
+}
+page SettingsPage(model: ShowcaseModel) path "/showcase/settings" {
+    NavBar(title = "Journal settings")
+    Settings()
+}
+page EmptyPage(model: ShowcaseModel) path "/showcase/empty" {
+    NavBar(title = "Empty saved notes")
+    Empty()
+}
+page OverlaysPage(model: ShowcaseModel) path "/showcase/overlays" {
+    NavBar(title = "Overlays")
+    Overlays(model.overlayResult)
+}
+
+app Example { start = Catalog }
