@@ -5,4 +5,6 @@ const { directory, shots } = prepareShots("linux");
 if (shots.length === 0) process.exit(0);
 
 build("linux");
-command("apps/linux/build/screenshots", [directory, ...shots.map(({ id, scheme }) => `${id}:${scheme}`)]);
+for (const { id, link, scheme } of shots) {
+  command("apps/linux/build/screenshots", [directory, `${id}:${scheme}`, ...(link === "/" ? [] : [`weftexample:/${link}`])]);
+}

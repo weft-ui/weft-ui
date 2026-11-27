@@ -15,6 +15,7 @@ add_executable(ui_tests tests/UITests.cpp)
 weft_app(ui_tests)
 add_test(NAME ui COMMAND ui_tests)
 add_test(NAME ui.tap COMMAND ui_tests --tap)
+add_test(NAME ui.deep-link COMMAND ui_tests weftexample://notes/3)
 set_tests_properties(ui.tap PROPERTIES SKIP_RETURN_CODE 77)
 
 add_executable(screenshots tests/screenshots.cpp)

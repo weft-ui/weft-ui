@@ -20,40 +20,6 @@ constexpr int kViewportHeight = 844;
   std::exit(1);
 }
 
-void pump() {
-  while (g_main_context_iteration(nullptr, FALSE)) {}
-}
-
-GtkWidget *find_catalog_button(GtkWidget *widget, std::string_view label, GtkWidget *button = nullptr) {
-  if (GTK_IS_BUTTON(widget)) button = widget;
-  if (button && GTK_IS_LABEL(widget) && gtk_label_get_text(GTK_LABEL(widget)) == label) return button;
-  for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child)) {
-    if (auto *found = find_catalog_button(child, label, button)) return found;
-  }
-  return nullptr;
-}
-
-void wait_for_page(GtkStack *stack, GtkWidget *previous) {
-  const auto deadline = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
-  while (g_get_monotonic_time() < deadline) {
-    pump();
-    if (gtk_stack_get_visible_child(stack) != previous && !gtk_stack_get_transition_running(stack)) return;
-    g_usleep(1000);
-  }
-  fail("Navigation did not complete");
-}
-
-GtkWidget *back_button(GtkWidget *widget) {
-  if (GTK_IS_BUTTON(widget)) {
-    const char *icon = gtk_button_get_icon_name(GTK_BUTTON(widget));
-    if (icon && std::string_view(icon) == "go-previous-symbolic" && gtk_widget_is_visible(widget)) return widget;
-  }
-  for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child)) {
-    if (auto *found = back_button(child)) return found;
-  }
-  return nullptr;
-}
-
 void capture(GtkWidget *window, const std::filesystem::path &path) {
   const int width = gtk_widget_get_width(window);
   const int height = gtk_widget_get_height(window);
@@ -75,54 +41,56 @@ void capture(GtkWidget *window, const std::filesystem::path &path) {
   g_object_unref(texture);
 }
 
+struct Shot {
+  std::filesystem::path path;
+  bool dark;
+};
+
+void show(GtkApplication *app, const char *url, Shot *shot) {
+  g_object_set(gtk_settings_get_default(), "gtk-font-name", "Inter Variable, Sans 10", nullptr);
+  weft::Appearance::set_test_dark(shot->dark);
+  auto *window = gtk_application_window_new(app);
+  gtk_window_set_child(GTK_WINDOW(window), weft::start_app_with_url(url));
+  gtk_window_set_default_size(GTK_WINDOW(window), kViewportWidth, kViewportHeight);
+  gtk_window_present(GTK_WINDOW(window));
+  g_timeout_add(1000, +[](gpointer data) -> gboolean {
+    auto *window = GTK_WIDGET(data);
+    auto *shot = static_cast<Shot *>(g_object_get_data(G_OBJECT(window), "shot"));
+    auto *root = gtk_window_get_child(GTK_WINDOW(window));
+    auto *first = gtk_widget_get_first_child(root);
+    if (!first || gtk_widget_has_css_class(first, "error")) fail("The app did not start");
+    capture(window, shot->path);
+    gtk_window_destroy(GTK_WINDOW(window));
+    return G_SOURCE_REMOVE;
+  }, window);
+  g_object_set_data(G_OBJECT(window), "shot", shot);
+}
+
+void activate(GtkApplication *app, gpointer data) { show(app, nullptr, static_cast<Shot *>(data)); }
+void open(GtkApplication *app, GFile **files, int count, const char *, gpointer data) {
+  if (count != 1) fail("Expected one deep link");
+  g_autofree char *url = g_file_get_uri(files[0]);
+  show(app, url, static_cast<Shot *>(data));
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
-  if (argc < 3) fail("Usage: screenshots DIRECTORY <id:light|id:dark> ...");
+  if (argc < 3 || argc > 4) fail("Usage: screenshots DIRECTORY id:light|id:dark [URL]");
   g_autofree char *data = g_dir_make_tmp("weft-screenshots-XXXXXX", nullptr);
   if (!data || !g_setenv("XDG_DATA_HOME", data, true)) fail("Could not isolate screenshot storage");
   struct Cleanup { const char *path; ~Cleanup() { std::filesystem::remove_all(path); } } cleanup{data};
-  if (!gtk_init_check()) fail("Screenshots need a GTK desktop (DISPLAY or WAYLAND_DISPLAY)");
-  // The Docker desktop ships Inter Variable so the weight ladder shows all five weights.
-  g_object_set(gtk_settings_get_default(), "gtk-font-name", "Inter Variable, Sans 10", nullptr);
-
-  for (int i = 2; i < argc; ++i) {
-    std::string_view page = argv[i];
-    auto delimiter = page.find(':');
-    std::string id(page.substr(0, delimiter));
-    bool dark = page.substr(delimiter + 1) == "dark";
-    weft::Appearance::set_test_dark(dark);
-
-    auto *window = gtk_window_new();
-    auto *root = weft::start_app();
-    gtk_window_set_child(GTK_WINDOW(window), root);
-    gtk_window_set_default_size(GTK_WINDOW(window), kViewportWidth, kViewportHeight);
-    gtk_window_present(GTK_WINDOW(window));
-    GtkWidget *button = nullptr;
-    const auto label = "page:" + id;
-    const auto timeout = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
-    do {
-      pump();
-      if (gtk_widget_get_width(root) > 0) button = find_catalog_button(root, label);
-      if (button) break;
-      g_usleep(1000);
-    } while (g_get_monotonic_time() < timeout);
-    if (!button) fail("No catalog button " + label);
-    auto *stack_widget = gtk_widget_get_ancestor(button, GTK_TYPE_STACK);
-    if (!stack_widget) fail("Catalog navigation stack missing");
-    auto *stack = GTK_STACK(stack_widget);
-    auto *catalog = gtk_stack_get_visible_child(stack);
-    gtk_widget_grab_focus(button);  // The scrolled parent brings its focused child into view.
-    if (!gtk_widget_activate(button)) fail("Could not click " + label);
-    wait_for_page(stack, catalog);
-    auto *page_widget = gtk_stack_get_visible_child(stack);
-    capture(window, std::filesystem::path(argv[1]) / (id + (dark ? "-dark.png" : ".png")));
-    auto *back = back_button(page_widget);
-    if (!back) fail("Native back button missing for " + id);
-    g_signal_emit_by_name(back, "clicked");
-    wait_for_page(stack, page_widget);
-    if (gtk_stack_get_visible_child(stack) != catalog || !find_catalog_button(root, label))
-      fail("Back did not restore the catalog for " + id);
-    gtk_window_destroy(GTK_WINDOW(window));
-  }
+  std::string_view page = argv[2];
+  auto delimiter = page.find(':');
+  if (delimiter == page.npos) fail("Missing screenshot scheme");
+  std::string id(page.substr(0, delimiter));
+  bool dark = page.substr(delimiter + 1) == "dark";
+  Shot shot{std::filesystem::path(argv[1]) / (id + (dark ? "-dark.png" : ".png")), dark};
+  auto *app = gtk_application_new(nullptr, GApplicationFlags(G_APPLICATION_HANDLES_OPEN | G_APPLICATION_NON_UNIQUE));
+  g_signal_connect(app, "activate", G_CALLBACK(activate), &shot);
+  g_signal_connect(app, "open", G_CALLBACK(open), &shot);
+  char *app_argv[] = {argv[0], argc == 4 ? argv[3] : nullptr, nullptr};
+  int status = g_application_run(G_APPLICATION(app), argc == 4 ? 2 : 1, app_argv);
+  g_object_unref(app);
+  return status;
 }

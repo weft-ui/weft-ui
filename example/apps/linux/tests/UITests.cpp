@@ -29,6 +29,7 @@ void pump() {
 }
 
 void collect(GtkWidget *widget, GType type, std::vector<GtkWidget *> &out) {
+  if (!gtk_widget_is_visible(widget)) return;
   if (g_type_is_a(G_OBJECT_TYPE(widget), type)) out.push_back(widget);
   for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child)) {
     collect(child, type, out);
@@ -46,7 +47,8 @@ std::vector<GtkWidget *> all(GtkWidget *root, GType type, size_t count) {
 }
 
 GtkWidget *label(GtkWidget *widget, std::string_view text) {
-  if (GTK_IS_LABEL(widget) && std::string_view(gtk_label_get_text(GTK_LABEL(widget))) == text) return widget;
+  if (GTK_IS_LABEL(widget) && gtk_widget_is_visible(widget) &&
+      std::string_view(gtk_label_get_text(GTK_LABEL(widget))) == text) return widget;
   for (auto *child = gtk_widget_get_first_child(widget); child; child = gtk_widget_get_next_sibling(child)) {
     if (auto *found = label(child, text)) return found;
   }
@@ -54,6 +56,19 @@ GtkWidget *label(GtkWidget *widget, std::string_view text) {
 }
 
 void click(GtkWidget *root, std::string_view text) {
+  const std::vector<std::string_view> tabs{"首页", "发现", "消息", "我的"};
+  for (size_t i = 0; i < tabs.size(); ++i) {
+    if (text != tabs[i]) continue;
+    std::vector<GtkWidget *> switchers;
+    collect(root, GTK_TYPE_STACK_SWITCHER, switchers);
+    check(switchers.size() == 1, "Tab switcher missing");
+    auto *tab = gtk_widget_get_first_child(switchers[0]);
+    for (size_t n = 0; n < i && tab; ++n) tab = gtk_widget_get_next_sibling(tab);
+    check(tab && GTK_IS_TOGGLE_BUTTON(tab), "Tab button missing");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(tab), true);
+    pump();
+    return;
+  }
   auto *caption = label(root, text);
   auto *button = caption ? gtk_widget_get_ancestor(caption, GTK_TYPE_BUTTON) : nullptr;
   if (!button) {
@@ -81,11 +96,12 @@ void wait_for_page(GtkStack *stack, GtkWidget *previous) {
   check(false, "Navigation did not complete");
 }
 
-void open_page(GtkWidget *root, std::string_view entry) {
+GtkWidget *open_page(GtkWidget *root, std::string_view entry) {
   auto *stack = catalog_stack(root, entry);
   auto *previous = gtk_stack_get_visible_child(stack);
   click(root, entry);
   wait_for_page(stack, previous);
+  return gtk_stack_get_visible_child(stack);
 }
 
 bool active(GtkWidget *widget, bool value) {
@@ -133,7 +149,8 @@ GtkWidget *dialog_with(std::string_view text) {
 }
 
 void overlays(GtkWidget *root) {
-  open_page(root, "page:overlays");
+  auto *app_root = root;
+  root = open_page(root, "page:overlays");
   click(root, "Alert");
   auto *dialog = dialog_with("This is an alert.");
   check(dialog, "Alert not shown"); click(dialog, "OK");
@@ -147,7 +164,7 @@ void overlays(GtkWidget *root) {
   check(dialog, "Action sheet not shown"); click(dialog, "Second");
   check(label(root, "Selected option 2."), "Action sheet result missing");
   click(root, "Toast");
-  auto *toast = label(root, "This is a toast.");
+  auto *toast = label(app_root, "This is a toast.");
   check(toast && label(root, "Toast shown."), "Toast missing");
   auto *revealer = gtk_widget_get_ancestor(toast, GTK_TYPE_REVEALER);
   check(revealer && gtk_revealer_get_reveal_child(GTK_REVEALER(revealer)), "Toast not revealed");
@@ -159,7 +176,7 @@ void overlays(GtkWidget *root) {
 }
 
 void controls(GtkWidget *root) {
-  open_page(root, "page:controls");
+  root = open_page(root, "page:controls");
 
   const auto switches = all(root, GTK_TYPE_SWITCH, 4);
   const auto checkboxes = all(root, GTK_TYPE_CHECK_BUTTON, 2);
@@ -219,7 +236,7 @@ void controls(GtkWidget *root) {
 }
 
 void inputs(GtkWidget *root) {
-  open_page(root, "page:inputs");
+  root = open_page(root, "page:inputs");
   const auto entries = all(root, GTK_TYPE_ENTRY, 5);
   const auto textareas = all(root, GTK_TYPE_TEXT_VIEW, 1);
   auto *draft = gtk_editable_get_delegate(GTK_EDITABLE(entries[0]));
@@ -317,7 +334,7 @@ GtkWidget *tap_target(GtkWidget *widget) {
 
 void taps(GtkWidget *root) {
   xdotool(root, {"mouseup", "1"});
-  open_page(root, "page:tap");
+  root = open_page(root, "page:tap");
   auto expect_counts = [&](int rows, int cards, int buttons, int texts) {
     check(label(root, "Rows: " + std::to_string(rows)) && label(root, "Cards: " + std::to_string(cards)) &&
           label(root, "Buttons: " + std::to_string(buttons)) && label(root, "Text: " + std::to_string(texts)),
@@ -441,7 +458,7 @@ void keyboard_page(GtkWidget *root) {
 }
 
 void lazy_list(GtkWidget *root) {
-  open_page(root, "page:list");
+  root = open_page(root, "page:list");
   std::vector<GtkWidget *> views;
   collect(root, GTK_TYPE_LIST_VIEW, views);
   check(views.size() == 1, "Lazy list view missing");
@@ -475,6 +492,122 @@ void catalog_walkthrough(GtkWidget *root) {
   }
 }
 
+void fieldnotes(GtkWidget *root) {
+  check(label(root, "Latest notes"), "Feed missing");
+  click(root, "发现");
+  check(label(root, "Find inspiration for your next walk."), "Discover missing");
+  click(root, "消息");
+  check(label(root, "Updates from your trail community."), "Inbox missing");
+  click(root, "我的");
+  check(label(root, "Hiking notes from the North Coast"), "Me missing");
+  click(root, "Log in");
+  check(label(root, "Welcome back to your journal."), "Login missing");
+  click(root, "Cancel");
+  check(!label(root, "Welcome back to your journal."), "Login did not dismiss");
+  click(root, "Settings");
+  click(root, "Clear cache");
+  auto *dialog = dialog_with("Clear cached data?");
+  check(dialog, "Clear cache confirmation missing");
+  click(dialog, "Clear");
+  const auto toast_deadline = g_get_monotonic_time() + 3 * G_TIME_SPAN_SECOND;
+  while (!label(root, "✓  Cache cleared") && g_get_monotonic_time() < toast_deadline) {
+    g_usleep(1000);
+    pump();
+  }
+  check(label(root, "✓  Cache cleared"), "Clear cache toast missing");
+  auto *stack = catalog_stack(root, "Clear cache");
+  auto *settings = gtk_stack_get_visible_child(stack);
+  std::vector<GtkWidget *> buttons;
+  collect(settings, GTK_TYPE_BUTTON, buttons);
+  for (auto *button : buttons) {
+    const char *icon = gtk_button_get_icon_name(GTK_BUTTON(button));
+    if (icon && std::string_view(icon) == "go-previous-symbolic" && gtk_widget_is_visible(button)) {
+      g_signal_emit_by_name(button, "clicked");
+      wait_for_page(stack, settings);
+      break;
+    }
+  }
+  click(root, "首页");
+  click(root, "发布");
+  check(label(root, "Publish a note"), "Publish missing");
+  click(root, "Cancel");
+  check(!label(root, "Publish a note"), "Publish did not dismiss");
+#ifdef GDK_WINDOWING_X11
+  auto *note = label(root, "NOTE 1  /  MOUNTAINS  /  6 MIN READ");
+  check(note, "First note missing");
+  point_at(note);
+  xdotool(root, {"click", "1"});
+  check(label(root, "Trail comments (2)"), "Detail missing");
+  auto *detail_stack = catalog_stack(root, "Trail comments (2)");
+  auto *detail = gtk_stack_get_visible_child(detail_stack);
+  buttons.clear();
+  collect(detail, GTK_TYPE_BUTTON, buttons);
+  for (auto *button : buttons) {
+    const char *icon = gtk_button_get_icon_name(GTK_BUTTON(button));
+    if (icon && std::string_view(icon) == "go-previous-symbolic" && gtk_widget_is_visible(button)) {
+      g_signal_emit_by_name(button, "clicked");
+      wait_for_page(detail_stack, detail);
+      break;
+    }
+  }
+  check(label(root, "Latest notes"), "Back did not restore Feed");
+#endif
+  std::vector<GtkWidget *> views;
+  collect(root, GTK_TYPE_LIST_VIEW, views);
+  GtkWidget *feed = nullptr;
+  for (auto *view : views) if (gtk_widget_is_visible(view)) { feed = view; break; }
+  check(feed, "Feed list missing");
+  auto *scroll = gtk_widget_get_ancestor(feed, GTK_TYPE_SCROLLED_WINDOW);
+  check(scroll, "Feed scroller missing");
+  auto *adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll));
+  const auto deadline = g_get_monotonic_time() + 15 * G_TIME_SPAN_SECOND;
+  while (!label(root, "NOTE 500  /  COAST  /  4 MIN READ") && g_get_monotonic_time() < deadline) {
+    gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_page_size(adjustment));
+    g_usleep(10000);
+    pump();
+  }
+  check(label(root, "NOTE 500  /  COAST  /  4 MIN READ"), "Feed did not load row 500");
+}
+
+void deep_link_open(GApplication *application, GFile **files, int count, const char *, gpointer) {
+  check(count == 1, "Expected one deep link");
+  g_autofree char *uri = g_file_get_uri(files[0]);
+  auto *window = gtk_window_new();
+  auto *root = weft::start_app_with_url(uri);
+  gtk_window_set_child(GTK_WINDOW(window), root);
+  gtk_window_set_default_size(GTK_WINDOW(window), 390, 844);
+  gtk_window_present(GTK_WINDOW(window));
+  pump();
+  check(label(root, "Trail comments (2)"), "Cold deep link did not open Detail");
+  auto *stack = catalog_stack(root, "Trail comments (2)");
+  auto *detail = gtk_stack_get_visible_child(stack);
+  std::vector<GtkWidget *> buttons;
+  collect(detail, GTK_TYPE_BUTTON, buttons);
+  GtkWidget *back = nullptr;
+  for (auto *button : buttons) {
+    const char *icon = gtk_button_get_icon_name(GTK_BUTTON(button));
+    if (icon && std::string_view(icon) == "go-previous-symbolic" && gtk_widget_is_visible(button)) { back = button; break; }
+  }
+  check(back, "Deep link back button missing");
+  g_signal_emit_by_name(back, "clicked");
+  wait_for_page(stack, detail);
+  check(label(root, "Latest notes"), "Deep link back did not restore Feed");
+  gtk_window_destroy(GTK_WINDOW(window));
+  g_application_quit(application);
+}
+
+void run_fieldnotes() {
+  auto *window = gtk_window_new();
+  auto *root = weft::start_app();
+  gtk_window_set_child(GTK_WINDOW(window), root);
+  gtk_window_set_default_size(GTK_WINDOW(window), 390, 844);
+  gtk_window_present(GTK_WINDOW(window));
+  pump();
+  fieldnotes(root);
+  gtk_window_destroy(GTK_WINDOW(window));
+  pump();
+}
+
 void run(void (*verify)(GtkWidget *), bool returns_to_catalog = false) {
   GtkWidget *window = gtk_window_new();
   GtkWidget *root = weft::start_app();
@@ -487,6 +620,8 @@ void run(void (*verify)(GtkWidget *), bool returns_to_catalog = false) {
   // shows its reason in a label styled `error` instead of the catalog.
   GtkWidget *first = gtk_widget_get_first_child(root);
   check(first && !gtk_widget_has_css_class(first, "error"), "The app did not start");
+  click(root, "发现");
+  click(root, "组件画廊");
   auto *stack = catalog_stack(root, "page:controls");
   auto *catalog = gtk_stack_get_visible_child(stack);
   verify(root);
@@ -506,6 +641,13 @@ int main(int argc, char **argv) {
     return 1;
   }
   g_object_set(gtk_settings_get_default(), "gtk-enable-animations", false, nullptr);
+  if (argc == 2 && std::string_view(argv[1]) == "weftexample://notes/3") {
+    auto *app = gtk_application_new(nullptr, GApplicationFlags(G_APPLICATION_HANDLES_OPEN | G_APPLICATION_NON_UNIQUE));
+    g_signal_connect(app, "open", G_CALLBACK(deep_link_open), nullptr);
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
+    return status;
+  }
   if (argc == 2 && std::string_view(argv[1]) == "--tap") {
 #ifdef GDK_WINDOWING_X11
     g_autofree char *tool = g_find_program_in_path("xdotool");
@@ -518,6 +660,7 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "Tap pointer tests need X11 and xdotool\n");
     return 77;
   }
+  run_fieldnotes();
   run(catalog_walkthrough, true);
   run(lifecycle_page);
   run(keyboard_page);
