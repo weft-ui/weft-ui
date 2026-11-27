@@ -165,8 +165,8 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *) {
 JNIEXPORT jlong JNICALL Java_net_mioyi_weftui_Native_create(JNIEnv *e, jobject, jobject host,
                                                             jbyteArray bytecode,
                                                             jlong layout_hash, jstring version,
-                                                            jstring environment) {
-  if (host == nullptr || bytecode == nullptr || version == nullptr || environment == nullptr) return 0;
+                                                            jstring environment, jbyteArray launch) {
+  if (host == nullptr || bytecode == nullptr || version == nullptr || environment == nullptr || launch == nullptr) return 0;
   auto session = std::make_unique<Session>();
   jclass type = e->GetObjectClass(host);
   if (type == nullptr || e->ExceptionCheck()) return 0;
@@ -213,6 +213,14 @@ JNIEXPORT jlong JNICALL Java_net_mioyi_weftui_Native_create(JNIEnv *e, jobject, 
     e->DeleteGlobalRef(session->host);
     return 0;
   }
+  const jsize launch_len = e->GetArrayLength(launch);
+  std::vector<char> launch_json(static_cast<size_t>(launch_len) + 1, '\0');
+  e->GetByteArrayRegion(launch, 0, launch_len, reinterpret_cast<jbyte *>(launch_json.data()));
+  if (e->ExceptionCheck()) {
+    e->ReleaseStringUTFChars(environment, json);
+    e->DeleteGlobalRef(session->host);
+    return 0;
+  }
   const weft_host callbacks{
       .protocol = weft::protocol::kVersion,
       .ctx = session.get(),
@@ -223,7 +231,7 @@ JNIEXPORT jlong JNICALL Java_net_mioyi_weftui_Native_create(JNIEnv *e, jobject, 
       .log = log,
       .version = os.c_str(),
       .environment = json,
-      .launch = nullptr,
+      .launch = launch_json.data(),
   };
   session->runtime = weft_runtime_new(&callbacks, session->bytecode.get(), len,
                                       static_cast<uint64_t>(layout_hash));

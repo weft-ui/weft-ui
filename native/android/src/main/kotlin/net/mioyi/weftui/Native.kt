@@ -17,7 +17,7 @@ internal object Native {
      * callbacks. Returns the runtime handle, or 0 when the app failed to start;
      * the reason has been logged through [NativeHost.log].
      */
-    external fun create(host: NativeHost, bytecode: ByteArray, layoutHash: Long, version: String, environment: String): Long
+    external fun create(host: NativeHost, bytecode: ByteArray, layoutHash: Long, version: String, environment: String, launch: ByteArray): Long
 
     external fun environment(runtime: Long, json: String)
 

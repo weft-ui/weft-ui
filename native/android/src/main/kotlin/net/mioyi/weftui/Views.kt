@@ -1,5 +1,11 @@
 package net.mioyi.weftui
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import androidx.activity.ComponentActivity
+import androidx.core.util.Consumer
+import org.json.JSONObject
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,10 +36,16 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.Empty, tabs: List<WeftTab> = emptyList(), make: WeftMake) {
     val context = LocalContext.current
-    val session = remember { WeftSession.start(context, layoutHash.toLong(), make) }
-    DisposableEffect(session) {
+    val activity = remember(context) { context.componentActivity() }
+    val session = remember { WeftSession.start(context, layoutHash.toLong(), make, activity?.intent?.dataString) }
+    DisposableEffect(session, activity) {
         val lifecycle = LifecycleSubscription(context, session::signal)
+        val listener = Consumer<Intent> { intent ->
+            intent.dataString?.let { session.signal("link", JSONObject().put("url", it).toString()) }
+        }
+        activity?.addOnNewIntentListener(listener)
         onDispose {
+            activity?.removeOnNewIntentListener(listener)
             lifecycle.close()
             session.close()
         }
@@ -69,6 +81,12 @@ fun WeftRoot(layoutHash: ULong, safeArea: Boolean, theme: WeftTheme = WeftTheme.
         }
         OverlayHost(session.overlays)
     }
+}
+
+private tailrec fun Context.componentActivity(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> if (baseContext === this) null else baseContext.componentActivity()
+    else -> null
 }
 
 /** `Button`: a Material button around its children. */

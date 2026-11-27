@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import type { NativeAdapter, RunTool } from "./native.ts";
@@ -57,6 +57,48 @@ dependencies {
 `;
 }
 
+function linkManifest(links: { scheme?: string; hosts?: string[] }): string {
+  const escape = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const filter = (data: string, verified = false) => `            <intent-filter${verified ? ' android:autoVerify="true"' : ""}>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                ${data}
+            </intent-filter>`;
+  const filters = [
+    ...(links.scheme ? [filter(`<data android:scheme="${escape(links.scheme)}" />`)] : []),
+    ...(links.hosts ?? []).map((host) => filter(`<data android:scheme="https" android:host="${escape(host)}" />`, true)),
+  ];
+  return `<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+${filters.length ? `    <application>
+        <activity android:name="net.mioyi.weftui.generated.WeftLinkActivity" android:exported="true" android:theme="@android:style/Theme.NoDisplay">
+${filters.join("\n")}
+        </activity>
+    </application>\n` : ""}</manifest>
+`;
+}
+
+const linkActivity = `package net.mioyi.weftui.generated
+
+import android.app.Activity
+import android.content.Intent
+import android.os.Bundle
+
+class WeftLinkActivity : Activity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        if (launch != null && intent.data != null) {
+            launch.data = intent.data
+            launch.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            startActivity(launch)
+        }
+        finish()
+    }
+}
+`;
+
 /** The Android SDK named by the environment, `local.properties` of `project`, or the default install location. */
 function androidSdk(project: string): string | undefined {
   const fromEnv = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
@@ -79,9 +121,14 @@ export function androidAdapter(runTool: RunTool, shell: string): NativeAdapter {
   return {
     // The Android module packages the bytecode as an asset.
     bytecode: "src/main/assets/weft/bundle.hbc",
-    writeGlue(generated, project) {
+    writeGlue(generated, project, links) {
       writeFileSync(join(generated, "settings.gradle.kts"), settingsFragment(project, shell));
       writeFileSync(join(generated, "build.gradle.kts"), moduleBuild());
+      const main = join(generated, "src/main");
+      const kotlin = join(main, "kotlin/net/mioyi/weftui/generated");
+      mkdirSync(kotlin, { recursive: true });
+      writeFileSync(join(main, "AndroidManifest.xml"), linkManifest(links));
+      writeFileSync(join(kotlin, "WeftLinkActivity.kt"), linkActivity);
     },
     // The APK is in project/app/build/outputs/apk/; release builds are unsigned unless the project configures signing.
     async build(project, _platform, release) {

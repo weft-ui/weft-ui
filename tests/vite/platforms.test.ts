@@ -919,6 +919,8 @@ test("Android generates a Gradle project around the generated module", async () 
   expect(hbc.readBigUInt64LE(0)).toBe(0x1f1903c103bc1fc6n);
   const { hash } = JSON.parse(await readFile(join(project, "weft/layout.json"), "utf8"));
   expect(await readFile(join(project, "weft/src/main/kotlin/Generated.kt"), "utf8")).toContain(`layoutHash = 0x${hash}uL`);
+  expect(await readFile(join(project, "weft/src/main/AndroidManifest.xml"), "utf8")).toContain("<manifest");
+  expect(await readFile(join(project, "weft/src/main/kotlin/net/mioyi/weftui/generated/WeftLinkActivity.kt"), "utf8")).toContain("class WeftLinkActivity");
   // The shell is referenced relative to the project, so it builds wherever the workspace is.
   const settings = await readFile(join(project, "weft/settings.gradle.kts"), "utf8");
   const shell = relative(realpathSync(project), WEFT_ANDROID).replaceAll("\\", "/");

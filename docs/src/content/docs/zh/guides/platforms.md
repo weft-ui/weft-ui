@@ -147,6 +147,8 @@ pnpm --filter example test:android
 
 可以在 Android Studio 中打开 `apps/android/`。生成的 `weft/` Gradle 模块包含 Compose 视图和字节码资源 `src/main/assets/weft/bundle.hbc`。插件可以从环境变量、工程 `local.properties` 的 `sdk.dir` 或默认安装目录找到 SDK，然后用工程的 Gradle Wrapper（Windows 上是 `gradlew.bat`）运行 `assembleDebug` 或 `assembleRelease`。APK 输出到 `apps/android/app/build/outputs/apk/`；未配置签名时，Release APK 不会签名。
 
+生成的 `weft` 模块通过转发 Activity 注册配置的 scheme 和 HTTPS 主机，无需修改应用的清单文件。HTTPS App Links 还需部署 Digital Asset Links 文件并验证域名。
+
 先启动模拟器或连接设备，再运行 `test:android`。脚本通过 `connectedDebugAndroidTest` 执行 Compose UI 测试。
 
 ## Windows

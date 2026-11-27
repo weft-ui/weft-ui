@@ -26,7 +26,7 @@ typealias WeftMake = (template: Int, id: Int, session: WeftSession) -> WeftScope
  * thread. Each composed root owns its session; a recreated activity starts
  * a new session.
  */
-class WeftSession private constructor(context: Context, layoutHash: Long, private val make: WeftMake) {
+class WeftSession private constructor(context: Context, layoutHash: Long, launchUrl: String?, private val make: WeftMake) {
     /** The root component instance. */
     var root: WeftScope? by mutableStateOf(null)
         internal set
@@ -117,17 +117,18 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     init {
         WeftLog.debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         scopes[0] = RootScope(this)
-        start(context, layoutHash)
+        start(context, layoutHash, launchUrl)
     }
 
-    private fun start(context: Context, layoutHash: Long) {
+    private fun start(context: Context, layoutHash: Long, launchUrl: String?) {
         val bytecode = try {
             context.assets.open(BUNDLE).use { it.readBytes() }
         } catch (error: Exception) {
             return fail("weft: cannot read the bundle $BUNDLE ($error)")
         }
         runtime = try {
-            Native.create(host, bytecode, layoutHash, Build.VERSION.RELEASE ?: "", environment.json())
+            Native.create(host, bytecode, layoutHash, Build.VERSION.RELEASE ?: "", environment.json(),
+                JSONObject().put("url", launchUrl ?: JSONObject.NULL).toString().toByteArray(Charsets.UTF_8))
         } catch (error: UnsatisfiedLinkError) {
             return fail("weft: cannot load the native kernel ($error)")
         }
@@ -262,7 +263,7 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
          * scopes with [make].
          */
         @MainThread
-        fun start(context: Context, layoutHash: Long, make: WeftMake): WeftSession =
-            WeftSession(context.applicationContext, layoutHash, make)
+        fun start(context: Context, layoutHash: Long, make: WeftMake, launchUrl: String? = null): WeftSession =
+            WeftSession(context.applicationContext, layoutHash, launchUrl, make)
     }
 }

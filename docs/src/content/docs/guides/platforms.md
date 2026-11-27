@@ -147,6 +147,8 @@ pnpm --filter example test:android
 
 Open `apps/android/` in Android Studio. The generated `weft/` Gradle module contains the Compose views and the bytecode asset `src/main/assets/weft/bundle.hbc`. The plugin can find the SDK from the environment, `sdk.dir` in the project’s `local.properties`, or the default install location. It uses the project’s Gradle wrapper (`gradlew.bat` on Windows) to run `assembleDebug` or `assembleRelease`. APKs land in `apps/android/app/build/outputs/apk/`; release APKs are unsigned unless you configure signing.
 
+The generated `weft` module registers the configured scheme and HTTPS hosts through a forwarding activity; the app's manifest does not need editing. HTTPS App Links require a deployed Digital Asset Links file and domain verification.
+
 Start an emulator or connect a device before running `test:android`. The script runs the Compose UI tests via `connectedDebugAndroidTest`.
 
 ## Windows
