@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Markup;
@@ -43,6 +44,8 @@ public sealed class WeftSession
     private readonly ArrayBufferWriter<byte> environmentJson = new(192);
     private XamlRoot? xamlRoot;
     private bool environmentQueued;
+    private AppWindow? appWindow;
+    private readonly LifecycleState lifecycle = new();
     private readonly DispatcherQueue queue;
     private readonly DispatcherQueueTimer timer;
     /// <summary>When the timer fires, in <see cref="Environment.TickCount64"/> milliseconds.</summary>
@@ -156,20 +159,43 @@ public sealed class WeftSession
             throw;
         }
 
+        // MemoryManager.AppMemoryUsageIncreased is unavailable to unpackaged apps.
         root.Loaded += (_, _) =>
         {
             if (xamlRoot is not null) xamlRoot.Changed -= OnXamlRootChanged;
             xamlRoot = root.XamlRoot;
-            if (xamlRoot is not null) xamlRoot.Changed += OnXamlRootChanged;
+            if (xamlRoot is not null)
+            {
+                xamlRoot.Changed += OnXamlRootChanged;
+                appWindow = AppWindow.GetFromWindowId(xamlRoot.ContentIslandEnvironment.AppWindowId);
+                if (appWindow is not null)
+                {
+                    appWindow.Changed += OnAppWindowChanged;
+                    UpdateLifecycle();
+                }
+            }
             QueueEnvironment();
         };
         root.Unloaded += (_, _) =>
         {
             if (xamlRoot is not null) xamlRoot.Changed -= OnXamlRootChanged;
+            if (appWindow is not null) appWindow.Changed -= OnAppWindowChanged;
+            appWindow = null;
             xamlRoot = null;
         };
         root.SizeChanged += (_, _) => QueueEnvironment();
         root.ActualThemeChanged += (_, _) => QueueEnvironment();
+    }
+
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args) => UpdateLifecycle();
+
+    private void UpdateLifecycle()
+    {
+        if (appWindow is null) return;
+        var background = !appWindow.IsVisible ||
+            appWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized };
+        var json = lifecycle.Update(background);
+        if (json is not null) queue.TryEnqueue(() => Signal("lifecycle", json));
     }
 
     private void OnXamlRootChanged(XamlRoot sender, XamlRootChangedEventArgs args) => QueueEnvironment();

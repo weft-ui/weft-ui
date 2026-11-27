@@ -26,13 +26,22 @@ public sealed class UITests
             using var pages = JsonDocument.Parse(File.ReadAllText(Path.Combine(project, "..", "..", "pages.json")));
             foreach (var page in pages.RootElement.EnumerateArray())
             {
-                var label = $"page:{page.GetProperty("id").GetString()}";
+                if (page.TryGetProperty("pending", out var pending) &&
+                    pending.EnumerateArray().Any(platform => platform.GetString() == "windows")) continue;
+                var id = page.GetProperty("id").GetString();
+                var label = $"page:{id}";
                 var entry = Screenshots.FindButton(window, label);
                 Assert.IsNotNull(entry, $"Missing catalog entry {label}");
                 entry.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
                 entry.AsButton().Invoke();
                 var back = Screenshots.FindButton(window, "Back");
                 Assert.IsNotNull(back, $"Navigation to {label} did not complete");
+                if (id is "lifecycle" or "keyboard")
+                {
+                    var text = id == "lifecycle" ? "Foreground: 0" : "Keyboard avoidance";
+                    Assert.IsNotNull(Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName(text)),
+                        TimeSpan.FromSeconds(5), ignoreException: true).Result, $"{id} did not render");
+                }
                 back.AsButton().Invoke();
                 var returned = Retry.WhileFalse(() => Screenshots.FindButton(window, label) is not null,
                     TimeSpan.FromSeconds(5), ignoreException: true).Result;

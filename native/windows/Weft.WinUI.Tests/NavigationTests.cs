@@ -4,6 +4,17 @@ namespace Weft.WinUI.Tests;
 public sealed class NavigationTests
 {
     [TestMethod]
+    public void LifecycleOnlyReportsChanges()
+    {
+        var state = new LifecycleState();
+        Assert.IsNull(state.Update(false));
+        Assert.AreEqual("{\"state\":\"background\"}", state.Update(true));
+        Assert.IsNull(state.Update(true));
+        Assert.AreEqual("{\"state\":\"foreground\"}", state.Update(false));
+        Assert.IsNull(state.Update(false));
+    }
+
+    [TestMethod]
     public void ClassifiesStackTransitions()
     {
         var root = new NavigationState(0, [1], [], 0, 0);

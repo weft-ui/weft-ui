@@ -5,6 +5,18 @@ using Windows.Graphics;
 
 namespace Weft.WinUI;
 
+internal sealed class LifecycleState
+{
+    private bool background;
+
+    internal string? Update(bool next)
+    {
+        if (background == next) return null;
+        background = next;
+        return next ? "{\"state\":\"background\"}" : "{\"state\":\"foreground\"}";
+    }
+}
+
 /// <summary>Window helpers for app templates.</summary>
 public static partial class WeftWindow
 {

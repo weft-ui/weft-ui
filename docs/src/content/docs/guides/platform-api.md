@@ -133,7 +133,7 @@ All five native shells implement `ui` with their platform's dialogs: SwiftUI ale
 
 `lifecycle.state` is `foreground` initially and changes to `background` when the app is hidden. Subscribe with `onForeground`, `onBackground`, or `onMemoryWarning`; each returns an unsubscribe function and does not immediately call the listener. The current page receives `onHide` on background and `onShow` on foreground. Desktop background means the window is minimized or hidden.
 
-`lifecycle.launch.url` is the cold-start link, or `null` when absent. On Web it is the initial `location.href`; on WeChat it is the launch path and encoded query. Web never emits memory warnings. Native notifications depend on the host shell.
+`lifecycle.launch.url` is the cold-start link, or `null` when absent. On Web it is the initial `location.href`; on WeChat it is the launch path and encoded query. Web and Windows never emit memory warnings. The Windows shell uses unpackaged apps, where subscribing to `MemoryManager.AppMemoryUsageIncreased` is unavailable. Other native notifications depend on the host shell.
 
 ```ts
 import { lifecycle } from "@weft-ui/platform";

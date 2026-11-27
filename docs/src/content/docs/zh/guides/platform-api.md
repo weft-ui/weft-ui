@@ -133,7 +133,7 @@ ui.toast("已保存", { icon: "success", duration: "short" });
 
 `lifecycle.state` 初始为 `foreground`，应用隐藏时变为 `background`。用 `onForeground`、`onBackground` 或 `onMemoryWarning` 注册监听器；注册时不会立即调用，返回值是取消订阅函数。进入后台时当前页收到 `onHide`，回到前台时收到 `onShow`。桌面上的后台指窗口最小化或隐藏。
 
-`lifecycle.launch.url` 是冷启动链接，没有时为 `null`。Web 上是加载时的 `location.href`，小程序上由启动路径和编码后的查询参数组成。Web 不会发出内存告警；原生通知取决于平台壳。
+`lifecycle.launch.url` 是冷启动链接，没有时为 `null`。Web 上是加载时的 `location.href`，小程序上由启动路径和编码后的查询参数组成。Web 和 Windows 不会发出内存告警。Windows 壳使用非打包应用，无法订阅 `MemoryManager.AppMemoryUsageIncreased`；其他原生通知取决于平台壳。
 
 ```ts
 import { lifecycle } from "@weft-ui/platform";

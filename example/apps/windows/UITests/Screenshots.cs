@@ -55,6 +55,7 @@ public sealed class Screenshots
                 Assert.IsNotNull(back, $"Navigation to {id} did not complete");
                 Thread.Sleep(TimeSpan.FromSeconds(1)); // Allow the push animation to finish before capture.
 
+                if (id == "lifecycle") VerifyLifecycle(window);
                 var suffix = scheme == "dark" ? "-dark" : "";
                 var path = Path.Combine(directory, $"{id}{suffix}.png");
                 CaptureWindow(window, path, id == "form" ? capture => VerifyFormInputBorders(window, capture) : null);
@@ -80,6 +81,24 @@ public sealed class Screenshots
             .FirstOrDefault(candidate => candidate.Properties.Name.ValueOrDefault == label ||
                 candidate.FindFirstDescendant(cf => cf.ByName(label)) is not null),
             TimeSpan.FromSeconds(5), ignoreException: true).Result;
+
+    private static void VerifyLifecycle(Window window)
+    {
+        var handle = window.Properties.NativeWindowHandle.Value;
+        ShowWindow(handle, 6); // SW_MINIMIZE
+        Thread.Sleep(TimeSpan.FromSeconds(1));
+        ShowWindow(handle, 9); // SW_RESTORE
+        foreach (var text in new[] { "Background: 1", "Foreground: 1" })
+        {
+            var result = Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName(text)),
+                TimeSpan.FromSeconds(5), ignoreException: true).Result;
+            var names = string.Join(", ", window.FindAllDescendants().Select(element => element.Properties.Name.ValueOrDefault));
+            Assert.IsNotNull(result, $"Missing {text} after minimize/restore; elements: {names}");
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(nint window, int command);
 
     private static void VerifyOverlays(Window window)
     {
