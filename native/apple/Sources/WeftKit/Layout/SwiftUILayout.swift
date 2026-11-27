@@ -380,14 +380,21 @@ private struct WeftImageLayout: Layout {
     let children = content()
     return WeftConfiguredBox(padding: padding) { box in
         WeftLeafLayout(box: box, viewport: true) {
-            ScrollView(direction == .horizontal ? .horizontal : .vertical, showsIndicators: indicators) {
-                WeftLinear(axis: direction, gap: gap, align: align, justify: .start,
-                           box: WeftBox(padding: padding, exact: (direction == .vertical, direction == .horizontal))) {
-                    children.weftChildren(of: .linear(direction, align))
+            ScrollViewReader { proxy in
+                ScrollView(direction == .horizontal ? .horizontal : .vertical, showsIndicators: indicators) {
+                    WeftLinear(axis: direction, gap: gap, align: align, justify: .start,
+                               box: WeftBox(padding: padding, exact: (direction == .vertical, direction == .horizontal))) {
+                        children.weftChildren(of: .linear(direction, align))
+                    }
                 }
+                #if os(iOS)
+                .environment(\.weftScrollToInput, { id in
+                    withAnimation { proxy.scrollTo(id, anchor: .bottom) }
+                })
+                #endif
+                // Padding can scroll with the content; the border stays outside the viewport.
+                .padding(box.border)
             }
-            // Padding can scroll with the content; the border stays outside the viewport.
-            .padding(box.border)
         }
     }
 }

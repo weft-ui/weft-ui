@@ -34,15 +34,43 @@ struct TextFocusRequest {
     }
 }
 
+#if os(iOS)
+private struct WeftScrollToInputKey: EnvironmentKey {
+    static let defaultValue: (@MainActor (UUID) -> Void)? = nil
+}
+
+extension EnvironmentValues {
+    var weftScrollToInput: (@MainActor (UUID) -> Void)? {
+        get { self[WeftScrollToInputKey.self] }
+        set { self[WeftScrollToInputKey.self] = newValue }
+    }
+}
+#endif
+
 private struct TextInputFocus: ViewModifier {
     let focused: Bool
     let onFocusChange: (@MainActor (Bool) -> Void)?
     @FocusState private var actual: Bool
     @State private var request = TextFocusRequest()
     @Environment(\.isEnabled) private var isEnabled
+    #if os(iOS)
+    @Environment(\.weftScrollToInput) private var scrollToInput
+    @State private var scrollID = UUID()
+    #endif
 
     func body(content: Content) -> some View {
         content.focused($actual)
+            #if os(iOS)
+            .overlay(alignment: .bottom) {
+                Color.clear.frame(height: 1).offset(y: 16).id(scrollID)
+            }
+            .onChange(of: actual) { _, focused in
+                if focused { scrollToInput?(scrollID) }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                if actual { scrollToInput?(scrollID) }
+            }
+            #endif
             .onChange(of: focused, initial: true) { _, focused in
                 if let desired = request.update(focused), !desired || isEnabled {
                     actual = desired

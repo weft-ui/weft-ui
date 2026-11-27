@@ -36,4 +36,25 @@ final class UITests: XCTestCase {
             XCTAssertTrue(entry.waitForExistence(timeout: 5), "Catalog did not return after \(label)")
         }
     }
+
+    @MainActor
+    func testKeyboardAvoidance() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        let entry = app.buttons["page:keyboard"]
+        for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        entry.tap()
+        let last = app.textFields["Field 12"]
+        for _ in 0..<10 where !last.isHittable { app.swipeUp() }
+        XCTAssertTrue(last.isHittable)
+        last.tap()
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        let message = app.textFields["Message"]
+        XCTAssertTrue(message.waitForExistence(timeout: 5))
+        XCTAssertLessThanOrEqual(last.frame.maxY, keyboard.frame.minY - 15)
+        XCTAssertLessThanOrEqual(message.frame.maxY, keyboard.frame.minY)
+    }
 }

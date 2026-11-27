@@ -189,7 +189,7 @@ public struct WeftRoot: View {
                     GeometryReader { fullWindow in
                         content(size: fullWindow.size)
                     }
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.container)
                 }
             }
             // Fill the window so the toast centers on it; keep the content at the top leading corner.
