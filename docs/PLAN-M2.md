@@ -886,9 +886,9 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R9.a | ☑ | 8ab27ab | iOS 基线 af32e41（截图待维护者确认） |
 | R9.d | ☑ | c893a49 | |
 | W1 | ☑ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告，T2 解决），字体 1630 KiB；开发者工具里推入分包页面（`notes/weft/pages/detail/index`）由编排者验证；`cli preview --info-output`（维护者授权）报主包 1982387 B、分包 `/notes/` 1691 B，按 §8.3 规则统计的源文件为 1959064 B 与 1729 B |
-| T2 | ☐ | | |
-| B1 | ☐ | | |
-| X1 | ☐ | | |
+| T2 | ☑ | d00f57c、0b06895 | 分两步：d00f57c 在私有 worktree 完成应用本身（Web 与小程序验证），0b06895 起把 `pages.json` 的应用页改为 `link` 冷启动截图；各平台 UI 与截图 09e9831（Android）、fa630c9（iOS、macOS）、539e16d（Windows）、534f832（Linux）、6b3ca06 与 cd40f8f（Web、小程序）；途中修正 20659db、aaf6306、3abfaef、c50f3cc（Windows）、877f945、261d288（Linux）、2763cef（iOS）、0ecab92、63c41d9、fee3110、1e0ac3c（小程序），见执行中发现。C-wxsize：主包 411.87 KiB，`showcase` 1735.41 KiB。退出标准的证据见执行中发现 [T2] 最后一条；新基线「截图待维护者确认」 |
+| B1 | ⏸ | 1af192b、0357ab3 | 模拟器参考值：Android（宿主 GPU）冷启动 159.5 ms、掉帧 5.01%（超 5%）、内存增量 13.6 MiB；iOS 冷启动 2870 ms（XCTest 在模拟器上的开销，见执行中发现）、掉帧不可得（模拟器不报告 hitch）、内存增量 8.3 MiB。真机数值需要维护者（规则 7） |
+| X1 | ☑ | f4f7aa7、5c261ce | 删除 `Fixture.natives`、`pending.json`、`pages.json` 的 `pending` 与应用级 `features.navigation`；支持矩阵没有 `"no"`，`ignored` 只剩 `BarButton`（小程序）、`Input.returnKey`（M1 决定）、`List.stickyHeaders`、`List`/`Grid` 的 `refreshing`/`onRefresh`（§5.1）；原生 conformance 改用 Android 的 schema 编译，`list-refresh` 在 C-core 通过（29/29）；ROADMAP 的 M2 状态如实写明性能预算待真机确认 |
 
 状态取值同 PLAN.md：`☐` 未开始，`◐` 进行中，`☑` 完成，`⏸` 已提交但等待验证（写明缺哪项）。
 
@@ -953,3 +953,9 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R8.a] §6 的 unverified 一项成立：SwiftUI 在会话创建之后才通过 `onOpenURL` 交付冷启动链接，`lifecycle.launch.url` 在 Apple 平台上为空，链接按退路在首帧后无动画打开；navigation 指南注明。结论：接受（平台限制）
 - [R8.a] macOS 上运行中的链接让 `WindowGroup` 每次新开一个共用同一会话的窗口（截图里叠着三个窗口，⌘[ 落到别的窗口）。修正：场景声明 `handlesExternalEvents`，链接交给已有窗口；UI 测试断言窗口数为 1（b8c094a）。结论：已修正
 - [R8] 四个平台的 Vite 适配器都需要 `links`：编排者先提交 `NativeAdapter.writeGlue(generated, project, links)` 的契约（416e1ea），各平台在自己的文件里生成注册文件。example 还没有 `/notes/{id}`，原生验收改用 `weftexample://showcase/<id>`，`/notes/1` 由 T2 覆盖。结论：已处理
+- [T2] 计划把 M1 的 `feed`、`detail`、`profile`、`form`、`settings` 改造成应用页，第一步却保留了画廊里的 M1 组件，并在 `catalog.ts` 里给重名的组件加 `Showcase` 前缀。第二步约定：`pages.json` 的条目可写 `link`，带 `link` 的是应用页（不生成画廊包装页、不进 `showcase` 分包），截图一律冷启动深链（原生 `weftexample:/` + `link`，`/` 为不带 URL 的普通启动）；`profile`、`form` 改为 `me`、`publish`，删除重复组件（0b06895）。Fieldnotes 页面用固定的浅色配色，`settings` 不再拍深色截图（83d78c6）。结论：已调整
+- [T2] 各平台走 Fieldnotes 流程时暴露的缺陷：Windows 激活 URI 被规范化为 `weftexample://discover/`，Tab 页链接匹配失败（20659db 去掉只有主机时补的空路径）；Windows 根页标题贴左边、与栏按钮不对齐、窄窗口下 Tab 遮挡内容、尾部栏按钮贴右边（aaf6306、3abfaef、c50f3cc）；Linux 列表行距约为 `gap` 的三倍且背景为白色（877f945），尾部栏按钮贴右边（261d288）；iOS Tab 图标过大（2763cef）；小程序连续 `reLaunch` 后标题栏停在上一页（0ecab92），`Grid` 只占左半宽（分段容器没有拉伸，63c41d9），按钮文字顶端对齐（fee3110），分包页面填充主包组件的插槽时空白（WXML 的 `import` 不传递；分包 `view.wxml` 带上主包模板的副本，1e0ac3c，主包 411.87 KiB）。结论：已修正
+- [T2] iOS 上 XCTest 每次快速滑动之后等待减速结束（约 3.5 s/次），滚到第 500 条超过 2 分钟：iOS 断言越过首屏 200 条（加载更多已触发，约 5 分钟），第 500 条由 macOS 测试覆盖（74 s）。小程序 automator 读不到 toast，`native().goHome()` 不回到 Feed，深链用例以 `switchTab` 代替「返回首页」。结论：接受，记录
+- [T2] 并行阶段的锁：`apps`、`example` 排队常超过 15 分钟，`mkdir` 锁不公平，有代理等了 20 分钟仍拿不到；`/tmp/weft-m2/lock.sh` 改为按票据先到先得，并修正 `set -u` 下 `WEFT_LOCKS` 未定义、替换 pid 文件时 `set -e` 退出的问题。开发者工具的 automator 一度在第一次调用时断开，完全退出开发者工具后恢复（与 1e0ac3c 无关，回退验证过）。结论：环境问题，已处理
+- [T2] ROADMAP M2 退出标准的证据：Tab、栈、模态、返回、深链冷启动——iOS（fa630c9 的 XCUITest，`XCUIApplication.open`）、Android（09e9831，Pixel_10_API_37.2）、Web（6b3ca06 的 Playwright `test:web`）、小程序（6b3ca06 的 automator `test:wechat`，返回首页见上条）的 C-ui 均通过，macOS、Windows、Linux 同样覆盖；协议版本 3 的共享样例与 conformance 夹具：TS 宿主（headless、Web、小程序）全部通过，原生 C++ 宿主 29/29 通过（`list-refresh` 自 X1 起用 Android 的 schema 编译）；10k 信息流的性能预算见 B1（模拟器参考值，真机 ⏸）。结论：记录
+- [B1] §5.6 的内存场景「各滑到底部」在 10 000 项上需要上千次滑动；改为 100 项与 10 000 项各做与掉帧场景相同的 20 次快速滑动后取差。运行时每次窗口请求都扫描全部项，改为与窗口大小成比例（1af192b，10 万次窗口调用 1202 ms → 18 ms）。iOS 模拟器冷启动 2870 ms：插桩测得内核启动加首次提交 6.5 ms、到首个 `onAppear` 约 48 ms，其余是模拟器与 XCTest 的开销；模拟器不报告 hitch 指标，`jankRatio` 为 `null`。Android 模拟器（宿主 GPU）掉帧 5.01%，仅略超预算，模拟器的帧时间不代表真机。结论：真机测量需要维护者（规则 7）；超预算项留给 M5.6 复核
