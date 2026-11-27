@@ -31,6 +31,15 @@ type ParamsArg<P> = {} extends P ? [params?: P] : [params: P];
 export const navigation: {
   readonly stack: readonly Route[];
   readonly tab: string | null;
+  readonly modal: Route | null;
+  present<P>(page: PageClass<P>, ...rest: [...ParamsArg<P>, options?: { style?: "sheet" | "fullScreen" }]): void;
+  dismiss(): void;
+  /** Opens a route URL, returning false when no page matches. */
+  open(url: string): boolean;
+  /** Returns a shareable URL for a page. */
+  url<P>(page: PageClass<P>, ...params: ParamsArg<P>): string;
+  /** Intercepts links before default navigation; return true to handle one. */
+  onOpen(handler: (route: Route, url: string) => boolean): () => void;
   switchTab(page: PageClass<{}>): void;
   /** `null` removes the badge; an empty string shows a dot. */
   setBadge(page: PageClass<{}>, text: string | null): void;

@@ -34,7 +34,16 @@ export default defineConfig({
 | `include` | `src/**/*.weft` | A glob relative to the Vite root. Non-Web builds compile the matched `.weft` files together. |
 | `entry` | The first existing `src/index.js`, `src/index.ts`, `src/index.mjs`, `src/index.mts`, `src/index.cjs`, or `src/index.cts`, in that order | The JS or TS logic entry for non-Web builds, resolved from the Vite root. Web starts from `index.html`. |
 | `safeArea` | `true` | Keep root content clear of system UI. Set to `false` for an edge-to-edge layout. Desktop targets have no insets, so the option changes nothing there. |
+| `links` | No scheme or hosts | Configure deep links with `{ scheme?: string, hosts?: string[] }`. The scheme must match `[a-z][a-z0-9+.-]*`; hosts identify accepted HTTPS domains. |
 | `dts` | `false` | Set to `true` to write `X.d.weft.ts` next to `X.weft` when not using `@weft-ui/content-mapper`. Enable `allowArbitraryExtensions` in TypeScript. |
+
+For example, configure the schemes and HTTPS hosts accepted by `navigation.open`:
+
+```ts
+weft({ links: { scheme: "notes", hosts: ["example.com"] } })
+```
+
+This configures route matching; serving the website or verifying domain ownership for platform links is a separate deployment step. See [routes and deep links](/guides/navigation/#routes-and-deep-links).
 
 ## Choose a target
 

@@ -22,7 +22,15 @@ export function routeURL(page: PageClass, params: Readonly<Record<string, RouteV
 export function matchRoute(pages: readonly PageClass[], url: string): { page: PageClass; params: Record<string, RouteValue> } | null {
   const [path, query = ""] = url.split("?", 2);
   const segments = path.split("/").slice(1);
-  for (const page of pages) {
+  // Prefer literal segments if a caller supplies routes that overlap.
+  const ordered = [...pages].sort((a, b) => {
+    for (let i = 0; i < Math.min(a.$route.path.length, b.$route.path.length); i++) {
+      const difference = Number(a.$route.path[i]!.startsWith("{")) - Number(b.$route.path[i]!.startsWith("{"));
+      if (difference) return difference;
+    }
+    return 0;
+  });
+  for (const page of ordered) {
     const info = page.$route;
     if (segments.length !== info.path.length) continue;
     try {
@@ -34,7 +42,14 @@ export function matchRoute(pages: readonly PageClass[], url: string): { page: Pa
         else if (segment !== value) { matches = false; break; }
       }
       if (!matches) continue;
-      for (const part of query.split("&")) if (part) { const [key, value = ""] = part.split("=", 2); raw.set(decodeURIComponent(key!.replace(/\+/g, " ")), decodeURIComponent(value.replace(/\+/g, " "))); }
+      for (const part of query.split("&")) if (part) {
+        const separator = part.indexOf("=");
+        let key: string;
+        try { key = decodeURIComponent((separator < 0 ? part : part.slice(0, separator)).replace(/\+/g, " ")); } catch { continue; }
+        if (!info.params.some(param => param.name === key) || raw.has(key)) continue;
+        const value = separator < 0 ? "" : part.slice(separator + 1);
+        raw.set(key, decodeURIComponent(value.replace(/\+/g, " ")));
+      }
       const params: Record<string, RouteValue> = {};
       for (const param of info.params) {
         const value = raw.get(param.name);

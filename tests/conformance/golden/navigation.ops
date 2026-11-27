@@ -70,3 +70,12 @@ nav 0 [1 5] [] 8 fullScreen
 
 # dismiss with no modal
 (no ops)
+
+# open settings link
+nav 1 [1 5] [] 0
+
+# open detail link
+create 9 1  # Detail
+set 9 0 "Note 3"  # NavBar.title
+set 9 1 "Detail 3"  # Text.value
+nav 1 [1 5] [9] 0

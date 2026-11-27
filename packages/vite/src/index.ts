@@ -25,6 +25,8 @@ export interface WeftOptions {
   assets?: string;
   /** Keep root content inside the host's safe area. Defaults to `true`. */
   safeArea?: boolean;
+  /** Deep-link scheme and HTTPS hosts accepted by the application. */
+  links?: { scheme?: string; hosts?: string[] };
   /** WeChat sub-package roots mapped to their page names. */
   wechat?: { subPackages?: Record<string, string[]> };
   /** Overrides the installed native shell packages with a directory containing the shells; absolute or relative to the Vite root. */
@@ -218,6 +220,9 @@ function writeGenerated(generated: string, result: AppResult) {
  * the Web.
  */
 export default function weft(options: WeftOptions = {}): Plugin {
+  if (options.links?.scheme !== undefined && !/^[a-z][a-z0-9+.-]*(?![\s\S])/.test(options.links.scheme)) {
+    throw new Error(`weft: invalid link scheme \`${options.links.scheme}\``);
+  }
   const configured = options.platforms ?? PLATFORMS;
   const include = options.include ?? "src/**/*.weft";
   const { safeArea } = options;
@@ -307,6 +312,13 @@ export default function weft(options: WeftOptions = {}): Plugin {
           },
         },
       };
+    },
+    configResolved(config) {
+      for (const [name, environment] of Object.entries(config.environments)) {
+        environment.define ??= {};
+        environment.define.__WEFT_LINKS__ = JSON.stringify(options.links ?? {});
+        environment.define.__WEFT_BASE__ = JSON.stringify(platformOf(name) === "web" ? config.base : "/");
+      }
     },
     configureServer(server) {
       server.middlewares.use(serveWebAssets(server.config.base, assets));

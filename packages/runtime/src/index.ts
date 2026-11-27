@@ -27,7 +27,7 @@ import type { Value } from "./remote.ts";
 export * from "./core.ts";
 export type { PageClass } from "./navigation.ts";
 import { NavigationController, activate, componentMounted, type ApplicationConfig, type NavigationPage, type PageFactories } from "./navigation.ts";
-import { matchRoute, routeURL, type RouteInfo } from "./route.ts";
+import { routeURL, type RouteInfo } from "./route.ts";
 import { WebNavigationHost, decorate } from "./web-navigation.ts";
 
 /* ------------------------------------------------------------------------ */
@@ -508,9 +508,9 @@ export class Application {
       create: value => { (value as Page<Record<string, never>>).$navigation = this.controller; return 0; },
       destroy: (value) => { const page = value as Page<Record<string, never>>; page.unmount(); page.$navigation = null; this.mountedPages.delete(value); },
       update: (entries, operation) => {
-        const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: routeURL(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
+        const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: this.controller.url(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
         const modal = this.controller.modal;
-        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), operation === "correct" ? "host" : operation, tabs, this.controller.tab, this.controller.badges, modal ? { key: modal.entry.page, style: modal.style } : undefined);
+        const sections = this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: this.controller.url(type, page.params) })), operation === "correct" ? "host" : operation, tabs, this.controller.tab, this.controller.badges, modal ? { key: modal.entry.page, style: modal.style } : undefined);
         const displayed = modal ? [...entries, modal.entry] : entries;
         displayed.forEach(({ page }, i) => {
           if (!this.mountedPages.has(page)) { (page as Page<Record<string, never>>).$mountPage(sections[i]!); this.mountedPages.add(page); }
@@ -520,9 +520,9 @@ export class Application {
       },
       badge: () => {
         const entries = this.controller.entries;
-        const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: routeURL(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
+        const tabs = config.tabs?.map((tab, i) => ({ key: this.controller.tabs[i]?.page ?? null, url: this.controller.url(tab.page, {}), title: tab.title, icon: asset(tab.icon.slice(6)).src, activeIcon: asset(tab.activeIcon.slice(6)).src }));
         const modal = this.controller.modal;
-        this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: routeURL(type, page.params) })), "host", tabs, this.controller.tab, this.controller.badges, modal ? { key: modal.entry.page, style: modal.style } : undefined);
+        this.host!.sync(entries.map(({ page, type }) => ({ key: page, url: this.controller.url(type, page.params) })), "host", tabs, this.controller.tab, this.controller.badges, modal ? { key: modal.entry.page, style: modal.style } : undefined);
       },
     });
   }
@@ -534,16 +534,16 @@ export class Application {
     if (!window) throw new Error("weft: application target requires a window");
     this.document = doc;
     if (target.nodeType === 1) (target as Element).classList.add("w-root");
-    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls), index => this.controller.selectTab(index), host => this.controller.dismiss(host));
+    this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls.map(url => { const match = this.controller.match(url); return match ? routeURL(match.page, match.params) : url; })), index => this.controller.selectTab(index), host => this.controller.dismiss(host));
     activate(this.controller);
     doc.addEventListener("visibilitychange", this.visibility);
     this.visibility();
     const url = window.location.pathname + window.location.search;
-    const route = matchRoute(this.$config.pages, url);
+    const route = this.controller.match(url);
     try {
       const start = this.$config.start ?? this.$config.tabs![0]!.page;
       const isTab = this.$config.tabs?.some(tab => tab.page === route?.page);
-      this.controller.start(route ? (route.page === start || isTab ? [url] : [routeURL(start, {}), url]) : []);
+      this.controller.start(route ? (route.page === start || isTab ? [routeURL(route.page, route.params)] : [routeURL(start, {}), routeURL(route.page, route.params)]) : []);
     } catch (error) { this.unmount(); throw error; }
   }
   unmount(): void { if (!this.host) return; this.document?.removeEventListener("visibilitychange", this.visibility); this.document = null; this.controller.dispose(); this.host.dispose(); this.host = null; }

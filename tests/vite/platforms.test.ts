@@ -295,6 +295,13 @@ run(new Notes({
       expect(await page.getByText("42", { exact: true }).count()).toBe(1);
       await page.goBack();
       await page.getByText("Open detail").waitFor();
+      const cold = await browser.newPage();
+      await cold.goto(`http://127.0.0.1:${address.port}/notes/3`);
+      await cold.getByText("3", { exact: true }).waitFor();
+      expect(await cold.locator(".w-page").count()).toBe(2);
+      await cold.goBack();
+      await cold.getByText("Open detail").waitFor();
+      await cold.close();
     } finally { await browser.close(); }
   } finally { await server.close(); }
 }, 15_000);

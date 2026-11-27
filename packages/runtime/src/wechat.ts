@@ -16,11 +16,30 @@ import { warnMissingAsset } from "./core.ts";
 import { declarations } from "./css.ts";
 import { CSS_PROPS } from "./elements.ts";
 import { sameValue, type Session, type Sink, type Value } from "./remote.ts";
-import { matchRoute, type PageClass } from "./route.ts";
+import { matchRoute, routeURL, type PageClass } from "./route.ts";
 
 declare const __WEFT_WECHAT_SUBPACKAGES__: Record<string, string> | undefined;
 
 type Data = Record<string, unknown>;
+
+/** Maps a generated mini program page and its query to the application's route URL. */
+export function wechatRouteURL(pages: readonly PageClass[], path: string, query: Readonly<Record<string, string>>): string | null {
+  const normalized = path.replace(/^\//, "");
+  const packages: Record<string, string> = typeof __WEFT_WECHAT_SUBPACKAGES__ === "undefined" ? {} : __WEFT_WECHAT_SUBPACKAGES__;
+  const page = pages.find(({ $route }) => {
+    const slug = $route.name.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+    const prefix = packages[$route.name] ? `${packages[$route.name]}/` : "";
+    return normalized === `${prefix}weft/pages/${slug}/index`;
+  });
+  if (!page) return null;
+  const route = page.$route;
+  const segments = route.path.map(segment => segment.startsWith("{") && segment.endsWith("}")
+    ? encodeURIComponent(query[segment.slice(1, -1)] ?? "") : segment);
+  const args = Object.entries(query).filter(([key]) => key !== "__w")
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
+  const match = matchRoute([page], `/${segments.join("/")}${args ? `?${args}` : ""}`);
+  return match ? routeURL(match.page, match.params) : null;
+}
 
 type AssetVariants = Readonly<Record<string, readonly [scale: number, src: string][]>>;
 

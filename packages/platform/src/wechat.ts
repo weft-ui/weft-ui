@@ -9,7 +9,7 @@ const appLifecycle = createLifecycle(() => {
   return `/${options.path.replace(/^\//, "")}${query ? `?${query}` : ""}`;
 }, (change, memory) => { visibility = change; wx.onMemoryWarning(memory); });
 export const lifecycle = appLifecycle.api;
-import { view, type View, type WechatSink } from "@weft-ui/runtime/wechat";
+import { view, wechatRouteURL, type View, type WechatSink } from "@weft-ui/runtime/wechat";
 import type { PageClass } from "@weft-ui/runtime/navigation";
 import { Environment, type EnvironmentData } from "./environment.ts";
 import { PlatformError } from "./error.ts";
@@ -69,7 +69,7 @@ interface Wx {
 
 declare const wx: Wx;
 declare function App(options: {
-  onShow(): void;
+  onShow(options: { path?: string; query?: Record<string, string> }): void;
   onHide(): void;
   weft: {
     view: typeof view;
@@ -143,16 +143,32 @@ export function run(app: WeftApp): void {
   const application = app as WeftApp & {
     $config?: { pages: readonly PageClass[]; tabs?: readonly { page: PageClass }[] };
     $initialRoute?(url: string): void;
+    $restore?(urls: readonly string[]): void;
+    $open?(url: string, host?: boolean): boolean;
   };
   type HostPage = {
+    route?: string;
+    options?: Record<string, string>;
     selectComponent(id: string): View;
     setData(data: Record<string, unknown>): void;
     $weftIndex: number;
     $weftQuery: Record<string, string>;
+    $weftPath?: string;
     $weftView?: View;
   };
+  const pageURL = (path: string, query: Readonly<Record<string, string>>) => {
+    const args = Object.entries(query).filter(([key]) => key !== "__w")
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
+    return `/${path.replace(/^\//, "")}${args ? `?${args}` : ""}`;
+  };
+  let shown = false;
+  let incoming: string | null = null;
   App({
-    onShow: () => visibility("foreground"),
+    onShow: (options) => {
+      visibility("foreground");
+      if (shown && options?.path) incoming = pageURL(options.path, options.query ?? {});
+      shown = true;
+    },
     onHide: () => visibility("background"),
     weft: {
       view,
@@ -161,28 +177,29 @@ export function run(app: WeftApp): void {
       page: (name) => ({
         onLoad(this: HostPage, query: Record<string, string>) {
           this.$weftQuery = query;
-          sink?.selectTab(name);
+          this.$weftPath = this.route ?? `weft/pages/${name.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`)}/index`;
+          if (query.__w) sink?.selectTab(name);
         },
         onReady(this: HostPage) {
+          const hostPages = getCurrentPages() as HostPage[];
           const isTab = application.$config?.tabs?.some(tab => tab.page.$route.name === name) ?? false;
-          this.$weftIndex = isTab ? 0 : getCurrentPages().length - 1;
+          this.$weftIndex = isTab ? 0 : hostPages.length - 1;
           const component = this.selectComponent("#weft");
           this.$weftView = component;
+          const pages = application.$config?.pages ?? [];
+          const path = this.$weftPath ?? this.route ?? "";
+          const route = wechatRouteURL(pages, path, this.$weftQuery ?? {});
           if (!sink) {
             sink = component.$sink;
-            const pages = application.$config?.pages ?? [];
             sink?.configurePages(pages);
             sink?.configureTabs(application.$config?.tabs?.map(tab => tab.page.$route.name) ?? []);
-            const route = pages.find((page) => page.$route.name === name)?.$route;
-            if (route) {
-              const query = this.$weftQuery ?? {};
-              const path = route.path.map((segment) => segment.startsWith("{") && segment.endsWith("}")
-                ? encodeURIComponent(query[segment.slice(1, -1)] ?? "") : segment).join("/");
-              const args = Object.entries(query).filter(([key]) => key !== "__w")
-                .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
-              application.$initialRoute?.(`/${path}${args ? `?${args}` : ""}`);
-            }
+            if (route) application.$initialRoute?.(route);
             app.mount(component as never);
+          } else if (!this.$weftQuery?.__w) {
+            const routes = hostPages.map(page => wechatRouteURL(pages, page.$weftPath ?? page.route ?? "", page.$weftQuery ?? page.options ?? {}));
+            if (routes.every((url): url is string => url !== null)) application.$restore?.(routes);
+            if (incoming || !isTab) application.$open?.(incoming ?? pageURL(path, this.$weftQuery ?? {}), true);
+            incoming = null;
           }
           sink?.bindPage(this.$weftIndex, component);
           sink?.bindModal(this.selectComponent("#modal"), this, this.$weftIndex);
@@ -190,14 +207,17 @@ export function run(app: WeftApp): void {
         },
         onShow(this: HostPage) {
           const isTab = application.$config?.tabs?.some(tab => tab.page.$route.name === name) ?? false;
-          if (isTab) {
+          if (isTab && this.$weftView) {
             sink?.selectTab(name);
             if (this.$weftView) {
               sink?.bindPage(0, this.$weftView);
               sink?.bindModal(this.selectComponent("#modal"), this, 0);
             }
           }
-          if (this.$weftView) sink?.showPage(this.$weftIndex);
+          if (this.$weftView) {
+            if (incoming) { application.$open?.(incoming, true); incoming = null; }
+            sink?.showPage(this.$weftIndex);
+          }
         },
         $dismissed() {
           sink?.dismissed();

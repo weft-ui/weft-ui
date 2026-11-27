@@ -68,6 +68,28 @@ run(new Notes({
 
 请在应用挂载后调用导航接口。没有 `app` 声明的程序不能使用这些接口。
 
+## 路由与深链
+
+应用挂载后，用 `navigation.url` 生成链接，用 `navigation.open` 打开链接：
+
+```ts
+const url = navigation.url(Detail, { id: "42" });
+const opened = navigation.open(url); // 没有匹配路由时为 false
+const unsubscribe = navigation.onOpen((route, originalURL) => {
+  console.log(route.page, route.params, originalURL);
+  return false; // 交给导航默认处理
+});
+// 不再需要处理器时调用 unsubscribe()。
+```
+
+`open` 接受 `/notes/42` 这样的路由路径、`notes://notes/42` 这样的已配置自定义 scheme（主机名作为第一段路径），以及已配置主机上的 HTTPS 链接。微信小程序还接受 `weft/pages/detail/index?id=42` 这样的页面路径。匹配后按注册顺序调用处理器；返回 `true` 表示已处理，后续处理器不再调用。否则，Tab 路由切换 Tab，其他路由先关闭模态再推入页面。没有匹配时返回 `false` 并记录警告。
+
+路由 URL 将路径参数和查询值按 UTF-8 编码。查询参数按声明顺序排列，值为 null 或等于默认值时省略。整数须为十进制安全整数，浮点数须为有限数，布尔值只能是 `true` 或 `false`，联合值须为声明的成员。解码或参数值无效时不匹配；多余的查询键会被忽略。
+
+Web 上 `url` 包含 Vite 的 `base`；微信小程序返回带查询参数的小程序页面路径，可用于分享。scheme 和主机的配置见[平台指南](/zh/guides/platforms/#配置-vite)。
+
+冷启动时，`lifecycle.launch.url` 是打开应用的链接，没有链接时为 `null`。匹配的路由不播放转场：Tab 页直接选中，其他页面放在起始页之上。微信小程序直接打开时，初始栈中只有目标页。Web 启动时使用当前地址；普通 HTML 链接不会被拦截。
+
 ## Tab
 
 可以用两个到五个不同的 Tab 页面代替 `start`；这些页面不能有必填路由参数：

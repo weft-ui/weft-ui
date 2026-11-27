@@ -1,6 +1,39 @@
 import { tick } from "@weft-ui/runtime";
+import { resolveConfig } from "vite";
 import { expect, test } from "vitest";
+import weft from "../src/index.ts";
 import { Board } from "./fixtures/Board.weft";
+
+test("validates deep-link schemes", () => {
+  for (const scheme of ["a", "weft+app.1-test"]) expect(() => weft({ links: { scheme } })).not.toThrow();
+  for (const scheme of ["", "Weft", "1weft", "weft://", "weft app", "weft\n"]) {
+    expect(() => weft({ links: { scheme } })).toThrow(`weft: invalid link scheme \`${scheme}\``);
+  }
+});
+
+test("provides deep-link configuration and the resolved base to web environments", async () => {
+  const config = await resolveConfig({
+    configFile: false,
+    base: "/nested",
+    plugins: [weft({ links: { scheme: "weft", hosts: ["example.com"] } })],
+  }, "serve");
+  expect(config.appType).toBe("spa");
+  expect(config.environments.client.define?.__WEFT_BASE__).toBe(JSON.stringify("/nested/"));
+  expect(config.environments.client.define?.__WEFT_LINKS__).toBe(JSON.stringify({ scheme: "weft", hosts: ["example.com"] }));
+});
+
+test("defaults deep-link configuration and keeps non-web bases independent", async () => {
+  const config = await resolveConfig({
+    configFile: false,
+    base: "/nested/",
+    environments: { wechat: {} },
+    plugins: [weft()],
+  }, "serve");
+  expect(config.environments.client.define?.__WEFT_BASE__).toBe(JSON.stringify("/nested/"));
+  expect(config.environments.client.define?.__WEFT_LINKS__).toBe("{}");
+  expect(config.environments.wechat.define?.__WEFT_BASE__).toBe(JSON.stringify("/"));
+  expect(config.environments.wechat.define?.__WEFT_LINKS__).toBe("{}");
+});
 
 function mount() {
   const target = document.createElement("div");

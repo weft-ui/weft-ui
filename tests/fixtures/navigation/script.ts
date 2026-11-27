@@ -72,5 +72,7 @@ export const script: Script<FixtureApp> = {
     { name: "present full screen", run: (ui) => ui.click("Button", 2) },
     { name: "dismiss from host", run: (ui) => ui.dismiss() },
     { name: "dismiss with no modal", run: (ui) => ui.dismiss() },
+    { name: "open settings link", run: () => { navigation.open("/settings"); } },
+    { name: "open detail link", run: () => { navigation.open("/notes/3?from=search"); } },
   ],
 };

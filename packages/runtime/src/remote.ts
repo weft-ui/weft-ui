@@ -558,8 +558,12 @@ export class Application extends App {
   $activate(): void { activate(this.controller); }
   $initialRoute(url: string): void { this.initialURL = url; }
   $restore(urls: readonly string[]): void { this.controller.restore(urls, "correct"); }
+  $open(url: string, host = false): boolean { return this.controller.open(url, host); }
   $signal(name: string, json: string): void {
     if (name === "navigation") this.controller.signal(json);
+    else if (name === "link") {
+      try { const value = JSON.parse(json) as { url?: unknown }; if (typeof value.url === "string") this.controller.open(value.url); } catch { /* Ignore malformed links. */ }
+    }
     else if (name === "lifecycle") {
       try {
         const value = JSON.parse(json) as { state?: unknown };
@@ -583,9 +587,22 @@ export class Application extends App {
     if (globalThis.__weft) {
       const navigation = onSignal("navigation", json => this.$signal("navigation", json));
       const lifecycle = onSignal("lifecycle", json => this.$signal("lifecycle", json));
-      this.unsubscribe = () => { navigation(); lifecycle(); };
+      const link = onSignal("link", json => this.$signal("link", json));
+      this.unsubscribe = () => { navigation(); lifecycle(); link(); };
     }
-    try { this.controller.start(this.initialURL ? [this.initialURL] : []); } catch (error) { this.$detach(); sink.close(); throw error; }
+    try {
+      if (this.initialURL) this.controller.start([this.initialURL]);
+      else {
+        let launch: string | null = null;
+        if (globalThis.__weft) {
+          try { const value = JSON.parse(globalThis.__weft.launch) as { url?: unknown }; if (typeof value.url === "string") launch = value.url; } catch { /* Ignore malformed launch data. */ }
+        }
+        const match = launch ? this.controller.match(launch) : null;
+        const start = this.$config.start ?? this.$config.tabs![0]!.page;
+        const isTab = this.$config.tabs?.some(tab => tab.page === match?.page);
+        this.controller.start(match ? (match.page === start || isTab ? [routeURL(match.page, match.params)] : [routeURL(start, {}), routeURL(match.page, match.params)]) : []);
+      }
+    } catch (error) { this.$detach(); sink.close(); throw error; }
   }
 
   override $detach(): boolean {

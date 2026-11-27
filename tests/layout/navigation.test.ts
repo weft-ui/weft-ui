@@ -158,3 +158,43 @@ test("switching tabs dismisses a modal even on the selected tab", () => {
   expect(controller.tab).toBe(1);
   controller.dispose();
 });
+
+test("open intercepts matched links, switches tabs, and dismisses a modal before pushing", () => {
+  class Settings { static $route = { name: "Settings", path: ["settings"], params: [] }; readonly params = {}; }
+  let id = 0;
+  const make = (params: Record<string, RouteValue>): NavigationPage => ({ params, $emit: () => {} });
+  const controller = new NavigationController({ Home: make, Settings: make, Detail: make }, {
+    tabs: [{ page: Home, title: "Home", icon: "", activeIcon: "" }, { page: Settings, title: "Settings", icon: "", activeIcon: "" }], pages: [Home, Settings, Detail],
+  }, { create: () => ++id, destroy: () => {}, update: () => {} });
+  controller.start();
+  const handler = vi.fn(() => true);
+  const unsubscribe = controller.onOpen(handler);
+  expect(controller.open("/notes/3")).toBe(true);
+  expect(handler).toHaveBeenCalledWith({ page: "Detail", params: { id: 3, source: null } }, "/notes/3");
+  expect(controller.entries).toHaveLength(1);
+  unsubscribe();
+  controller.present(Detail, { id: 1 });
+  expect(controller.open("/notes/3")).toBe(true);
+  expect(controller.modal).toBeNull();
+  expect(controller.entries.map(entry => entry.type)).toEqual([Home, Detail]);
+  expect(controller.open("/settings")).toBe(true);
+  expect(controller.entries.map(entry => entry.type)).toEqual([Settings]);
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  expect(controller.open("/missing")).toBe(false);
+  expect(warn).toHaveBeenCalled();
+  warn.mockRestore();
+  controller.dispose();
+});
+
+test("cold start constructs root and target with one show and hide on the root", () => {
+  const events: string[] = [];
+  let id = 0;
+  const make = (name: string) => (params: Record<string, RouteValue>): NavigationPage => ({ params, $emit: event => events.push(`${name}:${event}`) });
+  const controller = new NavigationController({ Home: make("Home"), Detail: make("Detail") }, { start: Home, pages: [Home, Detail] }, {
+    create: () => ++id, destroy: () => {}, update: (_entries, operation) => events.push(`update:${operation}`),
+  });
+  controller.start(["/home", "/notes/3"]);
+  expect(controller.entries.map(entry => entry.type)).toEqual([Home, Detail]);
+  expect(events).toEqual(["Home:Show", "update:host", "Home:Hide", "Detail:Show"]);
+  controller.dispose();
+});

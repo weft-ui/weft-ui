@@ -68,6 +68,28 @@ A page with a model takes the model first and its route parameters second. The g
 
 Call navigation after the app is mounted. The same functions cannot be used by a program with no `app` declaration.
 
+## Routes and deep links
+
+Use `navigation.url` to create a link and `navigation.open` to open one after the app is mounted:
+
+```ts
+const url = navigation.url(Detail, { id: "42" });
+const opened = navigation.open(url); // false if no route matches
+const unsubscribe = navigation.onOpen((route, originalURL) => {
+  console.log(route.page, route.params, originalURL);
+  return false; // let navigation handle the link
+});
+// Call unsubscribe() when the handler is no longer needed.
+```
+
+`open` accepts a route path such as `/notes/42`, a configured custom scheme such as `notes://notes/42` (the host becomes the first path segment), or an HTTPS URL on a configured host. On WeChat it also accepts a mini program page path such as `weft/pages/detail/index?id=42`. Matching handlers run in registration order; returning `true` handles the link and stops further handling. Otherwise, a tab route switches tabs; another route closes any modal and pushes the page. An unmatched link returns `false` and logs a warning.
+
+Route URLs encode path parameters and query values as UTF-8. Query parameters follow declaration order; null values and values equal to their defaults are omitted. Integers must be safe integers in decimal notation, floats finite numbers, booleans `true` or `false`, and union values declared members. Invalid decoding or parameter values prevent a match; extra query keys are ignored.
+
+On Web, `url` includes Vite's `base`; on WeChat it returns the mini program page path and query, suitable for sharing. Configure schemes and hosts in the [platform guide](/guides/platforms/#configure-vite).
+
+At cold start, `lifecycle.launch.url` contains the opening URL or `null`. A matching route opens without a transition: a tab is selected, or the target is placed above the start page. On WeChat, a directly opened page is the only page in the initial stack. Web uses the current location at startup; ordinary HTML links are not intercepted.
+
 ## Tabs
 
 Instead of `start`, declare two to five distinct tab pages without required route parameters:

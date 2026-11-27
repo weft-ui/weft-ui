@@ -34,7 +34,16 @@ export default defineConfig({
 | `include` | `src/**/*.weft` | 相对于 Vite 根目录的 glob。Web 以外的平台会将匹配的 `.weft` 文件一起编译。 |
 | `entry` | 按顺序查找，取第一个存在的文件：`src/index.js`、`src/index.ts`、`src/index.mjs`、`src/index.mts`、`src/index.cjs`、`src/index.cts` | Web 以外平台的 JS 或 TS 逻辑入口，相对于 Vite 根目录解析。Web 从 `index.html` 启动。 |
 | `safeArea` | `true` | 让根内容避开系统界面。设为 `false` 时，内容可以延伸到窗口边缘。桌面平台没有安全区，此选项不起作用。 |
+| `links` | 不配置 scheme 和主机 | 用 `{ scheme?: string, hosts?: string[] }` 配置深链。scheme 须符合 `[a-z][a-z0-9+.-]*`，hosts 指定接受的 HTTPS 域名。 |
 | `dts` | `false` | 不使用 `@weft-ui/content-mapper` 时，可设为 `true`，在 `X.weft` 旁生成 `X.d.weft.ts`。同时在 TypeScript 中启用 `allowArbitraryExtensions`。 |
+
+例如，配置 `navigation.open` 接受的 scheme 和 HTTPS 主机：
+
+```ts
+weft({ links: { scheme: "notes", hosts: ["example.com"] } })
+```
+
+此配置用于匹配路由；网站部署和平台链接的域名所有权验证需要另外完成。详见[路由与深链](/zh/guides/navigation/#路由与深链)。
 
 ## 选择构建目标
 

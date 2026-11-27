@@ -1,6 +1,71 @@
 import { matchRoute, routeURL, type PageClass, type Route, type RouteValue } from "./route.js";
 export type { PageClass, Route } from "./route.js";
 
+declare const __WEFT_LINKS__: { scheme?: string; hosts?: string[] } | undefined;
+declare const __WEFT_BASE__: string | undefined;
+declare const __WEFT_WECHAT_SUBPACKAGES__: Record<string, string> | undefined;
+
+const links = () => typeof __WEFT_LINKS__ === "undefined" ? {} : __WEFT_LINKS__ ?? {};
+const base = () => typeof __WEFT_BASE__ === "undefined" ? "/" : __WEFT_BASE__ ?? "/";
+const isWechat = () => typeof (globalThis as { wx?: unknown }).wx !== "undefined";
+const slug = (name: string) => name.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+
+function routePath(url: string): string | null {
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    const prefix = base();
+    return prefix !== "/" && url.startsWith(prefix) ? `/${url.slice(prefix.length)}` : url;
+  }
+  const absolute = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]+)([^#]*)/i.exec(url);
+  if (!absolute) return null;
+  const [, scheme, host, remainder = ""] = absolute;
+  if (scheme === "https" && links().hosts?.includes(host!)) return remainder.startsWith("/") ? remainder : `/${remainder}`;
+  if (scheme === links().scheme) return `/${host}${remainder}`;
+  return null;
+}
+
+function matchLink(pages: readonly PageClass[], url: string): { page: PageClass; params: Record<string, RouteValue> } | null {
+  if (isWechat()) {
+    const [path, query = ""] = url.replace(/^\//, "").split("?", 2);
+    const packages = typeof __WEFT_WECHAT_SUBPACKAGES__ === "undefined" ? {} : __WEFT_WECHAT_SUBPACKAGES__ ?? {};
+    const page = pages.find(type => path === `${packages[type.$route.name] ? `${packages[type.$route.name]}/` : ""}weft/pages/${slug(type.$route.name)}/index`);
+    if (page) {
+      try {
+        const queryParams = new Map<string, string>();
+        for (const part of query.split("&")) {
+          if (!part) continue;
+          const separator = part.indexOf("=");
+          const key = decodeURIComponent((separator < 0 ? part : part.slice(0, separator)).replace(/\+/g, " "));
+          if (page.$route.params.some(param => param.name === key)) queryParams.set(key, decodeURIComponent((separator < 0 ? "" : part.slice(separator + 1)).replace(/\+/g, " ")));
+        }
+        const params: Record<string, RouteValue> = {};
+        for (const param of page.$route.params) {
+          const value = queryParams.get(param.name);
+          if (value !== undefined) params[param.name] = value;
+          else if (!param.optional && param.default === undefined) return null;
+        }
+        return matchRoute([page], routeURL(page, params));
+      } catch { return null; }
+    }
+  }
+  const path = routePath(url);
+  return path === null ? null : matchRoute(pages, path);
+}
+
+function linkURL(page: PageClass, params: Readonly<Record<string, RouteValue>>): string {
+  const path = routeURL(page, params);
+  if (isWechat()) {
+    const packages = typeof __WEFT_WECHAT_SUBPACKAGES__ === "undefined" ? {} : __WEFT_WECHAT_SUBPACKAGES__ ?? {};
+    const prefix = packages[page.$route.name] ? `${packages[page.$route.name]}/` : "";
+    const query = page.$route.params.flatMap(param => {
+      const value = params[param.name];
+      return value == null || value === param.default ? [] : [`${encodeURIComponent(param.name)}=${encodeURIComponent(String(value))}`];
+    });
+    return `/${prefix}weft/pages/${slug(page.$route.name)}/index${query.length ? `?${query.join("&")}` : ""}`;
+  }
+  if (typeof window !== "undefined") return `${base().replace(/\/$/, "")}${path}`;
+  return links().scheme ? `${links().scheme}://${path.slice(1)}` : path;
+}
+
 type ParamsArg<P> = {} extends P ? [params?: P] : [params: P];
 export interface NavigationPage { readonly params: Readonly<Record<string, RouteValue>>; $emit(name: string, payload: object): void }
 export interface NavigationEntry { page: NavigationPage; type: PageClass; id: number }
@@ -39,6 +104,7 @@ export class NavigationController {
   private get currentEntry(): NavigationEntry | undefined { return this.modal?.entry ?? this.entries.at(-1); }
   private coldRoot = false;
   private listeners = new Set<() => void>();
+  private openHandlers = new Set<(route: Route, url: string) => boolean>();
   private foreground = true;
   get entries(): NavigationEntry[] { const root = this.tabs[this.tab]; return root ? [root, ...this.stack] : []; }
   setForeground(foreground: boolean): void {
@@ -66,9 +132,13 @@ export class NavigationController {
     this.coldRoot = !!this.config.tabs && !!root && index < 0;
     const type = root?.page ?? this.config.tabs?.[this.tab]?.page ?? this.config.start!;
     this.tabs[this.tab] = this.make(type, root?.params);
+    if (valid && matches.length > 1 && this.foreground) this.tabs[this.tab]?.page.$emit("Show", {});
     this.stack = valid ? matches.slice(root ? 1 : 0).map(match => this.make(match!.page, match!.params)) : [];
     this.host.update(this.entries, "host");
-    if (this.foreground) this.entries.at(-1)?.page.$emit("Show", {});
+    if (this.foreground) {
+      if (this.stack.length) this.tabs[this.tab]?.page.$emit("Hide", {});
+      this.entries.at(-1)?.page.$emit("Show", {});
+    }
   }
   private change(tab: number, stack: NavigationEntry[], operation: NavigationOperation, old = this.entries, modal: NavigationModal | null = this.modal): void {
     const oldModal = this.modal;
@@ -146,6 +216,7 @@ export class NavigationController {
     const index = this.config.tabs?.findIndex(tab => tab.page === matches[0]!.page) ?? -1;
     const tab = index < 0 ? this.tab : index;
     const old = this.entries;
+    this.coldRoot = !!this.config.tabs && index < 0;
     const existingRoot = this.tabs[tab];
     const root = existingRoot && routeURL(existingRoot.type, existingRoot.page.params) === urls[0] ? existingRoot : this.make(matches[0]!.page, matches[0]!.params);
     if (existingRoot !== root) this.tabs[tab] = root;
@@ -156,6 +227,24 @@ export class NavigationController {
     this.change(tab, stack, operation, old, null);
     if (existingRoot && existingRoot !== root && !old.includes(existingRoot)) this.host.destroy(existingRoot.page);
   }
+  match(url: string): { page: PageClass; params: Record<string, RouteValue> } | null { return matchLink(this.config.pages, url); }
+  open(url: string, host = false): boolean {
+    const match = this.match(url);
+    if (!match) { console.warn(`weft: no page matches link ${url}`); return false; }
+    const route: Route = { page: match.page.$route.name, params: match.params };
+    for (const handler of this.openHandlers) if (handler(route, url)) return true;
+    if (!host) {
+      const tab = this.config.tabs?.findIndex(item => item.page === match.page) ?? -1;
+      if (tab >= 0) this.selectTab(tab);
+      else { this.dismiss(); this.push(match.page, match.params); }
+    }
+    return true;
+  }
+  url(page: PageClass, params: Readonly<Record<string, RouteValue>>): string {
+    if (!this.config.pages.includes(page)) throw new Error(`weft: ${page.$route.name} is not a page in this app`);
+    return linkURL(page, params);
+  }
+  onOpen(handler: (route: Route, url: string) => boolean): () => void { this.openHandlers.add(handler); return () => this.openHandlers.delete(handler); }
   onChange(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   dispose(): void { if (this.foreground) this.currentEntry?.page.$emit("Hide", {}); for (const entry of [...this.tabs, ...this.stack, this.modal?.entry]) if (entry) this.host.destroy(entry.page); this.tabs.fill(null); this.stack = []; this.modal = null; deactivate(this); }
 }
@@ -175,5 +264,8 @@ export const navigation = {
   replace<P>(page: PageClass<P>, ...params: ParamsArg<P>): void { current().replace(page, (params[0] ?? {}) as Record<string, RouteValue>); },
   pop(count?: number): void { current().pop(count); },
   popToRoot(): void { current().popToRoot(); },
+  open(url: string): boolean { return current().open(url); },
+  url<P>(page: PageClass<P>, ...params: ParamsArg<P>): string { return current().url(page, (params[0] ?? {}) as Record<string, RouteValue>); },
+  onOpen(handler: (route: Route, url: string) => boolean): () => void { return current().onOpen(handler); },
   onChange(listener: () => void): () => void { return current().onChange(listener); },
 };

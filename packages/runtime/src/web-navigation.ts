@@ -256,7 +256,14 @@ export class WebNavigationHost {
       this.#initialized = true;
       const saved = this.#window.history.state?.weft;
       this.#depth = typeof saved?.depth === "number" ? saved.depth : 0;
-      this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: this.#depth, urls } }, "", url);
+      if (urls.length > 1 && !saved) {
+        const root = [urls[0]!];
+        this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: 0, urls: root } }, "", root[0]);
+        this.#depth = 1;
+        this.#window.history.pushState({ ...this.#window.history.state, weft: { depth: 1, urls } }, "", url);
+      } else {
+        this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: this.#depth, urls } }, "", url);
+      }
     } else if (operation === "tab") {
       if (this.#pendingTab) this.#pendingTab = { urls, url };
       else if (this.#depth > 0) {
