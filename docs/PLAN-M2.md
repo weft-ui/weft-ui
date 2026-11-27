@@ -406,7 +406,7 @@ Web 与小程序没有内核，同样的事件由 `@weft-ui/platform` 的 `web.t
 
 #### §8.3 惰性列表的数据布局
 
-`l{N}`（M1 的行数组）对 `lazy` 挂载点改为段数组：`l{N} = [{k, h, r}]`，`k` 为段号（`wx:key`），`h` 为占位高度（px，未测量时按 §5.3 估计），`r` 为该段的项数组（段在窗口外时为 `null`）。每项含 `k`（item ID）与 `t`（模板下标）；已物化的项另含该作用域的数据。SPEC「Mini program data layout」同步。
+`l{N}`（M1 的行数组）对 `lazy` 挂载点改为段数组：`l{N} = [{k, h, r}]`（`List` 每段 20 项；`Grid` 每段为不超过 20 的最大的 `columns` 倍数，`columns` > 20 时每段一行，使一行不跨段——执行中补充，见「执行中发现」R5.w），`k` 为段号（`wx:key`），`h` 为占位高度（px，未测量时按 §5.3 估计），`r` 为该段的项数组（段在窗口外时为 `null`）。每项含 `k`（item ID）与 `t`（模板下标）；已物化的项另含该作用域的数据。SPEC「Mini program data layout」同步。
 
 #### §8.4 体积检查
 
@@ -846,7 +846,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R1.d | ☑ | b682267 | 含本波次的启用改动与修正 |
 | R1.n | ☑ | 667ec77 | |
 | R1.g | ☑ | 0422523 | |
-| T1 | ☐ | | |
+| T1 | ☑ | 3274e50、529b5d6 | 前者修正 Web 页面根不填满内容区；之后 a98ea22 把页面处理器移到手写的 `example/src/setup.ts`，c56bc82 修正截图驱动（Web 指针悬停、小程序分包路径）；C-ui 7 个平台通过（macOS 由编排者运行）；新基线「截图待维护者确认」 |
 | R2.w | ☑ | 1d8e701 | 修正 4e9f9df（去掉 Tab 后残留的 `tabBar`）；开发者工具里切换 Tab、`switchTab` 清空栈、角标由编排者用 automator 验证 |
 | R2.a | ☑ | 28a6abc | 修正 1b547b6（Tab 根页标题、Tab 栏被裁切）、48f4b6b（macOS 角标）；macOS 临时两 Tab 应用由编排者运行通过 |
 | R2.d | ☑ | 8798267 | |
@@ -862,29 +862,29 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R4.d | ☑ | 6418daa | Android `overlays` 基线由编排者确认（维护者授权） |
 | R4.n | ☑ | 4638a69 | |
 | R4.g | ☑ | a6bd73a | 含本波次的启用改动（`overlays` 不再 `pending`、platform-api 指南） |
-| R5.w | ☐ | | |
+| R5.w | ☑ | a7678db | Playwright 10 000 项滚到底部 DOM 少于 200 项；小程序 `list` 页滚动见 WechatChecks 备注 |
 | R5.a | ☐ | | |
 | R5.d | ☐ | | |
 | R5.n | ☐ | | |
 | R5.g | ☐ | | |
-| R6.w | ☐ | | |
+| R6.w | ☑ | bb68eab | 小程序 `stickyHeaders` 标 `ignored`（见执行中发现）；Playwright 覆盖吸顶、触摸下拉刷新、加载更多只触发一次 |
 | R6.a | ☐ | | |
 | R6.d | ☐ | | |
 | R6.n | ☐ | | |
 | R6.g | ☐ | | |
-| R7.w | ☐ | | |
-| R7.a | ☐ | | |
-| R7.d | ☐ | | |
-| R7.n | ☐ | | |
-| R7.g | ☐ | | |
-| R8.w | ☐ | | |
+| R7.w | ⏸ | 1103221 | Playwright 切换标签页不改变 Chromium 的 `visibilityState`，自动化验收缺（见执行中发现）；单测覆盖 `visibilitychange` |
+| R7.a | ☑ | eb18eed | |
+| R7.d | ☑ | 5af7b6e | 主屏再打开计数正确；`RUNNING_LOW` 低于 `TRIM_MEMORY_BACKGROUND`，按规范不触发 |
+| R7.n | ☑ | dc63f8d | 非打包应用订阅 `MemoryManager.AppMemoryUsageIncreased` 失败（`0xD0000225`），指南注明 Windows 不触发内存告警 |
+| R7.g | ☑ | 9c0f0ef | |
+| R8.w | ☑ | e7eb2ed | Playwright 冷启动 `/notes/3` 后退回到起始页 |
 | R8.a | ☐ | | |
 | R8.d | ☐ | | |
 | R8.n | ☐ | | |
 | R8.g | ☐ | | |
-| R9.w | ☐ | | |
-| R9.a | ☐ | | |
-| R9.d | ☐ | | |
+| R9.w | ⏸ | 7033aa5 | 小程序真机预览需要维护者（规则 7） |
+| R9.a | ☑ | 8ab27ab | iOS 基线 af32e41（截图待维护者确认） |
+| R9.d | ☑ | c893a49 | |
 | W1 | ☑ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告，T2 解决），字体 1630 KiB；开发者工具里推入分包页面（`notes/weft/pages/detail/index`）由编排者验证；`cli preview --info-output`（维护者授权）报主包 1982387 B、分包 `/notes/` 1691 B，按 §8.3 规则统计的源文件为 1959064 B 与 1729 B |
 | T2 | ☐ | | |
 | B1 | ☐ | | |
@@ -932,3 +932,13 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R3.w] 小程序 sheet 不能下滑关闭：`page-container` 的 `close-on-slide-down` 默认 `false`，§8.1 的模板没有设置，指南却写了可以下滑关闭。修正：`close-on-slide-down="{{ms == 0}}"`（只对 sheet），同时去掉关闭按钮的默认边框（533d7cd）。对照：不加该属性时，同样的合成下滑不关闭模态。结论：已修正，§8.1 模板已更新
 - [R4.w] 小程序 `ui.confirm` 总是失败：非危险确认传 `confirmColor: undefined`，`wx.showModal` 报 `parameter.confirmColor should be String instead of Undefined`；没有 `title` 或 `message` 的 `alert`、没有 `title` 的 `actionSheet` 同理。单测的 `wx` 桩不校验参数，所以没有发现。修正：去掉值为 `undefined` 的可选参数，单测的桩改为像微信一样拒绝 `undefined`（bbdf0b7）。结论：已修正
 - [W1] 开发者工具报告的主包比 Weft 按源文件统计的大约 1.2%（23 KB，编译产物与源文件的差异），分包小 38 B。Weft 的检查在 2048 KiB 上限附近可能放行开发者工具会拒绝的包，但 1536 KiB 的预算警告留有足够余量。结论：记录，不调整
+- [T1] Web 页面根没有填满标题栏下的内容区（`safearea` 页底部标签贴在上方）：页面包装层没有沿用组件根的伸展规则。修正 3274e50（含 Chromium 几何回归测试）。结论：已修正
+- [T1] 计划只写了「事件处理器移到各页面的工厂里」，执行者把处理器写成 `catalog.ts` 生成器里的字符串；后续每个新页面都要改生成器，并与并行任务冲突。编排者改为手写的 `example/src/setup.ts`（按 pages.json 的 id），生成的工厂调用它（a98ea22）。结论：已调整
+- [T1] macOS UI 测试启动时清空应用的 defaults 域（M1 R1.z）；iOS 的 XCTest 进程访问不到应用沙盒的 defaults，example 目前也不持久化任何键，iOS 不清空。结论：接受
+- [T1、R5.w] example 改为多页面后小程序主包 2036 KiB，加上 `list` 页后 2067 KiB，超过 2048 KiB 上限，构建失败。执行者尝试把画廊页放进分包时发现 W1 的缺陷：分包页面的 Inter 字体（base64，1630 KiB）写进每个页面的样式，17 个页面合计 27 802 KiB。修正：分包可达的字体只写一次，放在该分包共用的 `view.wxss`（ffc7e9f）；example 把除目录页以外的画廊页放进分包 `showcase`（d4975ac，计划原属 T2），主包降到约 424 KiB，`showcase` 约 1734 KiB。开发者工具里 `assets` 页在分包中正确使用 Inter（此前主包中的基线实际是系统字体回退），基线随之更新（c56bc82）。结论：已修正；`showcase` 分包离 2048 KiB 上限不远，T2 需要关注
+- [R5.w] 小程序 `Grid` 的一行不能跨段（段是各自的 flex 容器），`Grid` 每段改为不超过 20 的最大的 `columns` 倍数（`columns` > 20 时每段一行）；§8.3 与 SPEC 已补充。结论：已补充规范
+- [R6.w] 小程序分段虚拟化把 `position: sticky` 限制在各自的段里，分组头所在的段离开窗口后被换成占位，无法在整个分组期间吸顶；按计划的退路把 wechat 的 `stickyHeaders` 标 `ignored`，lists 指南注明。结论：接受（平台限制）
+- [R7.w、R8.w、R9.w、R5.w] 四个 `.w` 任务在私有 worktree 并行，合并时编排者解决了 `example/src/index.ts`（T1 后改为 `setup.ts`）、运行时 `index.ts` 与 `wechat.ts`、小程序模拟器的冲突；R5.w 与 R9.w 合并后 `Lists` 的小程序快照需要 R9.w 的焦点留白，由 R6.w 的重新生成带上。`example/src/App.weft` 由 `catalog.ts` 生成但被跟踪，任何 example 构建都会改写它，代理不应提交构建时的改动。结论：已合并
+- [R7.w] 在 Playwright 里打开第二个标签页并切换过去，Chromium（无头与有头）都不把原页面的 `visibilityState` 改为 `hidden`，计划的自动化验收无法完成；单测以伪造的 `visibilitychange` 覆盖。结论：⏸，记录
+- [R8.w] 代理误用 `/tmp/weft-m2/check-apps.sh`（固定指向主工作区）并立即中止，主工作区的 example 产物被重建一次，之后由 T1 重新构建。结论：环境问题，私有 worktree 的代理改为在自己的 worktree 里构建并比对
+- [R7.n] 非打包的 WinUI 应用订阅 `MemoryManager.AppMemoryUsageIncreased` 抛 `0xD0000225`，platform-api 指南注明 Windows 从不触发 `onMemoryWarning`。结论：接受（平台限制）
