@@ -7,21 +7,18 @@ final class Screenshots: XCTestCase {
         let env = ProcessInfo.processInfo.environment
         guard let cases = env["WEFT_PAGES"] else { throw XCTSkip("Run pnpm --filter example shot:ios") }
         let pages = cases.split(separator: ",")
+        let links = try XCTUnwrap(env["WEFT_LINKS"]).split(separator: ",")
+        XCTAssertEqual(pages.count, links.count)
         let directory = URL(fileURLWithPath: try XCTUnwrap(env["WEFT_SHOT_DIR"]), isDirectory: true)
         let suffix = env["WEFT_APPEARANCE"] == "dark" ? "-dark" : ""
 
-        for id in pages {
+        for (id, link) in zip(pages, links) {
             let app = XCUIApplication()
-            app.launch()
+            app.terminate()
+            if link == "/" { app.launch() }
+            else { app.open(try XCTUnwrap(URL(string: "weftexample:/\(link)"))) }
             defer { app.terminate() }
-
-            let button = app.buttons["page:\(id)"]
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "No catalog button page:\(id)")
-            for _ in 0..<10 where !button.isHittable { app.swipeUp() }
-            XCTAssertTrue(button.isHittable, "Catalog button page:\(id) is off screen")
-            button.tap()
-            let back = app.navigationBars.buttons.firstMatch
-            XCTAssertTrue(back.waitForExistence(timeout: 5), "No navigation back button for page:\(id)")
+            XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
             Thread.sleep(forTimeInterval: 1)
 
             let screenshot = XCUIScreen.main.screenshot()
@@ -30,11 +27,8 @@ final class Screenshots: XCTestCase {
             if id == "controls" { checkControls(in: app) }
             if id == "inputs" { checkInputs(in: app) }
             if id == "tap" { checkTap(in: app) }
-            if id == "form" { checkForm(in: app) }
             if id == "overlays" { checkOverlays(in: app) }
 
-            back.tap()
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "Catalog did not return after page:\(id)")
         }
     }
 
@@ -56,20 +50,6 @@ final class Screenshots: XCTestCase {
         let toast = app.staticTexts["This is a toast."]
         XCTAssertTrue(toast.waitForExistence(timeout: 5))
         XCTAssertTrue(toast.waitForNonExistence(timeout: 5))
-    }
-
-    @MainActor
-    private func checkForm(in app: XCUIApplication) {
-        let bio = app.textViews["Where do you like to walk?"]
-        let agreement = app.buttons["Checkbox"]
-        let submit = app.buttons["Create account"]
-        XCTAssertTrue(bio.exists)
-        XCTAssertTrue(agreement.exists)
-        XCTAssertTrue(submit.exists)
-        XCTAssertEqual(bio.frame.height, 52, accuracy: 1)
-        XCTAssertLessThan(bio.frame.maxY, agreement.frame.minY)
-        XCTAssertEqual(submit.frame.width, bio.frame.width, accuracy: 1)
-        XCTAssertEqual(submit.frame.height, 44, accuracy: 1)
     }
 
     @MainActor

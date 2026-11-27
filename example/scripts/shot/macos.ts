@@ -13,7 +13,11 @@ rmSync(result, { recursive: true, force: true });
 command("xcodebuild", ["test", "-project", "apps/macos/App.xcodeproj", "-scheme", "App",
   "-destination", "platform=macOS", "-derivedDataPath", "apps/macos/build", "-parallel-testing-enabled", "NO",
   "-only-testing:UITests/Screenshots/testPages", "-resultBundlePath", result, "-quiet"], {
-  env: { ...process.env, TEST_RUNNER_WEFT_PAGES: shots.map(({ id, scheme }) => `${id}:${scheme}`).join(",") },
+  env: {
+    ...process.env,
+    TEST_RUNNER_WEFT_PAGES: shots.map(({ id, scheme }) => `${id}:${scheme}`).join(","),
+    TEST_RUNNER_WEFT_LINKS: shots.map(({ link }) => link).join(","),
+  },
 });
 
 const directory = mkdtempSync(join(tmpdir(), "weft-macos-shots-"));

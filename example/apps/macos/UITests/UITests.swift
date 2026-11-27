@@ -3,10 +3,100 @@ import XCTest
 /// UI tests of the app; run with `xcodebuild test -scheme App -destination platform=macOS`.
 final class UITests: XCTestCase {
     @MainActor
+    private func openCatalog(_ app: XCUIApplication) {
+        app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistenceIgnoreState", "YES"]
+        app.launch()
+        app.activate()
+        if !app.windows.firstMatch.waitForExistence(timeout: 5) { app.typeKey("n", modifierFlags: .command) }
+        let back = app.windows.firstMatch.buttons["Back"]
+        for _ in 0..<5 where back.exists { back.click() }
+        let discover = app.windows.firstMatch.tabs["发现"]
+        XCTAssertTrue(discover.waitForExistence(timeout: 10))
+        discover.click()
+        let gallery = app.windows.firstMatch.buttons["组件画廊"]
+        XCTAssertTrue(gallery.waitForExistence(timeout: 5))
+        gallery.click()
+    }
+
+    @MainActor
+    func testFieldnotesNavigation() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistenceIgnoreState", "YES"]
+        app.launch()
+        app.activate()
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.staticTexts["Latest notes"].waitForExistence(timeout: 10))
+        window.tabs["发现"].click()
+        XCTAssertTrue(window.buttons["组件画廊"].waitForExistence(timeout: 5))
+        app.windows.firstMatch.tabs.matching(NSPredicate(format: "label BEGINSWITH %@", "消息")).firstMatch.click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Updates from your trail community."].waitForExistence(timeout: 5))
+        app.windows.firstMatch.tabs["我的"].click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Mara Chen"].waitForExistence(timeout: 5))
+        let scroll = app.scrollViews.firstMatch
+        for _ in 0..<5 where !app.windows.firstMatch.buttons["Log in"].isHittable { scroll.scroll(byDeltaX: 0, deltaY: -250) }
+        app.windows.firstMatch.buttons["Log in"].click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Welcome back to your journal."].waitForExistence(timeout: 5))
+        app.windows.firstMatch.buttons["Cancel"].click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Mara Chen"].waitForExistence(timeout: 5))
+        for _ in 0..<5 where !app.windows.firstMatch.buttons["Settings"].isHittable { scroll.scroll(byDeltaX: 0, deltaY: -250) }
+        app.windows.firstMatch.buttons["Settings"].click()
+        app.windows.firstMatch.buttons["Clear cache"].click()
+        XCTAssertTrue(app.buttons["Clear"].waitForExistence(timeout: 5))
+        app.buttons["Clear"].click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Cache cleared"].waitForExistence(timeout: 5))
+        app.typeKey("[", modifierFlags: .command)
+        app.windows.firstMatch.tabs["首页"].click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+        app.windows.firstMatch.buttons["发布"].firstMatch.click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Publish a note"].waitForExistence(timeout: 5))
+        app.windows.firstMatch.buttons["Cancel"].click()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+        app.windows.firstMatch.buttons.matching(NSPredicate(format: "label CONTAINS %@", "NOTE 1")).firstMatch.click()
+        XCTAssertTrue(app.textFields["Add a comment"].waitForExistence(timeout: 5))
+        app.typeKey("[", modifierFlags: .command)
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testColdNoteLink() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.terminate()
+        app.open(URL(string: "weftexample://notes/3")!)
+        app.activate()
+        XCTAssertTrue(app.textFields["Add a comment"].waitForExistence(timeout: 10))
+        app.activate()
+        app.typeKey("[", modifierFlags: .command)
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testFeedLoadsMore() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistenceIgnoreState", "YES"]
+        app.launch()
+        app.activate()
+        XCTAssertTrue(app.windows.firstMatch.staticTexts["Latest notes"].waitForExistence(timeout: 10))
+        let list = app.scrollViews.firstMatch
+        func lastVisibleNote() -> Int {
+            app.buttons.allElementsBoundByIndex.compactMap { element in
+                guard element.frame.intersects(list.frame) else { return nil }
+                let text = element.label
+                guard text.hasPrefix("NOTE ") else { return nil }
+                return Int(text.dropFirst(5).split(separator: " ").first ?? "")
+            }.max() ?? 0
+        }
+        for _ in 0..<60 where lastVisibleNote() < 500 { list.scroll(byDeltaX: 0, deltaY: -10000) }
+        XCTAssertGreaterThanOrEqual(lastVisibleNote(), 500, "Feed should load through row 500")
+    }
+
+    @MainActor
     func testBackShortcutWithFocusedInput() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launch()
+        openCatalog(app)
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10))
         let entry = window.buttons["page:keyboard"]
@@ -25,7 +115,7 @@ final class UITests: XCTestCase {
     func testListLoadsMore() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launch()
+        openCatalog(app)
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10))
         let entry = window.buttons["page:list"]
@@ -63,8 +153,7 @@ final class UITests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: bundleID))
         defaults.removePersistentDomain(forName: bundleID)
         defaults.synchronize()
-        app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistenceIgnoreState", "YES"]
-        app.launch()
+        openCatalog(app)
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10))
         XCTAssertTrue(window.buttons["page:hello"].waitForExistence(timeout: 5))

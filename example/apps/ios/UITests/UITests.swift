@@ -4,9 +4,90 @@ import XCTest
 /// `xcodebuild test -scheme App -destination 'platform=iOS Simulator,name=<device>'`.
 final class UITests: XCTestCase {
     @MainActor
-    func testLifecyclePage() {
+    private func openCatalog(_ app: XCUIApplication) {
+        app.launch()
+        let discover = app.buttons["发现"]
+        XCTAssertTrue(discover.waitForExistence(timeout: 10))
+        discover.tap()
+        let gallery = app.buttons["组件画廊"]
+        XCTAssertTrue(gallery.waitForExistence(timeout: 5))
+        gallery.tap()
+    }
+
+    @MainActor
+    func testFieldnotesNavigation() {
+        continueAfterFailure = false
         let app = XCUIApplication()
         app.launch()
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 10))
+        app.buttons["发现"].tap()
+        XCTAssertTrue(app.buttons["组件画廊"].waitForExistence(timeout: 5))
+        app.buttons["消息"].tap()
+        XCTAssertTrue(app.staticTexts["Updates from your trail community."].waitForExistence(timeout: 5))
+        app.buttons["我的"].tap()
+        XCTAssertTrue(app.staticTexts["Mara Chen"].waitForExistence(timeout: 5))
+        for _ in 0..<5 where !app.buttons["Log in"].isHittable { app.swipeUp() }
+        app.buttons["Log in"].tap()
+        XCTAssertTrue(app.staticTexts["Welcome back to your journal."].waitForExistence(timeout: 5))
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.staticTexts["Mara Chen"].waitForExistence(timeout: 5))
+        for _ in 0..<5 where !app.buttons["Settings"].isHittable { app.swipeUp() }
+        app.buttons["Settings"].tap()
+        app.buttons["Clear cache"].tap()
+        XCTAssertTrue(app.alerts.buttons["Clear"].waitForExistence(timeout: 5))
+        app.alerts.buttons["Clear"].tap()
+        XCTAssertTrue(app.staticTexts["Cache cleared"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["首页"].tap()
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+        app.buttons["发布"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Publish a note"].waitForExistence(timeout: 5))
+        for _ in 0..<5 where !app.buttons["Cancel"].isHittable { app.swipeUp() }
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "NOTE 1")).firstMatch.tap()
+        XCTAssertTrue(app.textFields["Add a comment"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testFeedLoadsMore() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 10))
+        let started = Date()
+        let row500 = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "NOTE 500  /")).firstMatch
+        var loadedMore = false
+        for _ in 0..<600 {
+            let labels = app.staticTexts.allElementsBoundByIndex.map(\.label)
+            loadedMore = loadedMore || labels.contains { label in
+                guard label.hasPrefix("NOTE "), let number = Int(label.dropFirst(5).split(separator: " ").first ?? "") else { return false }
+                return number > 200
+            }
+            if loadedMore { break }
+            app.swipeUp(velocity: .fast)
+        }
+        print("Feed scroll seconds: \(Date().timeIntervalSince(started)); row 500: \(row500.exists)")
+        XCTAssertTrue(loadedMore, "Feed should append rows beyond its initial 200")
+    }
+
+    @MainActor
+    func testColdNoteLink() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.terminate()
+        app.open(URL(string: "weftexample://notes/3")!)
+        XCTAssertTrue(app.textFields["Add a comment"].waitForExistence(timeout: 10))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testLifecyclePage() {
+        let app = XCUIApplication()
+        openCatalog(app)
         let entry = app.buttons["page:lifecycle"]
         for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
         XCTAssertTrue(entry.waitForExistence(timeout: 10))
@@ -20,7 +101,7 @@ final class UITests: XCTestCase {
     func testLaunches() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launch()
+        openCatalog(app)
         XCTAssertTrue(app.buttons["page:hello"].waitForExistence(timeout: 10))
         let entries = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "page:"))
             .allElementsBoundByIndex.map(\.label)
@@ -41,7 +122,7 @@ final class UITests: XCTestCase {
     func testListPullToRefresh() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launch()
+        openCatalog(app)
         let entry = app.buttons["page:list"]
         for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
         XCTAssertTrue(entry.waitForExistence(timeout: 10))
@@ -64,7 +145,7 @@ final class UITests: XCTestCase {
     func testKeyboardAvoidance() {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launch()
+        openCatalog(app)
         let entry = app.buttons["page:keyboard"]
         for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
         XCTAssertTrue(entry.waitForExistence(timeout: 10))

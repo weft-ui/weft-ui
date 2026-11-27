@@ -10,7 +10,7 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Row 1 — a longer note from the trail"].waitForExistence(timeout: 10))
         attach("deep-link-cold")
         app.typeKey("[", modifierFlags: .command)
-        XCTAssertTrue(app.buttons["page:hello"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 5))
     }
 
     @MainActor

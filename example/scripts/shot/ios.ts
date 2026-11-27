@@ -44,15 +44,16 @@ try {
   command("xcrun", ["simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged",
     "--batteryLevel", "100", "--dataNetwork", "wifi", "--cellularBars", "4", "--wifiBars", "3"]);
   for (const scheme of ["light", "dark"] as const) {
-    const ids = shots.filter((shot) => shot.scheme === scheme).map(({ id }) => id);
-    if (!ids.length) continue;
+    const selected = shots.filter((shot) => shot.scheme === scheme);
+    if (!selected.length) continue;
     command("xcrun", ["simctl", "ui", udid, "appearance", scheme]);
     command("xcodebuild", ["test", "-project", "apps/ios/App.xcodeproj", "-scheme", "App",
       "-destination", `id=${udid}`, "-derivedDataPath", "apps/ios/build", "-parallel-testing-enabled", "NO",
       "-only-testing:UITests/Screenshots/testPages", "-quiet"], {
       env: {
         ...process.env,
-        TEST_RUNNER_WEFT_PAGES: ids.join(","),
+        TEST_RUNNER_WEFT_PAGES: selected.map(({ id }) => id).join(","),
+        TEST_RUNNER_WEFT_LINKS: selected.map(({ link }) => link).join(","),
         TEST_RUNNER_WEFT_SHOT_DIR: directory,
         TEST_RUNNER_WEFT_APPEARANCE: scheme,
       },

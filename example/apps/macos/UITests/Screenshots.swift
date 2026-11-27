@@ -7,8 +7,10 @@ final class Screenshots: XCTestCase {
         let env = ProcessInfo.processInfo.environment
         guard let cases = env["WEFT_PAGES"] else { throw XCTSkip("Run pnpm --filter example shot:macos") }
         let pages = cases.split(separator: ",")
+        let links = try XCTUnwrap(env["WEFT_LINKS"]).split(separator: ",")
+        XCTAssertEqual(pages.count, links.count)
 
-        for page in pages {
+        for (page, link) in zip(pages, links) {
             let parts = page.split(separator: ":")
             let id = parts[0]
             let dark = parts[1] == "dark"
@@ -19,20 +21,14 @@ final class Screenshots: XCTestCase {
             defaults.synchronize()
             app.launchEnvironment["WEFT_SHOT_APPEARANCE"] = dark ? "dark" : "light"
             app.launchArguments = ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistenceIgnoreState", "YES"]
-            app.launch()
+            app.terminate()
+            if link == "/" { app.launch() }
+            else { app.open(try XCTUnwrap(URL(string: "weftexample:/\(link)"))) }
             defer { app.terminate() }
             app.activate()
 
             let window = app.windows.firstMatch
-            if !window.exists { app.typeKey("n", modifierFlags: .command) }
-            XCTAssertTrue(window.waitForExistence(timeout: 5), "No example window")
-            let button = window.buttons["page:\(id)"]
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "No catalog button page:\(id)")
-            let catalog = window.scrollViews.firstMatch
-            for _ in 0..<10 where !button.isHittable { catalog.scroll(byDeltaX: 0, deltaY: -250) }
-            XCTAssertTrue(button.isHittable, "Catalog button page:\(id) is off screen")
-            button.click()
-            XCTAssertTrue(button.waitForNonExistence(timeout: 5), "Catalog did not navigate to page:\(id)")
+            XCTAssertTrue(window.waitForExistence(timeout: 10), "No example window")
             Thread.sleep(forTimeInterval: 1)
             if id == "controls" { XCTAssertTrue(window.staticTexts["控件设置"].exists) }
 
@@ -46,8 +42,6 @@ final class Screenshots: XCTestCase {
             if id == "tap" { checkTap(in: window) }
             if id == "overlays" { checkOverlays(in: app) }
 
-            app.typeKey("[", modifierFlags: .command)
-            XCTAssertTrue(button.waitForExistence(timeout: 5), "Catalog did not return after page:\(id)")
         }
     }
 
