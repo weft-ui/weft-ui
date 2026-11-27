@@ -1,27 +1,36 @@
 {
   "pages": [
-    "weft/pages/catalog/index",
-    "weft/pages/hello-page/index",
-    "weft/pages/layout-page/index",
-    "weft/pages/appearance-page/index",
-    "weft/pages/theme-page/index",
-    "weft/pages/typography-page/index",
-    "weft/pages/controls-page/index",
-    "weft/pages/inputs-page/index",
-    "weft/pages/tap-page/index",
-    "weft/pages/assets-page/index",
-    "weft/pages/safearea-page/index",
-    "weft/pages/feed-page/index",
-    "weft/pages/detail-page/index",
-    "weft/pages/profile-page/index",
-    "weft/pages/form-page/index",
-    "weft/pages/settings-page/index",
-    "weft/pages/empty-page/index",
-    "weft/pages/list-example-page/index",
-    "weft/pages/overlays-page/index"
+    "weft/pages/catalog/index"
   ],
   "darkmode": true,
   "window": {
     "navigationBarTitleText": "Weft Showcase"
-  }
+  },
+  "subPackages": [
+    {
+      "root": "showcase",
+      "pages": [
+        "weft/pages/hello-page/index",
+        "weft/pages/layout-page/index",
+        "weft/pages/appearance-page/index",
+        "weft/pages/theme-page/index",
+        "weft/pages/typography-page/index",
+        "weft/pages/controls-page/index",
+        "weft/pages/inputs-page/index",
+        "weft/pages/tap-page/index",
+        "weft/pages/assets-page/index",
+        "weft/pages/safearea-page/index",
+        "weft/pages/keyboard-page/index",
+        "weft/pages/feed-page/index",
+        "weft/pages/detail-page/index",
+        "weft/pages/profile-page/index",
+        "weft/pages/form-page/index",
+        "weft/pages/settings-page/index",
+        "weft/pages/empty-page/index",
+        "weft/pages/lifecycle-page/index",
+        "weft/pages/list-example-page/index",
+        "weft/pages/overlays-page/index"
+      ]
+    }
+  ]
 }
