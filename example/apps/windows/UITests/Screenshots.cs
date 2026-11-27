@@ -26,52 +26,78 @@ public sealed class Screenshots
             return;
         }
 
-        foreach (var page in pages.Split(','))
+        var links = Environment.GetEnvironmentVariable("WEFT_LINKS")?.Split(',');
+        var shots = pages.Split(',');
+        Assert.IsNotNull(links, "Missing WEFT_LINKS");
+        Assert.AreEqual(shots.Length, links.Length, "Page and link counts differ");
+        using var automation = new UIA3Automation();
+        // The app registers its protocol on launch before the first shell activation.
+        using (var registration = FlaUI.Core.Application.Launch(UITests.AppPath()))
         {
-            var parts = page.Split(':');
+            Assert.IsNotNull(registration.GetMainWindow(automation, TimeSpan.FromSeconds(10)));
+            registration.Close();
+            Assert.IsTrue(Retry.WhileFalse(() => !Process.GetProcessesByName("App")
+                .Any(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                TimeSpan.FromSeconds(10), ignoreException: true).Result);
+        }
+        for (var index = 0; index < shots.Length; index++)
+        {
+            var parts = shots[index].Split(':');
             var id = parts[0];
             var scheme = parts[1];
-            var start = new ProcessStartInfo(UITests.AppPath()) { UseShellExecute = false };
-            start.Environment["WEFT_SHOT_APPEARANCE"] = scheme;
-            start.Environment["WEFT_SHOT_PAGE"] = id;
             UITests.ClearStorage();
-            using var automation = new UIA3Automation();
-            using var app = FlaUI.Core.Application.Launch(start);
+            File.WriteAllLines(Path.Combine(Path.GetTempPath(), "weft-windows-shot.txt"), [scheme, id]);
+            FlaUI.Core.Application app;
+            if (links[index] == "/") app = FlaUI.Core.Application.Launch(UITests.AppPath());
+            else
+            {
+                Process.Start(new ProcessStartInfo("weftexample:/" + links[index]) { UseShellExecute = true });
+                var process = Retry.WhileNull(() => Process.GetProcessesByName("App")
+                    .FirstOrDefault(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                    TimeSpan.FromSeconds(15), ignoreException: true).Result;
+                Assert.IsNotNull(process, $"Protocol launch failed for {links[index]}");
+                app = FlaUI.Core.Application.Attach(process.Id);
+            }
+            using (app)
             try
             {
                 var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
                 Assert.IsNotNull(window);
-                var label = $"page:{id}";
-                var button = FindButton(window, label);
-                if (button is null)
+                var marker = id switch
+                {
+                    "feed" => "Latest notes",
+                    "discover" => "组件画廊",
+                    "inbox" => "Updates from your trail community.",
+                    "me" => "Mara Chen",
+                    _ => "Back",
+                };
+                var found = Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName(marker)),
+                    TimeSpan.FromSeconds(10), ignoreException: true).Result;
+                if (found is null)
                 {
                     var tree = string.Join("\n", window.FindAllDescendants().Select(element =>
                         $"{element.Properties.ControlType.ValueOrDefault}: {element.Properties.Name.ValueOrDefault}"));
-                    Assert.Fail($"No catalog button {label}. Window elements:\n{tree}");
+                    Assert.Fail($"Deep link to {id} did not complete. Window elements:\n{tree}");
                 }
-                button.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
-                button.AsButton().Invoke();
-                var back = FindButton(window, "Back");
-                Assert.IsNotNull(back, $"Navigation to {id} did not complete");
-                Thread.Sleep(TimeSpan.FromSeconds(1)); // Allow the push animation to finish before capture.
+                Thread.Sleep(TimeSpan.FromSeconds(1)); // Allow the page to finish rendering before capture.
 
                 if (id == "lifecycle") VerifyLifecycle(window);
                 var suffix = scheme == "dark" ? "-dark" : "";
                 var path = Path.Combine(directory, $"{id}{suffix}.png");
-                CaptureWindow(window, path, id == "form" ? capture => VerifyFormInputBorders(window, capture) : null);
+                CaptureWindow(window, path, null);
                 if (id == "appearance") VerifyVisibility(window);
                 if (id == "text") VerifyTypography(window);
                 if (id == "controls") VerifyControls(window);
                 if (id == "inputs") VerifyInputs(window);
                 if (id == "tap") VerifyTaps(window);
                 if (id == "overlays") VerifyOverlays(window);
-                back.AsButton().Invoke();
-                Assert.IsNotNull(FindButton(window, label), $"Returning from {id} did not restore the catalog");
-                Thread.Sleep(TimeSpan.FromMilliseconds(300)); // Let the native pop animation finish.
             }
             finally
             {
                 app.Close();
+                Assert.IsTrue(Retry.WhileFalse(() => !Process.GetProcessesByName("App")
+                    .Any(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                    TimeSpan.FromSeconds(10), ignoreException: true).Result, "App did not exit between screenshots");
             }
         }
     }
@@ -278,26 +304,6 @@ public sealed class Screenshots
         locked.Toggle();
         Select(channel, "测试版");
         Assert.AreEqual("测试版", channel.SelectedItem?.Text);
-    }
-
-    private static void VerifyFormInputBorders(Window window, CaptureImage capture)
-    {
-        var boxes = window.FindAllDescendants(cf => cf.ByClassName("TextBox").Or(cf.ByClassName("PasswordBox")))
-            .OrderBy(box => box.BoundingRectangle.Top).ToArray();
-        Assert.AreEqual(6, boxes.Length, "Expected five single-line editors and a text area");
-        var bitmap = capture.Bitmap;
-        var origin = capture.OriginalBounds.Location;
-        foreach (var box in boxes.Take(5))
-        {
-            var bounds = box.BoundingRectangle;
-            var x = bounds.Left + 3 * bounds.Width / 4 - origin.X;
-            var bottom = bounds.Bottom - origin.Y;
-            var outside = bitmap.GetPixel(x, bottom + 1).R;
-            var edge = Enumerable.Range(1, Math.Max(1, bounds.Height / 8))
-                .Min(offset => bitmap.GetPixel(x, bottom - offset).R);
-            Assert.IsTrue(edge < outside - 10,
-                $"{box.Properties.ClassName.Value} at {bounds} must show its bottom border (capture {capture.OriginalBounds})");
-        }
     }
 
     private static void VerifyInputs(Window window)

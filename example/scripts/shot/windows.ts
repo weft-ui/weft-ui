@@ -12,6 +12,7 @@ if (process.platform === "win32") {
     env: {
       ...process.env,
       WEFT_PAGES: shots.map(({ id, scheme }) => `${id}:${scheme}`).join(","),
+      WEFT_LINKS: shots.map(({ link }) => link).join(","),
       WEFT_SHOT_DIR: directory,
     },
   });

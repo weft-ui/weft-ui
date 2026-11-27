@@ -26,10 +26,25 @@ public partial class App : Application
     }
 
     private Window? window;
-    private readonly string? shotAppearance = Environment.GetEnvironmentVariable("WEFT_SHOT_APPEARANCE");
+    private readonly string? shotAppearance;
+    private readonly string? shotPage;
 
     public App()
     {
+        // Protocol activation is launched by the shell and cannot inherit the test process environment.
+        var shotFile = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "weft-windows-shot.txt");
+        if (System.IO.File.Exists(shotFile))
+        {
+            var settings = System.IO.File.ReadAllLines(shotFile);
+            System.IO.File.Delete(shotFile);
+            shotAppearance = settings[0];
+            shotPage = settings[1];
+        }
+        else
+        {
+            shotAppearance = Environment.GetEnvironmentVariable("WEFT_SHOT_APPEARANCE");
+            shotPage = Environment.GetEnvironmentVariable("WEFT_SHOT_PAGE");
+        }
         if (shotAppearance is not null)
             RequestedTheme = shotAppearance == "dark" ? ApplicationTheme.Dark : ApplicationTheme.Light;
         InitializeComponent();
@@ -39,8 +54,8 @@ public partial class App : Application
     {
         var root = (FrameworkElement)WeftApp.Start();
         window = new Window { Title = "Weft Showcase", Content = root };
-        var page = Environment.GetEnvironmentVariable("WEFT_SHOT_PAGE");
-        if (page is "feed" or "detail" or "profile" or "form" or "settings" or "empty")
+        var page = shotPage;
+        if (page is "feed" or "detail" or "discover" or "inbox" or "me" or "publish" or "login" or "settings" or "empty")
             root.Loaded += ResizeReferenceWindow;
         else
         {

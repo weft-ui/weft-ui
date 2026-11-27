@@ -23,9 +23,11 @@ public sealed class UITests
             Assert.IsNotNull(window);
             var project = typeof(UITests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
                 .Single(a => a.Key == "AppProject").Value!;
+            OpenGallery(window);
             using var pages = JsonDocument.Parse(File.ReadAllText(Path.Combine(project, "..", "..", "pages.json")));
             foreach (var page in pages.RootElement.EnumerateArray())
             {
+                if (page.TryGetProperty("link", out _)) continue;
                 if (page.TryGetProperty("pending", out var pending) &&
                     pending.EnumerateArray().Any(platform => platform.GetString() == "windows")) continue;
                 var id = page.GetProperty("id").GetString();
@@ -75,6 +77,7 @@ public sealed class UITests
         {
             var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
             Assert.IsNotNull(window);
+            OpenGallery(window);
             var entry = Screenshots.FindButton(window, "page:list");
             Assert.IsNotNull(entry);
             entry.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
@@ -135,13 +138,162 @@ public sealed class UITests
                 TimeSpan.FromSeconds(10), ignoreException: true).Result, "Cold link did not open the list");
             SaveLinkScreenshot(window, "cold");
             Screenshots.FindButton(window, "Back")!.AsButton().Invoke();
-            Assert.IsNotNull(Screenshots.FindButton(window, "page:overlays"), "Back did not return to the catalog");
+            Assert.IsNotNull(FindNamed(window, "Latest notes"), "Back did not return to Feed");
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("weftexample://showcase/overlays") { UseShellExecute = true });
             Assert.IsNotNull(Screenshots.FindButton(window, "Alert"), "Running link did not open overlays");
             SaveLinkScreenshot(window, "running");
             Assert.AreEqual(1, System.Diagnostics.Process.GetProcessesByName("App").Count(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"));
         }
         finally { app.Close(); }
+    }
+
+    [TestMethod]
+    public void FieldnotesNavigationAndPagination()
+    {
+        ClearStorage();
+        using var automation = new UIA3Automation();
+        using var app = Application.Launch(AppPath());
+        try
+        {
+            var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+            Assert.IsNotNull(window);
+            SelectTab(window, "发现");
+            Assert.IsNotNull(Screenshots.FindButton(window, "组件画廊"));
+            SelectTab(window, "消息");
+            Assert.IsNotNull(FindNamed(window, "Updates from your trail community."));
+            SelectTab(window, "我的");
+            Assert.IsNotNull(FindNamed(window, "Mara Chen"));
+            Click(window, "Log in");
+            Assert.IsNotNull(FindNamed(window, "Welcome back to your journal."));
+            Click(window, "Cancel");
+            Click(window, "Settings");
+            Click(window, "Clear cache");
+            Assert.IsNotNull(FindNamed(window, "Clear cached data?"));
+            Click(window, "Clear");
+            Assert.IsNotNull(FindNamed(window, "✓ Cache cleared"));
+            Click(window, "Back");
+            SelectTab(window, "首页");
+            var heading = FindNamed(window, "Latest notes");
+            Assert.IsNotNull(heading);
+            Assert.IsTrue(heading.BoundingRectangle.Width >= 100, "Tab navigation must not squeeze the feed at narrow widths");
+            Click(window, "发布");
+            Assert.IsNotNull(FindNamed(window, "Publish a note"));
+            Click(window, "Cancel");
+            var note = FindNamed(window, "NOTE 1  /  MOUNTAINS  /  6 MIN READ");
+            Assert.IsNotNull(note);
+            note.Click();
+            Assert.IsNotNull(FindNamed(window, "Trail comments (2)"));
+            Click(window, "Back");
+            Assert.IsNotNull(FindNamed(window, "Latest notes"));
+            var scroll = Retry.WhileNull(() => window.FindAllDescendants()
+                .LastOrDefault(element => element.Patterns.Scroll.PatternOrDefault is { } pattern && pattern.VerticallyScrollable.Value),
+                TimeSpan.FromSeconds(5), ignoreException: true).Result;
+            Assert.IsNotNull(scroll);
+            var loaded = Retry.WhileFalse(() => {
+                scroll.Patterns.Scroll.Pattern.SetScrollPercent(-1, 100);
+                return window.FindAllDescendants().Any(element => {
+                    var name = element.Properties.Name.ValueOrDefault ?? "";
+                    if (!name.StartsWith("NOTE ", StringComparison.Ordinal)) return false;
+                    var digits = new string(name.Skip(5).TakeWhile(char.IsDigit).ToArray());
+                    return int.TryParse(digits, out var row) && row >= 500;
+                });
+            }, TimeSpan.FromSeconds(45), ignoreException: true).Result;
+            Assert.IsTrue(loaded, "Feed did not load through row 500");
+        }
+        finally { app.Close(); }
+    }
+
+    [TestMethod]
+    public void ColdNoteLinkReturnsToFeed()
+    {
+        ClearStorage();
+        using var automation = new UIA3Automation();
+        using (var registration = Application.Launch(AppPath()))
+        {
+            Assert.IsNotNull(registration.GetMainWindow(automation, TimeSpan.FromSeconds(10)));
+            registration.Close();
+            Assert.IsTrue(Retry.WhileFalse(() => !System.Diagnostics.Process.GetProcessesByName("App")
+                .Any(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                TimeSpan.FromSeconds(10), ignoreException: true).Result);
+        }
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("weftexample://notes/3") { UseShellExecute = true });
+        var process = Retry.WhileNull(() => System.Diagnostics.Process.GetProcessesByName("App")
+            .FirstOrDefault(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+            TimeSpan.FromSeconds(15), ignoreException: true).Result;
+        Assert.IsNotNull(process);
+        using var app = Application.Attach(process.Id);
+        try
+        {
+            var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+            Assert.IsNotNull(window);
+            Assert.IsNotNull(FindNamed(window, "Trail comments (2)"));
+            Assert.IsNotNull(FindNamed(window, "The long way up Juniper Ridge"));
+            Click(window, "Back");
+            Assert.IsNotNull(FindNamed(window, "Latest notes"));
+        }
+        finally { app.Close(); }
+    }
+
+    [TestMethod]
+    public void ColdLinksOpenTabPages()
+    {
+        ClearStorage();
+        using var automation = new UIA3Automation();
+        using (var registration = Application.Launch(AppPath()))
+        {
+            Assert.IsNotNull(registration.GetMainWindow(automation, TimeSpan.FromSeconds(10)));
+            registration.Close();
+            Assert.IsTrue(Retry.WhileFalse(() => !System.Diagnostics.Process.GetProcessesByName("App")
+                .Any(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                TimeSpan.FromSeconds(10), ignoreException: true).Result);
+        }
+        foreach (var (link, marker) in new[] {
+            ("discover", "组件画廊"), ("inbox", "Updates from your trail community."), ("me", "Mara Chen") })
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("weftexample://" + link) { UseShellExecute = true });
+            var process = Retry.WhileNull(() => System.Diagnostics.Process.GetProcessesByName("App")
+                .FirstOrDefault(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                TimeSpan.FromSeconds(15), ignoreException: true).Result;
+            Assert.IsNotNull(process, $"Cold protocol launch failed for {link}");
+            using var app = Application.Attach(process.Id);
+            try
+            {
+                var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+                Assert.IsNotNull(window);
+                Assert.IsNotNull(FindNamed(window, marker), $"Cold protocol launch did not open {link}");
+            }
+            finally { app.Close(); }
+            Assert.IsTrue(Retry.WhileFalse(() => !System.Diagnostics.Process.GetProcessesByName("App")
+                .Any(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                TimeSpan.FromSeconds(10), ignoreException: true).Result);
+        }
+    }
+
+    private static AutomationElement? FindNamed(FlaUI.Core.AutomationElements.Window window, string name) =>
+        Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName(name)),
+            TimeSpan.FromSeconds(10), ignoreException: true).Result;
+
+    private static void Click(FlaUI.Core.AutomationElements.Window window, string label)
+    {
+        var button = Screenshots.FindButton(window, label);
+        Assert.IsNotNull(button, $"Missing button {label}");
+        button.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
+        button.AsButton().Invoke();
+    }
+
+    private static void SelectTab(FlaUI.Core.AutomationElements.Window window, string label)
+    {
+        var item = FindNamed(window, label);
+        Assert.IsNotNull(item, $"Missing tab {label}");
+        var selectable = item.Patterns.SelectionItem.PatternOrDefault is not null ? item : item.Parent;
+        Assert.IsNotNull(selectable);
+        selectable.Patterns.SelectionItem.Pattern.Select();
+    }
+
+    private static void OpenGallery(FlaUI.Core.AutomationElements.Window window)
+    {
+        SelectTab(window, "发现");
+        Click(window, "组件画廊");
     }
 
     private static void SaveLinkScreenshot(FlaUI.Core.AutomationElements.Window window, string name)
