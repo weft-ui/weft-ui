@@ -60,6 +60,47 @@ fn lazy_lists_validate_structure_and_ancestors() {
 }
 
 #[test]
+fn grouped_lists_validate_and_emit_two_lazy_templates() {
+    use weft_ui_transformer::view::{PointKind, ViewLayout};
+
+    let prefix = "model Section { id: Int, rows: Int[] } model M { sections: Section[] } ";
+    for (body, expected) in [
+        (
+            "List { for (s in m.sections; key = s.id) { for (x in s.rows; key = x) { Text(\"row\") } } }",
+            "a `List` section is header nodes followed by one `for`",
+        ),
+        (
+            "List { for (s in m.sections; key = s.id) { Text(\"head\") for (x in s.rows; key = x) { Text(\"row\") } Text(\"tail\") } }",
+            "a `List` section is header nodes followed by one `for`",
+        ),
+        (
+            "Grid(columns = 2) { for (s in m.sections; key = s.id) { Text(\"head\") for (x in s.rows; key = x) { Text(\"row\") } } }",
+            "`Grid` does not support sections",
+        ),
+    ] {
+        let source = format!("{prefix} component A(m: M) {{ {body} }}");
+        let found = diagnostics(&[("sections.weft", &source)]);
+        assert!(found.iter().any(|d| d.contains(expected)), "{found:?}");
+    }
+    let source = format!(
+        "{prefix} component A(m: M) {{ List(stickyHeaders = true) {{ for (s in m.sections; key = s.id) {{ Text(\"head\") for (x in s.rows; key = x) {{ Text(\"row\") }} }} }} }}"
+    );
+    let compilation = compile(&[("sections.weft", &source)]);
+    let program = compilation
+        .program
+        .as_ref()
+        .expect("valid sections compile");
+    let layout = ViewLayout::new(program);
+    let point = &layout.templates()[0].points[0];
+    let PointKind::Lazy { templates } = &point.kind else {
+        panic!("expected lazy point")
+    };
+    assert_eq!(templates.len(), 2);
+    assert_eq!(layout.template(templates[0]).roots.len(), 1);
+    assert_eq!(layout.template(templates[1]).roots.len(), 1);
+}
+
+#[test]
 fn pages_validate_routes_and_record_paths() {
     let compilation = compile(&[(
         "pages.weft",

@@ -357,7 +357,8 @@ function fire(view: TestView & Data, element: Element, type: string, value: unkn
       value = limitInput(value, Number(node.attrs.maxlength ?? 140));
     }
     const dataset = Object.fromEntries(Object.entries(node.attrs)
-      .filter(([name]) => name.startsWith("data-")).map(([name, data]) => [name.slice(5), data]));
+      .filter(([name]) => name.startsWith("data-"))
+      .map(([name, data]) => [name.slice(5).replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase()), data]));
     result = handler.call(view, {
       type,
       currentTarget: { id: node.attrs.id, dataset },

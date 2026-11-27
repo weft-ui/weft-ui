@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { Lazy } from "../../packages/runtime/src/lazy.ts";
+import { Lazy, Sections } from "../../packages/runtime/src/lazy.ts";
 import { render } from "../../packages/runtime/src/testing.ts";
 import { App, Instance, LazyList, Row } from "../../packages/runtime/src/remote.ts";
 import { flushSync } from "../../packages/runtime/src/core.ts";
@@ -26,6 +26,39 @@ test("lazy reconciliation emits one minimal splice and retains IDs on reorder", 
   lazy.set(values([3, 4, 1]));
   expect(splice).toHaveBeenLastCalledWith(0, 3, [{ id: 3, template: 0 }, { id: 4, template: 0 }, { id: 1, template: 0 }]);
   expect(() => lazy.set(values([1, 1]))).toThrow("duplicate key");
+});
+
+test("end reached fires once per count and resets after count changes", () => {
+  const reached = vi.fn();
+  const lazy = new Lazy((n: number) => n, {
+    splice: vi.fn(), bind: vi.fn(), create: n => n, change: vi.fn(), destroy: vi.fn(),
+  }, undefined, 2, reached);
+  lazy.set(Array.from({ length: 30 }, (_, i) => i));
+  lazy.window(20, 28);
+  lazy.window(21, 30);
+  expect(reached).toHaveBeenCalledTimes(1);
+  lazy.set(Array.from({ length: 31 }, (_, i) => i));
+  expect(reached).toHaveBeenCalledTimes(2);
+  lazy.set([]);
+  lazy.set(Array.from({ length: 30 }, (_, i) => i));
+  lazy.window(20, 30);
+  expect(reached).toHaveBeenCalledTimes(3);
+});
+
+test("sections flatten headers and rows with stable, section-scoped keys", () => {
+  const sections = new Sections<{ value: unknown }>(s => (s as { id: string }).id, {
+    rows: s => (s as { rows: number[] }).rows,
+    rowKey: (_, row) => row,
+    createRow: (_, row) => ({ value: row }),
+  }, () => {});
+  const input = [{ id: "a", rows: [1, 2] }, { id: "b", rows: [1] }];
+  const first = sections.flatten(input);
+  expect(first.map(item => item.template)).toEqual([0, 1, 1, 0, 1]);
+  expect(first[1].key).not.toBe(first[4].key);
+  const reordered = sections.flatten([input[1], input[0]]);
+  expect(reordered.map(item => item.key)).toEqual([first[3].key, first[4].key, first[0].key, first[1].key, first[2].key]);
+  expect(() => sections.flatten([{ id: "a", rows: [1, 1] }])).toThrow("duplicate key");
+  sections.destroy();
 });
 
 test("first frame and subsequent windows materialize and release only needed rows", () => {

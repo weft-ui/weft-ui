@@ -1,8 +1,11 @@
-component ListExample(listRows: String[]) {
-    List(gap = 8, padding = 20, indicators = false) {
+event ListRefresh
+event ListEndReached
+
+component ListExample(listRows: String[], listRefreshing: Bool) {
+    List(gap = 8, padding = 20, indicators = false, refreshing = listRefreshing, onRefresh = ListRefresh, onEndReached = ListEndReached) {
         Column(fill = true, gap = 6, paddingBottom = 12) {
             Text("Lazy list", size = 28, weight = "bold")
-            Text("1,000 variable-height rows", size = 14, color = "#5b695f")
+            Text("Pull down to refresh; scroll to the end to load more.", size = 14, color = "#5b695f")
         }
         for (row in listRows; key = row) {
             Column(fill = true, height = if (row.length > 20) 100 else 60, padding = 16,

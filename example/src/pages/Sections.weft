@@ -1,0 +1,18 @@
+model ShowcaseSection {
+    letter: String,
+    names: String[],
+}
+
+component Sections(sections: ShowcaseSection[]) {
+    List(gap = 8, padding = 20, stickyHeaders = true) {
+        Text("Plants by initial", size = 28, weight = "bold")
+        for (section in sections; key = section.letter) {
+            Text(section.letter, size = 20, weight = "bold", padding = 12, background = "#dce8dc")
+            for (name in section.names; key = name) {
+                Column(fill = true, height = 60, padding = 16, background = "#ecece2", radius = 12) {
+                    Text(name, size = 16, color = "#28463c")
+                }
+            }
+        }
+    }
+}

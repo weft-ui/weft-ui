@@ -221,8 +221,8 @@ The compiler rejects elements, properties, and events marked unsupported for the
 | `Checkbox` | `checked` | `onChange(Bool)` | None |
 | `Image` | `src` | `onTap` | None |
 | `Stack` | — | `onTap` | Any |
-| `List` | — | — | Any |
-| `Grid` | — | — | Any |
+| `List` | — | `onRefresh`, `onEndReached` | Any |
+| `Grid` | — | `onRefresh`, `onEndReached` | Any |
 | `Scroll` | — | — | Any |
 | `Spacer` | — | — | None |
 | `Switch` | `checked` | `onChange(Bool)` | None |

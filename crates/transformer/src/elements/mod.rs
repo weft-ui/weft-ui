@@ -92,6 +92,7 @@ pub(crate) struct PropSpec {
     pub constant: bool,
     pub css: Option<usize>,
     pub controlled_by: Option<&'static str>,
+    pub runtime_event: bool,
     pub support: &'static [(Platform, Level)],
 }
 
@@ -120,6 +121,7 @@ pub(crate) const LIFECYCLE: [PropSpec; 2] = [
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -130,6 +132,7 @@ pub(crate) const LIFECYCLE: [PropSpec; 2] = [
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];

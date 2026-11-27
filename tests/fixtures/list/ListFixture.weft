@@ -3,19 +3,38 @@ model ListItem {
   label: String,
 }
 
+model ListSection {
+  id: Int,
+  title: String,
+  items: ListItem[],
+}
+
 model ListModel {
   items: ListItem[],
   cells: ListItem[],
+  sections: ListSection[],
+  refreshing: Bool,
 }
+
+event Refresh()
+event EndReached()
 
 component ListFixture(model: ListModel) {
   Column {
-    List {
+    List(refreshing = model.refreshing, onRefresh = { Refresh() }, onEndReached = { EndReached() }) {
       Text("header")
       for (item in model.items; key = item.id) {
         Text(item.label)
       }
       Text("footer")
+    }
+    List(stickyHeaders = true) {
+      for (section in model.sections; key = section.id) {
+        Text(section.title)
+        for (item in section.items; key = item.id) {
+          Text(item.label)
+        }
+      }
     }
     Grid(columns = 3) {
       for (cell in model.cells; key = cell.id) {

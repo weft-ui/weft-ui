@@ -438,7 +438,15 @@ Displays a vertically scrolling lazy list.
 | `shadow` | `Shadow` | `"none"` | Draws a preset shadow outside the border box. | — |
 | `clip` | `Bool` | `false` | Clips overflowing content to the rounded padding box. | — |
 | `gap` | `Int` | `0` | Space between items. | — |
+| `stickyHeaders` | `Bool` | `false` | Keeps section headers at the top while scrolling. | Ignored: `wechat`; Ignored: `windows`; Ignored: `linux` |
 | `indicators` | `Bool` | `true` | Controls whether scrollbars are shown. | — |
+| `refreshing` | `Bool` | `false` | Keeps the refresh indicator visible. | Ignored: `macos`; Ignored: `windows`; Ignored: `linux` |
+| `endThreshold` | `Int` | `5` | Number of items from the end at which the end event fires. | — |
+
+| Event | Payload | Description | Platform exceptions |
+| --- | --- | --- | --- |
+| `onRefresh` | — | Fires when the user pulls to refresh. | Ignored: `macos`; Ignored: `windows`; Ignored: `linux` |
+| `onEndReached` | — | Fires when the visible window approaches the end. | — |
 
 ## Grid
 
@@ -484,6 +492,13 @@ Displays a vertically scrolling lazy grid.
 | `columns` | `Int` | Required | Number of equal-width columns, at least one. | — |
 | `gap` | `Int` | `0` | Space between rows and columns. | — |
 | `indicators` | `Bool` | `true` | Controls whether scrollbars are shown. | — |
+| `refreshing` | `Bool` | `false` | Keeps the refresh indicator visible. | Ignored: `macos`; Ignored: `windows`; Ignored: `linux` |
+| `endThreshold` | `Int` | `5` | Number of items from the end at which the end event fires. | — |
+
+| Event | Payload | Description | Platform exceptions |
+| --- | --- | --- | --- |
+| `onRefresh` | — | Fires when the user pulls to refresh. | Ignored: `macos`; Ignored: `windows`; Ignored: `linux` |
+| `onEndReached` | — | Fires when the visible window approaches the end. | — |
 
 ## Scroll
 

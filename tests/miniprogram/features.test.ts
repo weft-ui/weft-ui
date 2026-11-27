@@ -195,6 +195,31 @@ test("a changed item inside slot content is sent alone", async () => {
   expect(labels(view)).toEqual(["a", "b", "C"]);
 });
 
+test("refresher follows the synchronously updated refreshing value", () => {
+  const calls: Record<string, unknown>[] = [];
+  const view = { setData(data: Record<string, unknown>, callback?: () => void) { calls.push(data); callback?.(); } };
+  const sink = new WechatSink(view, { hash: "test", templates: [{ n: "Root", v: [["refreshing"]], e: [["handler", -1]] }] });
+  let keepRefreshing = false;
+  sink.open({ hash: "test", dispatch: () => { if (keepRefreshing) sink.set(1, 0, true); return true; }, window: () => {}, signal: () => {}, detach: () => {} });
+  sink.create(1, 0);
+  sink.set(1, 0, false);
+  sink.attach(0, 0, 1);
+  sink.commit();
+  const event = { type: "refresherrefresh", currentTarget: { dataset: { erefresherrefresh: 1, refreshKey: "refreshing", refreshAlways: false } } };
+  calls.length = 0;
+  sink.event(event);
+  expect(calls).toEqual([{ "r.refreshing": true }, { "r.refreshing": false }]);
+  calls.length = 0;
+  keepRefreshing = true;
+  sink.event(event);
+  expect(calls).toEqual([]);
+  sink.commit();
+  expect(calls).toEqual([{ "r.refreshing": true }]);
+  sink.set(1, 0, false);
+  sink.commit();
+  expect(calls.at(-1)).toEqual({ "r.refreshing": false });
+});
+
 test("scrolling a segmented list requests the visible window even without observer notifications", () => {
   type Rect = { dataset: Record<string, unknown>; top: number; bottom: number; height: number };
   type Query = {

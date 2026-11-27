@@ -43,6 +43,8 @@ export interface Actions {
   tab(index: number): void;
   /** Requests a list or grid's half-open materialization window. */
   window(type: "List" | "Grid", index: number, start: number, end: number): void;
+  /** Simulates a pull-to-refresh gesture. */
+  refresh(type: "List" | "Grid", index: number): void;
   /** Fires the named event, or the element's first event, without a payload. */
   click(type: string, index: number, event?: string): void;
   /** Gives or takes away user focus. */
@@ -196,6 +198,7 @@ export function headless<A extends AppLike>(script: Script<A>, built: Built<A>):
     dismiss: () => renderer.dismiss(),
     tab: (index) => renderer.selectTab(index),
     window: (type, index, start, end) => renderer.window(find(type, index), start, end),
+    refresh: (type, index) => renderer.refresh(find(type, index)),
     click: (type, index, event) => renderer.click(find(type, index), event),
     focus: (type, index, value) => renderer.focus(find(type, index), value),
     edit: (type, index, value) => {
@@ -324,6 +327,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
       const component = root as unknown as { $sink: { window(scope: number, point: number, start: number, end: number): void } };
       component.$sink.window(Number(element.attrs["data-scope"]), Number(element.attrs["data-point"]), start, end);
     },
+    refresh: (type, index) => { view().fire(find(type, index), "refresherrefresh"); },
     dispose: () => navigation?.dispose(),
     tree: () => reduce(view().render().flatMap((root) => root.children), wxClassify),
     click: (type, index, event) => {
@@ -341,6 +345,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
 
 function domClassify(e: Element): Classified<Element> {
   const flatten = (elements: readonly Element[]): Element[] => elements.flatMap((element) =>
+    element.classList.contains("w-refresh-indicator") ? [] :
     element.classList.contains("w-virtual-spacer") || element.classList.contains("w-virtual-item")
       ? flatten([...element.children]) : [element]);
   const children = flatten([...e.children]);
@@ -420,6 +425,9 @@ export function web<A extends AppLike>(script: Script<A>): Driver<A> {
     window: (type, index, start, end) => {
       const element = find(type, index) as Element & { $weftLazy: { window(start: number, end: number): void } };
       element.$weftLazy.window(start, end);
+    },
+    refresh: (type, index) => {
+      find(type, index).dispatchEvent(new window.Event("weft-refresh") as unknown as Event);
     },
     tree: () => reduce(roots(), domClassify),
     click: (type, index, name) => {

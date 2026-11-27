@@ -446,6 +446,7 @@ const PROPS_0: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -456,6 +457,7 @@ const PROPS_0: &[PropSpec] = &[
         constant: true,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -469,6 +471,7 @@ const PROPS_1: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -479,6 +482,7 @@ const PROPS_1: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -489,6 +493,7 @@ const PROPS_1: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -499,6 +504,7 @@ const PROPS_1: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -512,6 +518,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -522,6 +529,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -532,6 +540,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -542,6 +551,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -552,6 +562,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -562,6 +573,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -572,6 +584,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -582,6 +595,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -592,6 +606,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -602,6 +617,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -612,6 +628,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -622,6 +639,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -632,6 +650,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -642,6 +661,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -652,6 +672,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -662,6 +683,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -672,6 +694,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -682,6 +705,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -692,6 +716,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(18),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -702,6 +727,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(19),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -712,6 +738,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(20),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -722,6 +749,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(21),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -732,6 +760,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(22),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -742,6 +771,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(23),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -752,6 +782,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(24),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -762,6 +793,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -772,6 +804,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -782,6 +815,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -792,6 +826,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -802,6 +837,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -812,6 +848,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -822,6 +859,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -832,6 +870,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(31),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -842,6 +881,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(32),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -852,6 +892,7 @@ const PROPS_2: &[PropSpec] = &[
         constant: false,
         css: Some(33),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -865,6 +906,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -875,6 +917,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -885,6 +928,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -895,6 +939,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -905,6 +950,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -915,6 +961,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -925,6 +972,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -935,6 +983,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -945,6 +994,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -955,6 +1005,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -965,6 +1016,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -975,6 +1027,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -985,6 +1038,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -995,6 +1049,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1005,6 +1060,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1015,6 +1071,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1025,6 +1082,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1035,6 +1093,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1045,6 +1104,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(18),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1055,6 +1115,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(19),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1065,6 +1126,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(20),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1075,6 +1137,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(21),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1085,6 +1148,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(22),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1095,6 +1159,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(23),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1105,6 +1170,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(24),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1115,6 +1181,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1125,6 +1192,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1135,6 +1203,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1145,6 +1214,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1155,6 +1225,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1165,6 +1236,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1175,6 +1247,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(34),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1185,6 +1258,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(35),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1195,6 +1269,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(36),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1205,6 +1280,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(37),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1215,6 +1291,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(38),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1225,6 +1302,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(39),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1235,6 +1313,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1245,6 +1324,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1255,6 +1335,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(40),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1265,6 +1346,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(41),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1275,6 +1357,7 @@ const PROPS_3: &[PropSpec] = &[
         constant: false,
         css: Some(42),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -1288,6 +1371,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: Some(34),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1298,6 +1382,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: Some(35),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1308,6 +1393,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: Some(36),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1318,6 +1404,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: Some(37),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1328,6 +1415,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: Some(38),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1338,6 +1426,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: Some(39),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1348,6 +1437,7 @@ const PROPS_4: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -1361,6 +1451,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1371,6 +1462,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1381,6 +1473,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1391,6 +1484,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1401,6 +1495,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1411,6 +1506,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1421,6 +1517,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1431,6 +1528,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1441,6 +1539,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1451,6 +1550,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1461,6 +1561,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1471,6 +1572,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1481,6 +1583,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1491,6 +1594,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1501,6 +1605,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1511,6 +1616,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1521,6 +1627,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1531,6 +1638,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1541,6 +1649,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1551,6 +1660,7 @@ const PROPS_5: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -1564,6 +1674,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1574,6 +1685,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1584,6 +1696,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1594,6 +1707,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1604,6 +1718,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1614,6 +1729,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1624,6 +1740,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1634,6 +1751,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1644,6 +1762,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1654,6 +1773,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1664,6 +1784,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1674,6 +1795,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1684,6 +1806,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1694,6 +1817,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1704,6 +1828,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1714,6 +1839,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1724,6 +1850,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1734,6 +1861,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1744,6 +1872,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: Some("onChange"),
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1756,6 +1885,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1766,6 +1896,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1776,6 +1907,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1786,6 +1918,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1796,6 +1929,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[
             (Platform::Macos, Level::Ignored),
             (Platform::Windows, Level::Ignored),
@@ -1810,6 +1944,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1820,6 +1955,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1830,6 +1966,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1842,6 +1979,7 @@ const PROPS_6: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -1855,6 +1993,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1865,6 +2004,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1875,6 +2015,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1885,6 +2026,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1895,6 +2037,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1905,6 +2048,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1915,6 +2059,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1925,6 +2070,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1935,6 +2081,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1945,6 +2092,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1955,6 +2103,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1965,6 +2114,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1975,6 +2125,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1985,6 +2136,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -1995,6 +2147,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2005,6 +2158,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2015,6 +2169,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2025,6 +2180,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2035,6 +2191,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: Some("onChange"),
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2047,6 +2204,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2057,6 +2215,7 @@ const PROPS_7: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -2070,6 +2229,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2080,6 +2240,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2090,6 +2251,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2100,6 +2262,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2110,6 +2273,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2120,6 +2284,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2130,6 +2295,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2140,6 +2306,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2150,6 +2317,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2160,6 +2328,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2170,6 +2339,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2180,6 +2350,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2190,6 +2361,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2200,6 +2372,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2210,6 +2383,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2220,6 +2394,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2230,6 +2405,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2240,6 +2416,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2250,6 +2427,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2260,6 +2438,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2270,6 +2449,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2280,6 +2460,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2290,6 +2471,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2300,6 +2482,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2310,6 +2493,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2320,6 +2504,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2330,6 +2515,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(43),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2340,6 +2526,7 @@ const PROPS_8: &[PropSpec] = &[
         constant: false,
         css: Some(44),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -2353,6 +2540,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2363,6 +2551,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2373,6 +2562,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2383,6 +2573,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2393,6 +2584,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2403,6 +2595,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2413,6 +2606,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2423,6 +2617,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2433,6 +2628,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2443,6 +2639,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2453,6 +2650,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2463,6 +2661,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2473,6 +2672,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2483,6 +2683,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2493,6 +2694,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2503,6 +2705,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2513,6 +2716,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2523,6 +2727,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2533,6 +2738,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(18),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2543,6 +2749,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(19),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2553,6 +2760,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(20),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2563,6 +2771,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(21),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2573,6 +2782,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(22),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2583,6 +2793,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(23),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2593,6 +2804,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(24),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2603,6 +2815,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2613,6 +2826,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2623,6 +2837,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2633,6 +2848,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2643,6 +2859,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2653,6 +2870,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2663,6 +2881,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2673,6 +2892,7 @@ const PROPS_9: &[PropSpec] = &[
         constant: false,
         css: Some(45),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -2686,6 +2906,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2696,6 +2917,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2706,6 +2928,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2716,6 +2939,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2726,6 +2950,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2736,6 +2961,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2746,6 +2972,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2756,6 +2983,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2766,6 +2994,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2776,6 +3005,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2786,6 +3016,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2796,6 +3027,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2806,6 +3038,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2816,6 +3049,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2826,6 +3060,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2836,6 +3071,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2846,6 +3082,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2856,6 +3093,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2866,6 +3104,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(18),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2876,6 +3115,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(19),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2886,6 +3126,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(20),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2896,6 +3137,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(21),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2906,6 +3148,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(22),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2916,6 +3159,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(23),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2926,6 +3170,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(24),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2936,6 +3181,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2946,6 +3192,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2956,6 +3203,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2966,6 +3214,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2976,6 +3225,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2986,6 +3236,7 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -2996,7 +3247,23 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(31),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
+    },
+    PropSpec {
+        name: "stickyHeaders",
+        kind: PropKind::Value(PropType::Bool),
+        positional: false,
+        required: false,
+        constant: true,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[
+            (Platform::Wechat, Level::Ignored),
+            (Platform::Windows, Level::Ignored),
+            (Platform::Linux, Level::Ignored),
+        ],
     },
     PropSpec {
         name: "indicators",
@@ -3006,6 +3273,59 @@ const PROPS_10: &[PropSpec] = &[
         constant: false,
         css: Some(46),
         controlled_by: None,
+        runtime_event: false,
+        support: &[],
+    },
+    PropSpec {
+        name: "refreshing",
+        kind: PropKind::Value(PropType::Bool),
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[
+            (Platform::Macos, Level::Ignored),
+            (Platform::Windows, Level::Ignored),
+            (Platform::Linux, Level::Ignored),
+        ],
+    },
+    PropSpec {
+        name: "endThreshold",
+        kind: PropKind::Value(PropType::Int),
+        positional: false,
+        required: false,
+        constant: true,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[],
+    },
+    PropSpec {
+        name: "onRefresh",
+        kind: PropKind::Handler { payload: None },
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[
+            (Platform::Macos, Level::Ignored),
+            (Platform::Windows, Level::Ignored),
+            (Platform::Linux, Level::Ignored),
+        ],
+    },
+    PropSpec {
+        name: "onEndReached",
+        kind: PropKind::Handler { payload: None },
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        runtime_event: true,
         support: &[],
     },
 ];
@@ -3019,6 +3339,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3029,6 +3350,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3039,6 +3361,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3049,6 +3372,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3059,6 +3383,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3069,6 +3394,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3079,6 +3405,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3089,6 +3416,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3099,6 +3427,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3109,6 +3438,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3119,6 +3449,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3129,6 +3460,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3139,6 +3471,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3149,6 +3482,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3159,6 +3493,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3169,6 +3504,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3179,6 +3515,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3189,6 +3526,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3199,6 +3537,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(18),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3209,6 +3548,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(19),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3219,6 +3559,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(20),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3229,6 +3570,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(21),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3239,6 +3581,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(22),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3249,6 +3592,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(23),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3259,6 +3603,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(24),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3269,6 +3614,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3279,6 +3625,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3289,6 +3636,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3299,6 +3647,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3309,6 +3658,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3319,6 +3669,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3329,6 +3680,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: true,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3339,6 +3691,7 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(31),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3349,6 +3702,59 @@ const PROPS_11: &[PropSpec] = &[
         constant: false,
         css: Some(46),
         controlled_by: None,
+        runtime_event: false,
+        support: &[],
+    },
+    PropSpec {
+        name: "refreshing",
+        kind: PropKind::Value(PropType::Bool),
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[
+            (Platform::Macos, Level::Ignored),
+            (Platform::Windows, Level::Ignored),
+            (Platform::Linux, Level::Ignored),
+        ],
+    },
+    PropSpec {
+        name: "endThreshold",
+        kind: PropKind::Value(PropType::Int),
+        positional: false,
+        required: false,
+        constant: true,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[],
+    },
+    PropSpec {
+        name: "onRefresh",
+        kind: PropKind::Handler { payload: None },
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        runtime_event: false,
+        support: &[
+            (Platform::Macos, Level::Ignored),
+            (Platform::Windows, Level::Ignored),
+            (Platform::Linux, Level::Ignored),
+        ],
+    },
+    PropSpec {
+        name: "onEndReached",
+        kind: PropKind::Handler { payload: None },
+        positional: false,
+        required: false,
+        constant: false,
+        css: None,
+        controlled_by: None,
+        runtime_event: true,
         support: &[],
     },
 ];
@@ -3362,6 +3768,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3372,6 +3779,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3382,6 +3790,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3392,6 +3801,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3402,6 +3812,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3412,6 +3823,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3422,6 +3834,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3432,6 +3845,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3442,6 +3856,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3452,6 +3867,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3462,6 +3878,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3472,6 +3889,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3482,6 +3900,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3492,6 +3911,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3502,6 +3922,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3512,6 +3933,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3522,6 +3944,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3532,6 +3955,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3542,6 +3966,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(18),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3552,6 +3977,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(19),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3562,6 +3988,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(20),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3572,6 +3999,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(21),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3582,6 +4010,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(22),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3592,6 +4021,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(23),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3602,6 +4032,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(24),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3612,6 +4043,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3622,6 +4054,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(26),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3632,6 +4065,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(27),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3642,6 +4076,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(28),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3652,6 +4087,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(29),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3662,6 +4098,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(30),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3672,6 +4109,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: true,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3682,6 +4120,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(31),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3692,6 +4131,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(32),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3702,6 +4142,7 @@ const PROPS_12: &[PropSpec] = &[
         constant: false,
         css: Some(46),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -3714,6 +4155,7 @@ const PROPS_13: &[PropSpec] = &[PropSpec {
     constant: false,
     css: Some(47),
     controlled_by: None,
+    runtime_event: false,
     support: &[],
 }];
 
@@ -3726,6 +4168,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3736,6 +4179,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3746,6 +4190,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3756,6 +4201,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3766,6 +4212,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3776,6 +4223,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3786,6 +4234,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3796,6 +4245,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3806,6 +4256,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3816,6 +4267,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3826,6 +4278,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3836,6 +4289,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3846,6 +4300,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3856,6 +4311,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3866,6 +4322,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3876,6 +4333,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3886,6 +4344,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3896,6 +4355,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3906,6 +4366,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: Some("onChange"),
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3916,6 +4377,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3928,6 +4390,7 @@ const PROPS_14: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -3941,6 +4404,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3951,6 +4415,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3961,6 +4426,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3971,6 +4437,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3981,6 +4448,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -3991,6 +4459,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4001,6 +4470,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4011,6 +4481,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4021,6 +4492,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4031,6 +4503,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4041,6 +4514,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4051,6 +4525,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4061,6 +4536,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4071,6 +4547,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4081,6 +4558,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4091,6 +4569,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4101,6 +4580,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4111,6 +4591,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4121,6 +4602,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: Some("onChange"),
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4131,6 +4613,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4141,6 +4624,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4153,6 +4637,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4163,6 +4648,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4173,6 +4659,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4185,6 +4672,7 @@ const PROPS_15: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -4198,6 +4686,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4208,6 +4697,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4218,6 +4708,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4228,6 +4719,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4238,6 +4730,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4248,6 +4741,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4258,6 +4752,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4268,6 +4763,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4278,6 +4774,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4288,6 +4785,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4298,6 +4796,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4308,6 +4807,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4318,6 +4818,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4328,6 +4829,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4338,6 +4840,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4348,6 +4851,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4358,6 +4862,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4368,6 +4873,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4378,6 +4884,7 @@ const PROPS_16: &[PropSpec] = &[
         constant: false,
         css: Some(34),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -4391,6 +4898,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4401,6 +4909,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4411,6 +4920,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4421,6 +4931,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4431,6 +4942,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4441,6 +4953,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4451,6 +4964,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4461,6 +4975,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4471,6 +4986,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4481,6 +4997,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4491,6 +5008,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4501,6 +5019,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4511,6 +5030,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4521,6 +5041,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4531,6 +5052,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4541,6 +5063,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4551,6 +5074,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4561,6 +5085,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4571,6 +5096,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(48),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4581,6 +5107,7 @@ const PROPS_17: &[PropSpec] = &[
         constant: false,
         css: Some(49),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -4594,6 +5121,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4604,6 +5132,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4614,6 +5143,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4624,6 +5154,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4634,6 +5165,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4644,6 +5176,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4654,6 +5187,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4664,6 +5198,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4674,6 +5209,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4684,6 +5220,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4694,6 +5231,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4704,6 +5242,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4714,6 +5253,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4724,6 +5264,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4734,6 +5275,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4744,6 +5286,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4754,6 +5297,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4764,6 +5308,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4774,6 +5319,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: true,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4784,6 +5330,7 @@ const PROPS_18: &[PropSpec] = &[
         constant: false,
         css: Some(25),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -4797,6 +5344,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4807,6 +5355,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4817,6 +5366,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4827,6 +5377,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4837,6 +5388,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4847,6 +5399,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4857,6 +5410,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4867,6 +5421,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4877,6 +5432,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4887,6 +5443,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4897,6 +5454,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4907,6 +5465,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4917,6 +5476,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4927,6 +5487,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4937,6 +5498,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4947,6 +5509,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4957,6 +5520,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4967,6 +5531,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4977,6 +5542,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: Some("onChange"),
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4987,6 +5553,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -4997,6 +5564,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5007,6 +5575,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5017,6 +5586,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5029,6 +5599,7 @@ const PROPS_19: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];
@@ -5042,6 +5613,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(0),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5052,6 +5624,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(1),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5062,6 +5635,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(2),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5072,6 +5646,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(3),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5082,6 +5657,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(4),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5092,6 +5668,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(5),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5102,6 +5679,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(6),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5112,6 +5690,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(7),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5122,6 +5701,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(8),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5132,6 +5712,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(9),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5142,6 +5723,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(10),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5152,6 +5734,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(11),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5162,6 +5745,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(12),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5172,6 +5756,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(13),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5182,6 +5767,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(14),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5192,6 +5778,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(15),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5202,6 +5789,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(16),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5212,6 +5800,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: Some(17),
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5222,6 +5811,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: Some("onChange"),
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5232,6 +5822,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5242,6 +5833,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5252,6 +5844,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
     PropSpec {
@@ -5264,6 +5857,7 @@ const PROPS_20: &[PropSpec] = &[
         constant: false,
         css: None,
         controlled_by: None,
+        runtime_event: false,
         support: &[],
     },
 ];

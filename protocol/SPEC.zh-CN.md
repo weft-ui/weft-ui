@@ -51,6 +51,8 @@ scope 在 `create` 时创建，此时还没挂上树。它被 `branch` 换掉、
 
 惰性挂载点拥有扁平项序列，item ID 在该挂载点内从 1 递增且不复用；稳定 key 离开列表前保持同一 ID。`splice` 替换公共前后缀之间变化的部分，保留 ID 的已物化 scope，销毁被移除项的 scope。`bind` 将项关联到已创建的 scope，child 为 0 时释放。窗口请求物化范围内的项并释放范围外的 scope；首次最多物化前 20 项。项 scope 的创建与初始值在同一批次中先于 `bind`。
 
+分组列表的扁平序列由分组头（模板 0，以外层 key 标识）及其行（模板 1，以外层和内层 key 标识）依次组成。微信小程序忽略 `stickyHeaders`，因为分段虚拟化无法可靠地保持分组头吸顶；分组头随列表正常滚动。`onEndReached` 由运行时触发，不占宿主事件槽：每次 `window` 或 `splice` 后，若项目数非零且最近请求的终点不小于 `count - endThreshold`，则触发；同一项目数最多触发一次。对于 `onRefresh`，宿主显示指示器并派发事件；处理器返回后由 `refreshing` 决定是否继续显示，为 false 时收起。
+
 ## Ops
 
 | op       | 参数                     | 含义                                                         |

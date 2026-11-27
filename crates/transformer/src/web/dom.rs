@@ -352,7 +352,17 @@ impl Gen {
             out.push_str(" role=\"button\" tabindex=\"0\"");
         }
         for prop in props {
-            if element == Element::Grid && prop.name == "columns" {
+            if matches!(element, Element::List | Element::Grid)
+                && matches!(
+                    prop.name,
+                    "columns"
+                        | "refreshing"
+                        | "endThreshold"
+                        | "stickyHeaders"
+                        | "onRefresh"
+                        | "onEndReached"
+                )
+            {
                 continue;
             }
             let PropValue::Expr(expr) = &prop.value else {
@@ -543,7 +553,17 @@ impl Backend for Gen {
         }
         let mut listens_for_edits = false;
         for prop in props {
-            if element == Element::Grid && prop.name == "columns" {
+            if matches!(element, Element::List | Element::Grid)
+                && matches!(
+                    prop.name,
+                    "columns"
+                        | "refreshing"
+                        | "endThreshold"
+                        | "stickyHeaders"
+                        | "onRefresh"
+                        | "onEndReached"
+                )
+            {
                 continue;
             }
             match &prop.value {
@@ -611,6 +631,10 @@ impl Backend for Gen {
 
     fn row_args(&self, _id: NodeId) -> impl Display {
         ""
+    }
+
+    fn lazy_columns(&self) -> bool {
+        true
     }
 
     fn mount<'args>(

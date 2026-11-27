@@ -326,6 +326,34 @@ impl<'cx> Lowerer<'cx, '_> {
                     span,
                     format!("`{}` needs exactly one `for` among its children", spec.name),
                 );
+            } else if let Some(block) = &e.children {
+                for node in &block.nodes {
+                    let ast::NodeKind::For(outer) = &node.kind else {
+                        continue;
+                    };
+                    let inner_count = outer
+                        .body
+                        .nodes
+                        .iter()
+                        .filter(|n| matches!(n.kind, ast::NodeKind::For(_)))
+                        .count();
+                    if inner_count > 0 {
+                        if spec.name == "Grid" {
+                            self.error(node.span, "`Grid` does not support sections");
+                        } else if inner_count != 1
+                            || outer.body.nodes.len() < 2
+                            || !matches!(
+                                outer.body.nodes.last().map(|n| &n.kind),
+                                Some(ast::NodeKind::For(_))
+                            )
+                        {
+                            self.error(
+                                node.span,
+                                "a `List` section is header nodes followed by one `for`",
+                            );
+                        }
+                    }
+                }
             }
         }
         let own = first_binding..self.bindings.len();

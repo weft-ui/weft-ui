@@ -457,7 +457,12 @@
       "children": "any",
       "members": [
         { "name": "gap", "type": "Int", "default": 0, "css": { "property": "gap", "unit": "px" }, "doc": { "en": "Space between items.", "zh": "列表项之间的间距。" } },
-        { "name": "indicators", "type": "Bool", "default": true, "css": { "property": "scrollbar-width", "unit": "keyword", "keywords": { "true": "auto", "false": "none" } }, "doc": { "en": "Controls whether scrollbars are shown.", "zh": "控制是否显示滚动条。" } }
+        { "name": "stickyHeaders", "type": "Bool", "default": false, "constant": true, "support": { "wechat": "ignored", "windows": "ignored", "linux": "ignored" }, "doc": { "en": "Keeps section headers at the top while scrolling.", "zh": "滚动时将分组头固定在顶部。" } },
+        { "name": "indicators", "type": "Bool", "default": true, "css": { "property": "scrollbar-width", "unit": "keyword", "keywords": { "true": "auto", "false": "none" } }, "doc": { "en": "Controls whether scrollbars are shown.", "zh": "控制是否显示滚动条。" } },
+        { "name": "refreshing", "type": "Bool", "default": false, "support": { "macos": "ignored", "windows": "ignored", "linux": "ignored" }, "doc": { "en": "Keeps the refresh indicator visible.", "zh": "保持刷新指示器可见。" } },
+        { "name": "endThreshold", "type": "Int", "default": 5, "constant": true, "doc": { "en": "Number of items from the end at which the end event fires.", "zh": "距离列表末尾多少项时触发到底事件。" } },
+        { "name": "onRefresh", "event": true, "support": { "macos": "ignored", "windows": "ignored", "linux": "ignored" }, "doc": { "en": "Fires when the user pulls to refresh.", "zh": "用户下拉刷新时触发。" } },
+        { "name": "onEndReached", "event": true, "source": "runtime", "doc": { "en": "Fires when the visible window approaches the end.", "zh": "可见窗口接近末尾时触发。" } }
       ]
     },
     {
@@ -469,7 +474,11 @@
       "members": [
         { "name": "columns", "type": "Int", "required": true, "constant": true, "doc": { "en": "Number of equal-width columns, at least one.", "zh": "等宽列数，至少为一。" } },
         { "name": "gap", "type": "Int", "default": 0, "css": { "property": "gap", "unit": "px" }, "doc": { "en": "Space between rows and columns.", "zh": "行列之间的间距。" } },
-        { "name": "indicators", "type": "Bool", "default": true, "css": { "property": "scrollbar-width", "unit": "keyword", "keywords": { "true": "auto", "false": "none" } }, "doc": { "en": "Controls whether scrollbars are shown.", "zh": "控制是否显示滚动条。" } }
+        { "name": "indicators", "type": "Bool", "default": true, "css": { "property": "scrollbar-width", "unit": "keyword", "keywords": { "true": "auto", "false": "none" } }, "doc": { "en": "Controls whether scrollbars are shown.", "zh": "控制是否显示滚动条。" } },
+        { "name": "refreshing", "type": "Bool", "default": false, "support": { "macos": "ignored", "windows": "ignored", "linux": "ignored" }, "doc": { "en": "Keeps the refresh indicator visible.", "zh": "保持刷新指示器可见。" } },
+        { "name": "endThreshold", "type": "Int", "default": 5, "constant": true, "doc": { "en": "Number of items from the end at which the end event fires.", "zh": "距离列表末尾多少项时触发到底事件。" } },
+        { "name": "onRefresh", "event": true, "support": { "macos": "ignored", "windows": "ignored", "linux": "ignored" }, "doc": { "en": "Fires when the user pulls to refresh.", "zh": "用户下拉刷新时触发。" } },
+        { "name": "onEndReached", "event": true, "source": "runtime", "doc": { "en": "Fires when the visible window approaches the end.", "zh": "可见窗口接近末尾时触发。" } }
       ]
     },
     {

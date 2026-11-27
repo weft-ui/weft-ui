@@ -51,6 +51,8 @@ The host selects transitions by comparing states: an appended stack entry is a p
 
 A lazy point owns a flat sequence of item IDs, allocated from 1 without reuse within that point. Stable keys retain IDs until removed. `splice` replaces the changed middle after the common prefix and suffix; retained IDs keep their materialized scopes, removed IDs destroy theirs. `bind` associates an item with a created scope, or releases it when child is 0. Window requests materialize in-range items and release out-of-range scopes; initially up to 20 items are materialized. A created item scope and its initial values precede its `bind` in the same batch.
 
+For sections, the flat sequence alternates a header item (template 0, keyed by the outer key) with its row items (template 1, keyed by the outer and inner keys). WeChat ignores `stickyHeaders` because segmented virtualization cannot reliably keep headers pinned; headers scroll normally. `onEndReached` is a runtime-sourced event, not a host event slot: after a `window` or `splice`, it fires when the count is nonzero and the most recently requested end is at least `count - endThreshold`, at most once per count value. For `onRefresh`, the host shows an indicator and dispatches the event; after the handler returns, `refreshing` controls whether it remains visible. A false value closes it.
+
 ## Ops
 
 | op       | Parameters               | Meaning |

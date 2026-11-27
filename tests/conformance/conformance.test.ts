@@ -65,7 +65,11 @@ test.each(fixtures)("%s renders alike on every platform and matches its golden o
         await driver.settle();
       }
       check(step.name);
+      if (name === "list" && (step.name === "pull to refresh" || step.name === "finish refresh")) {
+        expect(renderer.renderer.all("List")[0]!.props.refreshing).toBe(step.name === "pull to refresh");
+      }
     }
+    if (name === "list") expect(renderer.log).toEqual(["end 56", "refresh"]);
     if (name === "controls") expect(renderer.log).toEqual(["switch true", "slider 45", "picker 0", "note First\nSecond", "picker 1"]);
     if (name === "inputs") expect(renderer.log).toEqual(["draft abcde", "submit", "focus true", "note a😀bc", "note abcd", "focus false"]);
     if (name === "language") expect(renderer.log).toEqual(["Rated 1", "Rated 2", "Rated 4", "Rated 5"]);

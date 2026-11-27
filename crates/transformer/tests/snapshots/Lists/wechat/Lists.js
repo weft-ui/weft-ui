@@ -41,7 +41,7 @@ export function Lists$c(app, args, children, depth) {
       if (r1.d[0] & 2) r1.set(0, r1.item.$v[1]);
     };
     return r1;
-  }, ($it) => $it.$v[0], 3);
+  }, ($it) => $it.$v[0]);
   l6.set(c.p[0].$v[0]);
   c.u = () => {
     if (c.d[0] & 1) l2.set(c.p[0].$v[0]);

@@ -4,12 +4,12 @@ use std::fmt::Display;
 
 use crate::elements::Element;
 use crate::ir::{
-    BindingId, Branch, Component, DepRoot, NodeId, NodeKind, Program, Prop, slot_params,
+    BindingId, Branch, Component, DepRoot, NodeId, NodeKind, Program, Prop, PropValue, slot_params,
 };
 
 use super::blocks::{
-    Consts, Ctx, Parts, arg_updates, arg_values, binding_cond, branch_index, lifecycle,
-    lifecycle_handlers, root_shape, walk_cond, words,
+    Consts, Ctx, Parts, arg_updates, arg_values, binding_cond, branch_index, element_handler_body,
+    lifecycle, lifecycle_handlers, root_shape, walk_cond, words,
 };
 use super::expr::{Env, expr};
 use super::js::Code;
@@ -53,6 +53,9 @@ pub(crate) trait Backend {
 
     /// Extra arguments preceding the common row arguments.
     fn row_args(&self, id: NodeId) -> impl Display;
+
+    /// DOM lazy lists take a columns argument before their options.
+    fn lazy_columns(&self) -> bool;
 
     /// Statement mounting a component instance or slot block.
     fn mount<'args>(
@@ -136,20 +139,13 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
                     if matches!(element.spec().name, "List" | "Grid")
                         && matches!(self.ir.comp.node(child).kind, NodeKind::For { .. })
                     {
-                        let columns = props.iter().find(|p| p.name == "columns").and_then(|p| {
-                            if let crate::ir::PropValue::Expr(value) = &p.value {
-                                Some(expr(value, Env::default()))
-                            } else {
-                                None
-                            }
-                        });
                         self.for_node(
                             child,
                             &self.ir.comp.node(child).kind,
                             ctx,
                             parent,
                             parts,
-                            Some(columns),
+                            Some((id, props)),
                         );
                     } else {
                         self.node(child, ctx, parent, parts);
@@ -226,7 +222,7 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
         ctx: &Ctx,
         parent: &str,
         parts: &mut Parts,
-        lazy: Option<Option<String>>,
+        lazy: Option<(NodeId, &[Prop])>,
     ) {
         let NodeKind::For {
             loop_id,
@@ -254,31 +250,145 @@ impl<'ir, 'consts, B: Backend> Flow<'ir, 'consts, B> {
             self.consts,
             DepRoot::Item(loop_id),
         );
-        let words = words(self.ir.comp.loops[loop_id.index()].slots.len());
+        let row_words = words(self.ir.comp.loops[loop_id.index()].slots.len());
 
+        let section = lazy.and_then(|_| {
+            let (&inner, headers) = children.split_last()?;
+            match &self.ir.comp.node(inner).kind {
+                NodeKind::For { .. } => Some((inner, headers)),
+                _ => None,
+            }
+        });
+        let mut options = Vec::new();
+        let mut columns = None;
+        if let Some((owner, props)) = lazy {
+            for prop in props {
+                match (&prop.value, prop.name) {
+                    (PropValue::Expr(value), "columns") => {
+                        columns = Some(expr(value, Env::default()))
+                    }
+                    (PropValue::Expr(value), "endThreshold" | "stickyHeaders") => {
+                        options.push(format!("{}: {}", prop.name, expr(value, Env::default())))
+                    }
+                    (PropValue::Handler(handler), "onEndReached" | "onRefresh") => {
+                        if prop.name == "onRefresh" && !self.backend.lazy_columns() {
+                            continue;
+                        }
+                        let body = element_handler_body(
+                            self.ir.program,
+                            self.ir.comp,
+                            owner,
+                            prop,
+                            handler,
+                            parts,
+                        );
+                        options.push(format!("{}: () => {{ {body} }}", prop.name));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if let Some((inner, _)) = section {
+            let NodeKind::For {
+                loop_id: inner_loop,
+                list: inner_list,
+                key: inner_key,
+                children: rows,
+                ..
+            } = &self.ir.comp.node(inner).kind
+            else {
+                unreachable!()
+            };
+            let inner_loop = *inner_loop;
+            let inner_row = format!("r{}", inner_loop.0);
+            let inner_shape = root_shape(
+                self.ir.program,
+                self.ir.comp,
+                self.consts,
+                DepRoot::Item(inner_loop),
+            );
+            let inner_words = words(self.ir.comp.loops[inner_loop.index()].slots.len());
+            let inner_list = expr(inner_list, Env::default());
+            let inner_key = expr(
+                inner_key,
+                Env {
+                    key_loop: Some(inner_loop),
+                },
+            );
+            let mut code = Code::default();
+            code.open("createRow: (section, item) => {");
+            code.line(format!("const {inner_row} = new $.Row({}{inner_words}, {}.depth + 1, {inner_shape}, item);", self.backend.row_args(inner), ctx.scope()));
+            code.line(format!("const {row} = {{ item: section, d: new Uint32Array({row_words}), mark(bit) {{ this.d[bit >>> 5] |= 1 << (bit & 31); {inner_row}.mark(0); }} }};"));
+            code.line(format!(
+                "const $sectionWatch = $.watch({shape}, {row}, section);"
+            ));
+            self.block(
+                rows,
+                &ctx.with_loop(loop_id).with_loop(inner_loop),
+                &inner_row,
+                &mut code,
+            );
+            code.line(format!("const $update = {inner_row}.u; {inner_row}.u = () => {{ $update(); {row}.d.fill(0); }};"));
+            code.line(format!("const $cleanup = {inner_row}.x; {inner_row}.x = () => {{ $cleanup(); $sectionWatch.dispose(); }};"));
+            code.line(format!("{inner_row}.setSection = (section, item) => {{ {row}.item = section; $sectionWatch.set(section); {inner_row}.setItem(item); }};"));
+            code.line(format!("return {inner_row};"));
+            code.close("}");
+            let mut create_row = String::new();
+            code.write_to(&mut create_row);
+            options.push(format!("sections: {{ rows: (section) => {{ const {row} = {{ item: section }}; return {inner_list}; }}, rowKey: (section, $it) => {{ const {row} = {{ item: section }}; return {inner_key}; }}, watchShape: {shape}, {create_row} }}"));
+        }
         let constructor = if lazy.is_some() { "LazyList" } else { "List" };
         parts.create.open(format!(
             "const {var} = new $.{constructor}({}, (item) => {{",
             self.backend.anchor(id, parent)
         ));
         parts.create.line(format!(
-            "const {row} = new $.Row({}{words}, {}.depth + 1, {shape}, item);",
+            "const {row} = new $.Row({}{row_words}, {}.depth + 1, {shape}, item);",
             self.backend.row_args(id),
             ctx.scope()
         ));
-        self.block(children, &ctx.with_loop(loop_id), &row, &mut parts.create);
+        self.block(
+            section.map_or(children.as_slice(), |(_, headers)| headers),
+            &ctx.with_loop(loop_id),
+            &row,
+            &mut parts.create,
+        );
         parts.create.line(format!("return {row};"));
-        let extra = lazy
-            .flatten()
-            .map_or_else(String::new, |columns| format!(", {columns}"));
+        let mut extra = String::new();
+        if lazy.is_some()
+            && self.backend.lazy_columns()
+            && (columns.is_some() || !options.is_empty())
+        {
+            extra.push_str(&format!(", {}", columns.as_deref().unwrap_or("undefined")));
+        }
+        if !options.is_empty() {
+            extra.push_str(&format!(", {{ {} }}", options.join(", ")));
+        }
         parts.create.close(format!("}}, ($it) => {key}{extra});"));
+        if let Some((_, props)) = lazy
+            && self.backend.lazy_columns()
+            && let Some(prop) = props.iter().find(|p| p.name == "refreshing")
+            && let PropValue::Expr(value) = &prop.value
+        {
+            let statement = format!("{var}.setRefreshing({});", expr(value, Env::default()));
+            parts.create.line(&statement);
+            if let Some(cond) = binding_cond(self.ir.comp, prop.binding) {
+                parts.update.line(format!("if ({cond}) {statement}"));
+            }
+        }
         parts.create.line(format!("{var}.set({list});"));
 
         if let Some(cond) = binding_cond(self.ir.comp, *list_binding) {
             parts.update.line(format!("if ({cond}) {var}.set({list});"));
         }
         if let Some(cond) = walk_cond(self.ir.comp, children.iter().copied(), ctx) {
-            parts.update.line(format!("if ({cond}) {var}.update();"));
+            if section.is_some() {
+                parts.update.line(format!(
+                    "if ({cond}) {{ {var}.set({list}); {var}.update(); }}"
+                ));
+            } else {
+                parts.update.line(format!("if ({cond}) {var}.update();"));
+            }
         }
         parts.cleanup.line(format!("{var}.destroy();"));
     }

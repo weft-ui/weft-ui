@@ -1,5 +1,6 @@
 # mount
 create 1 0  # ListFixture
+set 1 0 false  # List.refreshing
 splice 1 0 0 0 [1/0 2/0 3/0 4/0 5/0 6/0 7/0 8/0 9/0 10/0 11/0 12/0 13/0 14/0 15/0 16/0 17/0 18/0 19/0 20/0 21/0 22/0 23/0 24/0 25/0 26/0 27/0 28/0 29/0 30/0 31/0 32/0 33/0 34/0 35/0 36/0 37/0 38/0 39/0 40/0 41/0 42/0 43/0 44/0 45/0 46/0 47/0 48/0 49/0 50/0]
 create 2 1  # ListFixture:for2
 set 2 0 "row 0"  # Text.value
@@ -61,37 +62,53 @@ bind 1 0 19 20
 create 21 1  # ListFixture:for2
 set 21 0 "row 19"  # Text.value
 bind 1 0 20 21
-splice 1 1 0 0 [1/0 2/0 3/0 4/0 5/0 6/0 7/0 8/0 9/0 10/0]
-create 22 2  # ListFixture:for6
-set 22 0 "cell 0"  # Text.value
+splice 1 1 0 0 [1/0 2/1 3/1 4/0 5/1]
+create 22 2  # ListFixture:for8
+set 22 0 "A"  # Text.value
 bind 1 1 1 22
-create 23 2  # ListFixture:for6
-set 23 0 "cell 1"  # Text.value
+create 23 3  # ListFixture:for7
+set 23 0 "Apple"  # Text.value
 bind 1 1 2 23
-create 24 2  # ListFixture:for6
-set 24 0 "cell 2"  # Text.value
+create 24 3  # ListFixture:for7
+set 24 0 "Apricot"  # Text.value
 bind 1 1 3 24
-create 25 2  # ListFixture:for6
-set 25 0 "cell 3"  # Text.value
+create 25 2  # ListFixture:for8
+set 25 0 "B"  # Text.value
 bind 1 1 4 25
-create 26 2  # ListFixture:for6
-set 26 0 "cell 4"  # Text.value
+create 26 3  # ListFixture:for7
+set 26 0 "Banana"  # Text.value
 bind 1 1 5 26
-create 27 2  # ListFixture:for6
-set 27 0 "cell 5"  # Text.value
-bind 1 1 6 27
-create 28 2  # ListFixture:for6
-set 28 0 "cell 6"  # Text.value
-bind 1 1 7 28
-create 29 2  # ListFixture:for6
-set 29 0 "cell 7"  # Text.value
-bind 1 1 8 29
-create 30 2  # ListFixture:for6
-set 30 0 "cell 8"  # Text.value
-bind 1 1 9 30
-create 31 2  # ListFixture:for6
-set 31 0 "cell 9"  # Text.value
-bind 1 1 10 31
+splice 1 2 0 0 [1/0 2/0 3/0 4/0 5/0 6/0 7/0 8/0 9/0 10/0]
+create 27 4  # ListFixture:for11
+set 27 0 "cell 0"  # Text.value
+bind 1 2 1 27
+create 28 4  # ListFixture:for11
+set 28 0 "cell 1"  # Text.value
+bind 1 2 2 28
+create 29 4  # ListFixture:for11
+set 29 0 "cell 2"  # Text.value
+bind 1 2 3 29
+create 30 4  # ListFixture:for11
+set 30 0 "cell 3"  # Text.value
+bind 1 2 4 30
+create 31 4  # ListFixture:for11
+set 31 0 "cell 4"  # Text.value
+bind 1 2 5 31
+create 32 4  # ListFixture:for11
+set 32 0 "cell 5"  # Text.value
+bind 1 2 6 32
+create 33 4  # ListFixture:for11
+set 33 0 "cell 6"  # Text.value
+bind 1 2 7 33
+create 34 4  # ListFixture:for11
+set 34 0 "cell 7"  # Text.value
+bind 1 2 8 34
+create 35 4  # ListFixture:for11
+set 35 0 "cell 8"  # Text.value
+bind 1 2 9 35
+create 36 4  # ListFixture:for11
+set 36 0 "cell 9"  # Text.value
+bind 1 2 10 36
 attach 0 0 1
 
 # window 10 to 30
@@ -105,45 +122,45 @@ bind 1 0 7 0
 bind 1 0 8 0
 bind 1 0 9 0
 bind 1 0 10 0
-create 32 1  # ListFixture:for2
-set 32 0 "row 20"  # Text.value
-bind 1 0 21 32
-create 33 1  # ListFixture:for2
-set 33 0 "row 21"  # Text.value
-bind 1 0 22 33
-create 34 1  # ListFixture:for2
-set 34 0 "row 22"  # Text.value
-bind 1 0 23 34
-create 35 1  # ListFixture:for2
-set 35 0 "row 23"  # Text.value
-bind 1 0 24 35
-create 36 1  # ListFixture:for2
-set 36 0 "row 24"  # Text.value
-bind 1 0 25 36
 create 37 1  # ListFixture:for2
-set 37 0 "row 25"  # Text.value
-bind 1 0 26 37
+set 37 0 "row 20"  # Text.value
+bind 1 0 21 37
 create 38 1  # ListFixture:for2
-set 38 0 "row 26"  # Text.value
-bind 1 0 27 38
+set 38 0 "row 21"  # Text.value
+bind 1 0 22 38
 create 39 1  # ListFixture:for2
-set 39 0 "row 27"  # Text.value
-bind 1 0 28 39
+set 39 0 "row 22"  # Text.value
+bind 1 0 23 39
 create 40 1  # ListFixture:for2
-set 40 0 "row 28"  # Text.value
-bind 1 0 29 40
+set 40 0 "row 23"  # Text.value
+bind 1 0 24 40
 create 41 1  # ListFixture:for2
-set 41 0 "row 29"  # Text.value
-bind 1 0 30 41
+set 41 0 "row 24"  # Text.value
+bind 1 0 25 41
+create 42 1  # ListFixture:for2
+set 42 0 "row 25"  # Text.value
+bind 1 0 26 42
+create 43 1  # ListFixture:for2
+set 43 0 "row 26"  # Text.value
+bind 1 0 27 43
+create 44 1  # ListFixture:for2
+set 44 0 "row 27"  # Text.value
+bind 1 0 28 44
+create 45 1  # ListFixture:for2
+set 45 0 "row 28"  # Text.value
+bind 1 0 29 45
+create 46 1  # ListFixture:for2
+set 46 0 "row 29"  # Text.value
+bind 1 0 30 46
 
 # insert at head
 splice 1 0 0 0 [51/0 52/0]
-create 42 1  # ListFixture:for2
-set 42 0 "row 8"  # Text.value
-bind 1 0 9 42
-create 43 1  # ListFixture:for2
-set 43 0 "row 9"  # Text.value
-bind 1 0 10 43
+create 47 1  # ListFixture:for2
+set 47 0 "row 8"  # Text.value
+bind 1 0 9 47
+create 48 1  # ListFixture:for2
+set 48 0 "row 9"  # Text.value
+bind 1 0 10 48
 bind 1 0 29 0
 bind 1 0 30 0
 
@@ -152,60 +169,60 @@ splice 1 0 52 0 [53/0 54/0 55/0 56/0 57/0]
 
 # remove an item
 splice 1 0 17 1 []
-create 44 1  # ListFixture:for2
-set 44 0 "row 28"  # Text.value
-bind 1 0 29 44
+create 49 1  # ListFixture:for2
+set 49 0 "row 28"  # Text.value
+bind 1 0 29 49
 
 # reverse
 splice 1 0 0 56 [57/0 56/0 55/0 54/0 53/0 50/0 49/0 48/0 47/0 46/0 45/0 44/0 43/0 42/0 41/0 40/0 39/0 38/0 37/0 36/0 35/0 34/0 33/0 32/0 31/0 30/0 29/0 28/0 27/0 26/0 25/0 24/0 23/0 22/0 21/0 20/0 19/0 18/0 17/0 15/0 14/0 13/0 12/0 11/0 10/0 9/0 8/0 7/0 6/0 5/0 4/0 3/0 2/0 1/0 52/0 51/0]
-create 45 1  # ListFixture:for2
-set 45 0 "row 44"  # Text.value
-bind 1 0 45 45
-create 46 1  # ListFixture:for2
-set 46 0 "row 43"  # Text.value
-bind 1 0 44 46
-create 47 1  # ListFixture:for2
-set 47 0 "row 42"  # Text.value
-bind 1 0 43 47
-create 48 1  # ListFixture:for2
-set 48 0 "row 41"  # Text.value
-bind 1 0 42 48
-create 49 1  # ListFixture:for2
-set 49 0 "row 40"  # Text.value
-bind 1 0 41 49
 create 50 1  # ListFixture:for2
-set 50 0 "row 39"  # Text.value
-bind 1 0 40 50
+set 50 0 "row 44"  # Text.value
+bind 1 0 45 50
 create 51 1  # ListFixture:for2
-set 51 0 "row 38"  # Text.value
-bind 1 0 39 51
+set 51 0 "row 43"  # Text.value
+bind 1 0 44 51
 create 52 1  # ListFixture:for2
-set 52 0 "row 37"  # Text.value
-bind 1 0 38 52
+set 52 0 "row 42"  # Text.value
+bind 1 0 43 52
 create 53 1  # ListFixture:for2
-set 53 0 "row 36"  # Text.value
-bind 1 0 37 53
+set 53 0 "row 41"  # Text.value
+bind 1 0 42 53
 create 54 1  # ListFixture:for2
-set 54 0 "row 35"  # Text.value
-bind 1 0 36 54
+set 54 0 "row 40"  # Text.value
+bind 1 0 41 54
 create 55 1  # ListFixture:for2
-set 55 0 "row 34"  # Text.value
-bind 1 0 35 55
+set 55 0 "row 39"  # Text.value
+bind 1 0 40 55
 create 56 1  # ListFixture:for2
-set 56 0 "row 33"  # Text.value
-bind 1 0 34 56
+set 56 0 "row 38"  # Text.value
+bind 1 0 39 56
 create 57 1  # ListFixture:for2
-set 57 0 "row 32"  # Text.value
-bind 1 0 33 57
+set 57 0 "row 37"  # Text.value
+bind 1 0 38 57
 create 58 1  # ListFixture:for2
-set 58 0 "row 31"  # Text.value
-bind 1 0 32 58
+set 58 0 "row 36"  # Text.value
+bind 1 0 37 58
 create 59 1  # ListFixture:for2
-set 59 0 "row 30"  # Text.value
-bind 1 0 31 59
+set 59 0 "row 35"  # Text.value
+bind 1 0 36 59
 create 60 1  # ListFixture:for2
-set 60 0 "row 29"  # Text.value
-bind 1 0 30 60
+set 60 0 "row 34"  # Text.value
+bind 1 0 35 60
+create 61 1  # ListFixture:for2
+set 61 0 "row 33"  # Text.value
+bind 1 0 34 61
+create 62 1  # ListFixture:for2
+set 62 0 "row 32"  # Text.value
+bind 1 0 33 62
+create 63 1  # ListFixture:for2
+set 63 0 "row 31"  # Text.value
+bind 1 0 32 63
+create 64 1  # ListFixture:for2
+set 64 0 "row 30"  # Text.value
+bind 1 0 31 64
+create 65 1  # ListFixture:for2
+set 65 0 "row 29"  # Text.value
+bind 1 0 30 65
 bind 1 0 25 0
 bind 1 0 24 0
 bind 1 0 23 0
@@ -224,7 +241,72 @@ bind 1 0 10 0
 bind 1 0 9 0
 
 # update visible item
-set 50 0 "visible updated"  # Text.value
+set 55 0 "visible updated"  # Text.value
 
 # update hidden item
 (no ops)
+
+# near end loads more
+bind 1 0 45 0
+bind 1 0 44 0
+bind 1 0 43 0
+bind 1 0 42 0
+bind 1 0 41 0
+bind 1 0 40 0
+bind 1 0 39 0
+bind 1 0 38 0
+bind 1 0 37 0
+bind 1 0 36 0
+bind 1 0 35 0
+bind 1 0 34 0
+bind 1 0 33 0
+bind 1 0 32 0
+bind 1 0 31 0
+bind 1 0 30 0
+bind 1 0 29 0
+bind 1 0 28 0
+bind 1 0 27 0
+bind 1 0 26 0
+create 66 1  # ListFixture:for2
+set 66 0 "row 7"  # Text.value
+bind 1 0 8 66
+create 67 1  # ListFixture:for2
+set 67 0 "row 6"  # Text.value
+bind 1 0 7 67
+create 68 1  # ListFixture:for2
+set 68 0 "row 5"  # Text.value
+bind 1 0 6 68
+create 69 1  # ListFixture:for2
+set 69 0 "row 4"  # Text.value
+bind 1 0 5 69
+create 70 1  # ListFixture:for2
+set 70 0 "row 3"  # Text.value
+bind 1 0 4 70
+create 71 1  # ListFixture:for2
+set 71 0 "row 2"  # Text.value
+bind 1 0 3 71
+create 72 1  # ListFixture:for2
+set 72 0 "row 1"  # Text.value
+bind 1 0 2 72
+create 73 1  # ListFixture:for2
+set 73 0 "row 0"  # Text.value
+bind 1 0 1 73
+create 74 1  # ListFixture:for2
+set 74 0 "row 51"  # Text.value
+bind 1 0 52 74
+create 75 1  # ListFixture:for2
+set 75 0 "row 50"  # Text.value
+bind 1 0 51 75
+splice 1 0 56 0 [58/0 59/0 60/0 61/0 62/0 63/0 64/0 65/0 66/0 67/0]
+
+# same window does not load again
+(no ops)
+
+# pull to refresh
+set 1 0 true  # List.refreshing
+
+# finish refresh
+set 1 0 false  # List.refreshing
+
+# update section
+set 23 0 "Apple updated"  # Text.value

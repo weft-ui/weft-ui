@@ -460,6 +460,7 @@ mod tests {
             constant: false,
             css: None,
             controlled_by: None,
+            runtime_event: false,
             support: &[],
         };
         let spec = ElementSpec {
@@ -472,6 +473,11 @@ mod tests {
                     kind: PropKind::Handler {
                         payload: Some(PropType::Bool),
                     },
+                    ..CLICK
+                },
+                PropSpec {
+                    name: "onEndReached",
+                    runtime_event: true,
                     ..CLICK
                 },
             ],
@@ -498,7 +504,7 @@ mod tests {
             events: Vec::new(),
             points: Vec::new(),
         };
-        let props = ["onClick", "onMount", "onSecondary"].map(|name| Prop {
+        let props = ["onClick", "onMount", "onSecondary", "onEndReached"].map(|name| Prop {
             name,
             value: PropValue::Handler(Handler::Lambda {
                 param: None,
@@ -507,8 +513,9 @@ mod tests {
             binding: None,
             span: Default::default(),
         });
-        let (slots, edit) = build::element_events(&mut template.events, 0, &spec, &props, None);
-        assert_eq!(slots, [Some(0), None, Some(1)]);
+        let (slots, edit) =
+            build::element_events(&mut template.events, 0, &spec, &props, None, None);
+        assert_eq!(slots, [Some(0), None, Some(1), None]);
         assert_eq!(edit, None);
         assert_eq!(template.event(0, "onClick"), Some(0));
         assert_eq!(template.event(0, "onSecondary"), Some(1));
@@ -522,8 +529,9 @@ mod tests {
             &spec,
             &props,
             Some(("onSecondary", 0, ValueType::Bool)),
+            None,
         );
-        assert_eq!(slots, [Some(1), None, Some(0)]);
+        assert_eq!(slots, [Some(1), None, Some(0), None]);
         assert_eq!(edit, Some(0));
         assert_eq!(template.controlled(0), (0, 0));
     }

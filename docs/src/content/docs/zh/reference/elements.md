@@ -438,7 +438,15 @@ title: 内置元素
 | `shadow` | `Shadow` | `"none"` | 在边框盒外绘制预设阴影。 | — |
 | `clip` | `Bool` | `false` | 将溢出的内容裁剪到带圆角的内边距盒内。 | — |
 | `gap` | `Int` | `0` | 列表项之间的间距。 | — |
+| `stickyHeaders` | `Bool` | `false` | 滚动时将分组头固定在顶部。 | 忽略: `wechat`; 忽略: `windows`; 忽略: `linux` |
 | `indicators` | `Bool` | `true` | 控制是否显示滚动条。 | — |
+| `refreshing` | `Bool` | `false` | 保持刷新指示器可见。 | 忽略: `macos`; 忽略: `windows`; 忽略: `linux` |
+| `endThreshold` | `Int` | `5` | 距离列表末尾多少项时触发到底事件。 | — |
+
+| 事件 | 载荷 | 说明 | 平台例外 |
+| --- | --- | --- | --- |
+| `onRefresh` | — | 用户下拉刷新时触发。 | 忽略: `macos`; 忽略: `windows`; 忽略: `linux` |
+| `onEndReached` | — | 可见窗口接近末尾时触发。 | — |
 
 ## Grid
 
@@ -484,6 +492,13 @@ title: 内置元素
 | `columns` | `Int` | 必填 | 等宽列数，至少为一。 | — |
 | `gap` | `Int` | `0` | 行列之间的间距。 | — |
 | `indicators` | `Bool` | `true` | 控制是否显示滚动条。 | — |
+| `refreshing` | `Bool` | `false` | 保持刷新指示器可见。 | 忽略: `macos`; 忽略: `windows`; 忽略: `linux` |
+| `endThreshold` | `Int` | `5` | 距离列表末尾多少项时触发到底事件。 | — |
+
+| 事件 | 载荷 | 说明 | 平台例外 |
+| --- | --- | --- | --- |
+| `onRefresh` | — | 用户下拉刷新时触发。 | 忽略: `macos`; 忽略: `windows`; 忽略: `linux` |
+| `onEndReached` | — | 可见窗口接近末尾时触发。 | — |
 
 ## Scroll
 

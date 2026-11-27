@@ -39,6 +39,7 @@ interface Event extends Documented {
   name: string;
   event: true;
   payload?: string | null;
+  source?: "runtime";
 }
 
 interface Element extends Documented {
@@ -136,6 +137,7 @@ function validateMembers(members: LocatedMember[], unions: Record<string, string
     unique(names, member.name, `${path}.name`);
     validateSupport(member.support, `${path}.support`, platforms);
     if (member.event) {
+      if (member.source !== undefined && member.source !== "runtime") invalid(`${path}.source`, "expected runtime");
       if (member.payload != null && !Object.hasOwn(payloadTypes, member.payload)) {
         invalid(`${path}.payload`, `unknown event payload type ${quote(member.payload)}`);
       }
@@ -270,6 +272,7 @@ function rustMember(member: Member, platforms: Platforms, cssIndices: ReadonlyMa
         constant: ${prop?.constant ?? false},
         css: ${prop?.css === undefined ? "None" : `Some(${cssIndices.get(prop.css)})`},
         controlled_by: ${prop?.controlledBy === undefined ? "None" : `Some(${quote(prop.controlledBy)})`},
+        runtime_event: ${member.event === true && member.source === "runtime"},
         support: ${rustSupport(member.support, platforms)},
     },`;
 }

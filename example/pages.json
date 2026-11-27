@@ -48,6 +48,11 @@
     "props": { "listRows": [] }
   },
   {
+    "id": "sections",
+    "title": "Sections",
+    "pending": ["ios", "macos", "android", "windows", "linux"]
+  },
+  {
     "id": "overlays",
     "title": "Overlays",
     "props": { "overlayResult": ["No overlay opened yet."] }

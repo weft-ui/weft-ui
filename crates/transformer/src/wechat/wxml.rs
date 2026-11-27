@@ -326,7 +326,9 @@ impl Markup<'_> {
         let has_clamp =
             element == Element::Text && props.iter().any(|prop| prop.name == "maxLines");
         for (index, prop) in props.iter().enumerate() {
-            if matches!(prop.value, PropValue::Handler(_)) {
+            if matches!(prop.value, PropValue::Handler(_))
+                || (lazy && matches!(prop.name, "refreshing" | "stickyHeaders"))
+            {
                 continue;
             }
             let target = target(element, prop.name);
@@ -600,6 +602,55 @@ impl Markup<'_> {
                 .find(|child| matches!(self.comp.node(**child).kind, NodeKind::For { .. }))
                 .expect("lazy list has one for");
             let point = self.layout.point(self.id, *node);
+            if props
+                .iter()
+                .any(|prop| matches!(prop.name, "onRefresh" | "refreshing"))
+            {
+                let refreshing = props
+                    .iter()
+                    .enumerate()
+                    .find(|(_, prop)| prop.name == "refreshing");
+                let refresh = match refreshing {
+                    Some((index, prop))
+                        if matches!(
+                            prop_value(
+                                self.layout,
+                                self.id,
+                                id,
+                                index,
+                                prop,
+                                target(element, prop.name)
+                            ),
+                            Value::Data
+                        ) =>
+                    {
+                        value_key(id, index).to_string()
+                    }
+                    _ => format!("f{}", id.0),
+                };
+                let always = refreshing.is_some_and(|(index, prop)| {
+                    matches!(
+                        prop_value(
+                            self.layout,
+                            self.id,
+                            id,
+                            index,
+                            prop,
+                            target(element, prop.name)
+                        ),
+                        Value::Inline(Constant::Bool(true))
+                    )
+                });
+                let binding = if always {
+                    "true".to_owned()
+                } else {
+                    format!("{prefix}{refresh}")
+                };
+                let _ = write!(
+                    out,
+                    " refresher-enabled=\"{{{{true}}}}\" refresher-triggered=\"{{{{{binding}}}}}\" data-refresh-key=\"{refresh}\" data-refresh-always=\"{{{{{always}}}}}\""
+                );
+            }
             let _ = write!(
                 out,
                 " id=\"wl-{{{{{prefix}ws}}}}-{point}\" data-scope=\"{{{{{prefix}ws}}}}\" data-point=\"{point}\" bindscroll=\"$scroll\" scroll-top=\"{{{{{prefix}z{}}}}}\"",
@@ -662,9 +713,27 @@ impl Markup<'_> {
             for &child in children {
                 if let NodeKind::For { children: rows, .. } = &self.comp.node(child).kind {
                     let name = format!("{}-l{}", self.comp.name, child.0);
+                    let section = rows
+                        .iter()
+                        .position(|row| matches!(self.comp.node(*row).kind, NodeKind::For { .. }));
                     let mut body = String::new();
-                    self.nodes(rows, "", Parent::Ordinary, &mut body);
-                    self.slots.push((name.clone(), body));
+                    if let Some(inner) = section {
+                        self.nodes(&rows[..inner], "", Parent::Ordinary, &mut body);
+                        self.slots.push((format!("{name}-header"), body));
+                        let NodeKind::For {
+                            children: inner_rows,
+                            ..
+                        } = &self.comp.node(rows[inner]).kind
+                        else {
+                            unreachable!()
+                        };
+                        let mut body = String::new();
+                        self.nodes(inner_rows, "", Parent::Ordinary, &mut body);
+                        self.slots.push((name.clone(), body));
+                    } else {
+                        self.nodes(rows, "", Parent::Ordinary, &mut body);
+                        self.slots.push((name.clone(), body));
+                    }
                     let columns = props
                         .iter()
                         .enumerate()
@@ -691,9 +760,18 @@ impl Markup<'_> {
                         format!("display:flex;flex-direction:column;{inner_style};")
                     };
                     let point = self.layout.point(self.id, child);
+                    let content = if section.is_some() {
+                        format!(
+                            "<view wx:if=\"{{{{lazyrow.t === 0}}}}\" class=\"w-lazy-row\"><template is=\"{name}-header\" data=\"{{{{...lazyrow}}}}\"/></view><view wx:else class=\"w-lazy-row\"><template is=\"{name}\" data=\"{{{{...lazyrow}}}}\"/></view>"
+                        )
+                    } else {
+                        format!(
+                            "<view class=\"w-lazy-row\"><template is=\"{name}\" data=\"{{{{...lazyrow}}}}\"/></view>"
+                        )
+                    };
                     let _ = write!(
                         out,
-                        "<block wx:for=\"{{{{{prefix}l{}}}}}\" wx:for-item=\"segment\" wx:key=\"k\"><view class=\"w-lazy-segment wl-segment-{{{{{prefix}ws}}}}-{point}\" data-segment=\"{{{{segment.k}}}}\" style=\"{grid}{{{{segment.r ? '' : segment.s}}}}\"><block wx:for=\"{{{{segment.r}}}}\" wx:for-item=\"lazyrow\" wx:key=\"k\"><block wx:if=\"{{{{lazyrow.w}}}}\"><view class=\"w-lazy-row\"><template is=\"{name}\" data=\"{{{{...lazyrow}}}}\"/></view></block><view wx:else class=\"w-lazy-row\" style=\"height:44px\"></view></block></view></block>",
+                        "<block wx:for=\"{{{{{prefix}l{}}}}}\" wx:for-item=\"segment\" wx:key=\"k\"><view class=\"w-lazy-segment wl-segment-{{{{{prefix}ws}}}}-{point}\" data-segment=\"{{{{segment.k}}}}\" style=\"{grid}{{{{segment.r ? '' : segment.s}}}}\"><block wx:for=\"{{{{segment.r}}}}\" wx:for-item=\"lazyrow\" wx:key=\"k\"><block wx:if=\"{{{{lazyrow.w}}}}\">{content}</block><view wx:else class=\"w-lazy-row\" style=\"height:44px\"></view></block></view></block>",
                         child.0
                     );
                 } else {

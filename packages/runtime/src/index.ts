@@ -23,7 +23,7 @@ import {
 import { declarations } from "./css.ts";
 import { CSS, CSS_PROPS, type InputType } from "./elements.ts";
 import type { Value } from "./remote.ts";
-import { Lazy } from "./lazy.ts";
+import { Lazy, Sections, type LazyOptions, type SectionItem } from "./lazy.ts";
 import { Virtual } from "./virtual.ts";
 
 export * from "./core.ts";
@@ -360,22 +360,34 @@ export class LazyList {
   private readonly lazy: Lazy<unknown, Row>;
   private readonly virtual: Virtual;
   private readonly parent: HTMLElement & { $weftLazy?: LazyList };
+  private readonly sections: Sections<Row> | null;
+  private values: readonly unknown[] = [];
 
-  constructor(anchor: Node, make: (item: unknown) => Row, key: (item: unknown) => unknown, columns = 1) {
+  constructor(anchor: Node, make: (item: unknown) => Row, key: (item: unknown) => unknown, columns = 1, options: LazyOptions<Row> = {}) {
     this.parent = anchor.parentNode as HTMLElement & { $weftLazy?: LazyList };
-    this.virtual = new Virtual(anchor, columns, (start, end) => this.window(start, end));
-    this.lazy = new Lazy(key, {
+    this.sections = options.sections ? new Sections(key, options.sections, () => this.set(this.values)) : null;
+    const section = (item: unknown) => item as SectionItem;
+    this.virtual = new Virtual(anchor, columns, (start, end, retained) => this.lazy.window(start, end, retained), !!options.stickyHeaders && !!this.sections, options.onRefresh);
+    this.lazy = new Lazy(this.sections ? item => section(item).key : key, {
       splice: (index, remove, items) => this.virtual.splice(index, remove, items),
       bind: (id, row) => this.virtual.bind(id, row ? (element) => row.mount(element, null) : null),
-      create: make,
-      change: (row, item) => row.setItem(item),
+      create: item => this.sections ? (section(item).template ? options.sections!.createRow(...section(item).value as [unknown, unknown]) : make(section(item).value)) : make(item),
+      change: (row, item) => {
+        if (this.sections && section(item).template) (row as Row & { setSection(section: unknown, item: unknown): void }).setSection(...section(item).value as [unknown, unknown]);
+        else row.setItem(this.sections ? section(item).value : item);
+      },
       destroy: (row) => row.destroy(false),
-    });
+    }, this.sections ? item => section(item).template : undefined, options.endThreshold, options.onEndReached);
     this.parent.$weftLazy = this;
   }
 
   set(items: readonly unknown[]): void {
-    this.lazy.set(items);
+    this.values = items;
+    this.lazy.set(this.sections ? this.sections.flatten(items) : items);
+  }
+
+  setRefreshing(refreshing: boolean): void {
+    this.virtual.setRefreshing(refreshing);
   }
 
   window(start: number, end: number): void {
@@ -388,6 +400,7 @@ export class LazyList {
   }
 
   destroy(): void {
+    this.sections?.destroy();
     this.lazy.destroy();
     this.virtual.destroy();
     if (this.parent.$weftLazy === this) delete this.parent.$weftLazy;

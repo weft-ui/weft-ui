@@ -24,7 +24,10 @@ export const setup = {
     showLifecycleCounts();
   },
   list(page: ListExamplePage) {
-    page.model.listRows = Array.from({ length: 1000 }, (_, index) => index % 3 === 0 ? `Row ${index + 1} — a longer note from the trail` : `Row ${index + 1}`);
+    const rows = (start: number, count: number) => Array.from({ length: count }, (_, index) => (start + index) % 3 === 0 ? `Row ${start + index + 1} — a longer note from the trail` : `Row ${start + index + 1}`);
+    page.model.listRows = rows(0, 1000);
+    page.onListEndReached(() => { page.model.listRows = [...page.model.listRows, ...rows(page.model.listRows.length, 10)]; });
+    page.onListRefresh(() => { page.model.listRefreshing = true; setTimeout(() => { page.model.listRows = rows(0, 1000); page.model.listRefreshing = false; }, 500); });
   },
   safearea(page: SafeareaPage) {
     let unsubscribe = () => {};

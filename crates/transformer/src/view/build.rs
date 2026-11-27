@@ -151,6 +151,7 @@ pub(super) fn element_events(
     spec: &ElementSpec,
     props: &[Prop],
     edited: Option<(&'static str, u32, ValueType)>,
+    platform: Option<Platform>,
 ) -> (Vec<Option<u32>>, Option<u32>) {
     let mut allocate = |event, payload, controls| {
         let slot = offset(slots.len());
@@ -173,7 +174,13 @@ pub(super) fn element_events(
                 return edit;
             }
             // Lifecycle hooks are not part of the element's schema or view.
-            let PropKind::Handler { payload } = spec.prop(prop.name)?.kind else {
+            let event_spec = spec.prop(prop.name)?;
+            if event_spec.runtime_event
+                || platform.is_some_and(|p| event_spec.support.contains(&(p, Level::Ignored)))
+            {
+                return None;
+            }
+            let PropKind::Handler { payload } = event_spec.kind else {
                 return None;
             };
             Some(allocate(prop.name, payload.map(ValueType::of), None))
@@ -317,12 +324,65 @@ impl Builder<'_> {
                 let (events, edit) = if ignored {
                     (vec![None; props.len()], None)
                 } else {
-                    element_events(&mut draft.events, local, spec, props, edited)
+                    element_events(&mut draft.events, local, spec, props, edited, self.platform)
                 };
                 let lazy = matches!(spec.name, "List" | "Grid");
                 let children: Vec<u32> = children
                     .iter()
                     .map(|&c| {
+                        if lazy
+                            && let NodeKind::For { children, .. } = &comp.node(c).kind
+                            && let Some((&inner, headers)) = children.split_last()
+                            && let NodeKind::For { children: rows, .. } = &comp.node(inner).kind
+                        {
+                            let local = offset(draft.nodes.len());
+                            let index = offset(draft.points.len());
+                            draft.nodes.push(ViewNode {
+                                source: c,
+                                kind: ViewNodeKind::Point(index),
+                            });
+                            let header = self.reserve();
+                            let row = self.reserve();
+                            let name = &comp.name;
+                            self.build(
+                                header,
+                                draft.component,
+                                format!("{name}:for{}", c.0),
+                                TemplateKind::Row { node: c },
+                                headers,
+                            );
+                            self.build(
+                                row,
+                                draft.component,
+                                format!("{name}:for{}", inner.0),
+                                TemplateKind::Row { node: inner },
+                                rows,
+                            );
+                            draft.points.push(MountPoint {
+                                node: local,
+                                kind: PointKind::Lazy {
+                                    templates: vec![header, row],
+                                },
+                            });
+                            self.components[draft.component.index()][c.index()] = Some(NodeMap {
+                                template: draft.id,
+                                local,
+                                role: Role::Point {
+                                    index,
+                                    children: vec![header, row],
+                                },
+                            });
+                            self.components[draft.component.index()][inner.index()] =
+                                Some(NodeMap {
+                                    template: draft.id,
+                                    local,
+                                    role: Role::Point {
+                                        index,
+                                        children: vec![row],
+                                    },
+                                });
+                            return local;
+                        }
                         let local = self.node(draft, c);
                         if lazy && matches!(comp.node(c).kind, NodeKind::For { .. }) {
                             let ViewNodeKind::Point(index) = draft.nodes[local as usize].kind

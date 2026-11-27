@@ -124,11 +124,12 @@ impl Backend for Gen<'_> {
     }
 
     fn row_args(&self, id: NodeId) -> impl Display {
-        let [template] = self.layout.child_templates(self.id, id) else {
-            unreachable!("a loop has one row template");
-        };
-        let template = template.0;
+        let template = self.layout.child_templates(self.id, id)[0].0;
         fmt::from_fn(move |f| write!(f, "c.app, {template}, "))
+    }
+
+    fn lazy_columns(&self) -> bool {
+        false
     }
 
     fn mount<'args>(

@@ -167,6 +167,11 @@ export class Renderer extends OpWriter implements Sink {
     this.#session!.window(scope.id, points[0], start, end);
   }
 
+  /** Simulates a host pull-to-refresh gesture. */
+  refresh(element: ViewElement): void {
+    this.#emit(element, "onRefresh", undefined);
+  }
+
   /** Fires the named event (or the element's first event) without a payload. */
   click(element: ViewElement, event?: string): void {
     this.#emit(element, event, undefined);

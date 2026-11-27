@@ -32,7 +32,7 @@ export type { PageClass } from "./navigation.ts";
 import { NavigationController, activate, componentMounted, type ApplicationConfig, type NavigationEntry, type NavigationOperation, type PageFactories } from "./navigation.ts";
 import { routeURL, type RouteInfo } from "./route.ts";
 import { onSignal } from "./native.ts";
-import { Lazy } from "./lazy.ts";
+import { Lazy, Sections, type LazyOptions, type SectionItem } from "./lazy.ts";
 
 /* ------------------------------------------------------------------------ */
 /* Protocol                                                                  */
@@ -371,10 +371,14 @@ export class List {
 /** A keyed lazy point. The host controls which rows have scopes. */
 export class LazyList {
   private readonly lazy: Lazy<unknown, Row>;
+  private readonly sections: Sections<Row> | null;
+  private values: readonly unknown[] = [];
 
-  constructor(private readonly up: Block, private readonly point: number, make: (item: unknown) => Row, keyOf: (item: unknown) => unknown) {
+  constructor(private readonly up: Block, private readonly point: number, make: (item: unknown) => Row, keyOf: (item: unknown) => unknown, options: LazyOptions<Row> = {}) {
     up.lazy.set(point, this);
-    this.lazy = new Lazy(keyOf, {
+    this.sections = options.sections ? new Sections(keyOf, options.sections, () => this.set(this.values)) : null;
+    const section = (item: unknown) => item as SectionItem;
+    this.lazy = new Lazy(this.sections ? item => section(item).key : keyOf, {
       splice: (index, remove, items) => {
         const sink = up.app.$sink!;
         if (!sink.splice) throw new Error("weft: sink does not support lazy lists");
@@ -385,19 +389,22 @@ export class LazyList {
         if (!sink.bind) throw new Error("weft: sink does not support lazy lists");
         sink.bind(up.id, point, id, row?.id ?? 0);
       },
-      create: make,
-      change: (row, item) => row.setItem(item),
+      create: item => this.sections ? (section(item).template ? options.sections!.createRow(...section(item).value as [unknown, unknown]) : make(section(item).value)) : make(item),
+      change: (row, item) => {
+        if (this.sections && section(item).template) (row as Row & { setSection(section: unknown, item: unknown): void }).setSection(...section(item).value as [unknown, unknown]);
+        else row.setItem(this.sections ? section(item).value : item);
+      },
       destroy: row => row.destroy(),
-    });
+    }, this.sections ? item => section(item).template : undefined, options.endThreshold, options.onEndReached);
   }
 
-  set(items: readonly unknown[]): void { this.lazy.set(items); }
+  set(items: readonly unknown[]): void { this.values = items; this.lazy.set(this.sections ? this.sections.flatten(items) : items); }
   window(start: number, end: number): void { this.lazy.window(start, end); }
   update(): void {
     const epoch = currentEpoch();
     this.lazy.update(row => { if (row.born !== epoch) row.update(); });
   }
-  destroy(): void { this.up.lazy.delete(this.point); this.lazy.destroy(); }
+  destroy(): void { this.up.lazy.delete(this.point); this.sections?.destroy(); this.lazy.destroy(); }
 }
 
 /**

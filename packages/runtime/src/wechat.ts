@@ -740,7 +740,20 @@ export class WechatSink implements Sink {
     }
     // The selector's change event sends a string, even though its index is an Int.
     const value = kind === "number" ? Number(detail) : detail;
-    if (session.dispatch(scope.id, slot, value) || scope.dead || controls < 0) return undefined;
+    const accepted = session.dispatch(scope.id, slot, value);
+    if (event.type === "refresherrefresh" && !scope.dead) {
+      const { refreshKey, refreshAlways } = event.currentTarget.dataset;
+      if (!refreshAlways && typeof refreshKey === "string" && !scope.o[refreshKey]) {
+        const path = this.#locate(scope, refreshKey);
+        if (path !== null) {
+          const view = this.#viewFor(scope);
+          view.setData({ [path]: true }, () => {
+            if (!scope.dead && !scope.o[refreshKey]) view.setData({ [path]: false });
+          });
+        }
+      }
+    }
+    if (accepted || scope.dead || controls < 0) return undefined;
     const key = scope.keys.v![controls][0];
     const bound = scope.o[key];
     if (typeof bound === "string" && kind !== "textarea") return bound;
