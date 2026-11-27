@@ -454,7 +454,7 @@ public sealed class Screenshots
         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
     }
 
-    private static void CaptureWindow(Window window, string path, Action<CaptureImage>? verify)
+    internal static void CaptureWindow(Window window, string path, Action<CaptureImage>? verify)
     {
         // FlaUI crops the desktop by a window's bounds. Use physical pixels for both.
         const int perMonitorAwareV2 = -4;

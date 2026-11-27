@@ -10,6 +10,20 @@ public partial class App : Application
 {
     private Window? window;
 
+    [System.STAThread]
+    private static void Main()
+    {
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+        if (!WeftActivation.Initialize(WeftLinks.Scheme)) return;
+        Application.Start(callback =>
+        {
+            var context = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
+                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
+            System.Threading.SynchronizationContext.SetSynchronizationContext(context);
+            _ = new App();
+        });
+    }
+
     public App()
     {
         InitializeComponent();

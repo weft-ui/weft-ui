@@ -941,7 +941,7 @@ test("Windows generates a dotnet project around the generated views", async () =
   expect((await readdir(project)).sort())
     .toEqual([".gitignore", "App.csproj", "App.xaml", "App.xaml.cs", "UITests", "app.manifest", "weft"]);
   expect((await readdir(join(project, "weft"))).sort())
-    .toEqual(["Generated.cs", "Weft.targets", "bundle.hbc", "js", "layout.json"]);
+    .toEqual(["Generated.cs", "Weft.targets", "WeftLinks.cs", "bundle.hbc", "js", "layout.json"]);
   const csproj = await readFile(join(project, "App.csproj"), "utf8");
   expect(csproj).toContain("<Product>Test &quot;App&quot;</Product>");
   expect(csproj).toContain('<AssemblyMetadata Include="WeftAppId" Value="com.example.test" />');

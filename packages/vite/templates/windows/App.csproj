@@ -11,6 +11,7 @@
     <Product>__WEFT_APP_NAME__</Product>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWinUI>true</UseWinUI>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <Nullable>enable</Nullable>
     <!-- Unpackaged and self-contained: the build output runs as is, without
          installing .NET or the Windows App SDK runtime. -->

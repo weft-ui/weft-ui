@@ -83,7 +83,8 @@ public sealed class WeftSession
         };
         var overlayRoot = new Grid();
         overlayRoot.Children.Add(root);
-        _ = new WeftSession(Path.Combine(AppContext.BaseDirectory, "weft", "bundle.hbc"), layoutHash, safeArea, make, root, overlayRoot, theme, tabs);
+        var session = new WeftSession(Path.Combine(AppContext.BaseDirectory, "weft", "bundle.hbc"), layoutHash, safeArea, make, root, overlayRoot, theme, tabs);
+        WeftActivation.Attach(session, session.queue);
         return overlayRoot;
     }
 
@@ -129,7 +130,9 @@ public sealed class WeftSession
             environmentJson.Advance(1);
             // The runtime calls back for as long as the app runs; freed below only if startup fails.
             selfHandle = GCHandle.Alloc(this);
-            fixed (byte* versionBytes = version, jsonBytes = environmentJson.WrittenSpan)
+            var launch = WeftActivation.LaunchUrl is string url
+                ? Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { url }) + "\0") : null;
+            fixed (byte* versionBytes = version, jsonBytes = environmentJson.WrittenSpan, launchBytes = launch)
             {
                 var host = new Native.Host
                 {
@@ -142,7 +145,7 @@ public sealed class WeftSession
                     Log = &OnLog,
                     Version = versionBytes,
                     Environment = jsonBytes,
-                    Launch = null,
+                    Launch = launchBytes,
                 };
                 runtime = Native.RuntimeNew(&host, bytecode, (nuint)data.Length, layoutHash);
             }

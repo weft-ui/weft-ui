@@ -92,6 +92,8 @@ On Android, configured links arrive through a generated forwarding activity. Col
 
 At cold start, `lifecycle.launch.url` contains the opening URL or `null`. A matching route opens without a transition: a tab is selected, or the target is placed above the start page. On WeChat, a directly opened page is the only page in the initial stack. Web uses the current location at startup; ordinary HTML links are not intercepted.
 
+On Windows, the unpackaged app registers its configured scheme when it starts. A protocol launch starts the app or forwards the link to its existing instance, without opening another window.
+
 On Linux, a registered scheme starts the app with the link or forwards it to the existing instance. The first link is available in `lifecycle.launch.url`; later links are opened in that instance.
 
 ## Tabs

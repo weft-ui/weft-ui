@@ -107,6 +107,51 @@ public sealed class UITests
         }
     }
 
+    [TestMethod]
+    public void ProtocolActivationOpensAndForwardsLinks()
+    {
+        ClearStorage();
+        using var automation = new UIA3Automation();
+        // Registration is persistent but must happen once before the first protocol launch.
+        using (var registration = Application.Launch(AppPath()))
+        {
+            Assert.IsNotNull(registration.GetMainWindow(automation, TimeSpan.FromSeconds(10)));
+            registration.Close();
+            Assert.IsTrue(Retry.WhileFalse(() => !System.Diagnostics.Process.GetProcessesByName("App")
+                .Any(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+                TimeSpan.FromSeconds(10), ignoreException: true).Result);
+        }
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("weftexample://showcase/list") { UseShellExecute = true });
+        var process = Retry.WhileNull(() => System.Diagnostics.Process.GetProcessesByName("App")
+            .FirstOrDefault(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"),
+            TimeSpan.FromSeconds(15), ignoreException: true).Result;
+        Assert.IsNotNull(process, "Protocol launch did not open the app");
+        using var app = Application.Attach(process.Id);
+        try
+        {
+            var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+            Assert.IsNotNull(window);
+            Assert.IsNotNull(Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName("Row 2")),
+                TimeSpan.FromSeconds(10), ignoreException: true).Result, "Cold link did not open the list");
+            SaveLinkScreenshot(window, "cold");
+            Screenshots.FindButton(window, "Back")!.AsButton().Invoke();
+            Assert.IsNotNull(Screenshots.FindButton(window, "page:overlays"), "Back did not return to the catalog");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("weftexample://showcase/overlays") { UseShellExecute = true });
+            Assert.IsNotNull(Screenshots.FindButton(window, "Alert"), "Running link did not open overlays");
+            SaveLinkScreenshot(window, "running");
+            Assert.AreEqual(1, System.Diagnostics.Process.GetProcessesByName("App").Count(p => !p.HasExited && p.MainWindowTitle == "Weft Showcase"));
+        }
+        finally { app.Close(); }
+    }
+
+    private static void SaveLinkScreenshot(FlaUI.Core.AutomationElements.Window window, string name)
+    {
+        var directory = Environment.GetEnvironmentVariable("WEFT_LINK_SHOT_DIR");
+        if (directory is null) return;
+        Thread.Sleep(TimeSpan.FromSeconds(1)); // Allow the navigation transition to finish.
+        Screenshots.CaptureWindow(window, Path.Combine(directory, name + ".png"), null);
+    }
+
     internal static void ClearStorage()
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

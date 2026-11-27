@@ -11,6 +11,20 @@ namespace WeftMain;
 // only rewrite weft/, with the generated views and the bundle.
 public partial class App : Application
 {
+    [STAThread]
+    private static void Main()
+    {
+        WinRT.ComWrappersSupport.InitializeComWrappers();
+        if (!WeftActivation.Initialize(WeftLinks.Scheme)) return;
+        Application.Start(callback =>
+        {
+            var context = new Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
+                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
+            System.Threading.SynchronizationContext.SetSynchronizationContext(context);
+            _ = new App();
+        });
+    }
+
     private Window? window;
     private readonly string? shotAppearance = Environment.GetEnvironmentVariable("WEFT_SHOT_APPEARANCE");
 

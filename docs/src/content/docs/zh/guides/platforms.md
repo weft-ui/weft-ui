@@ -153,7 +153,7 @@ pnpm --filter example test:android
 
 ## Windows
 
-在 Windows 主机上安装 .NET 10 SDK 或更高版本。
+在 Windows 主机上安装 .NET 10 SDK 或更高版本。未打包应用启动时注册 `links.scheme`，打开协议链接前须先运行一次应用。Windows 会将后续激活转发给已有实例；Windows 不提供 HTTPS 主机注册。
 
 在 Weft UI 工作区构建内核还需要 PowerShell 7、带 C++ 工具链和 CMake 工具的 Visual Studio Build Tools，以及可通过 `PATH` 找到的 Python 3。脚本会按主机架构生成 `native/windows/build/win-<arch>/weft_core.dll`。如果应用面向其他架构，请传入 `-Arch arm64` 或 `-Arch x64`，与工程的 `RuntimeIdentifier` 对应。
 

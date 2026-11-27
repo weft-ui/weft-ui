@@ -153,7 +153,7 @@ Start an emulator or connect a device before running `test:android`. The script 
 
 ## Windows
 
-Use a Windows host with the .NET 10 SDK or later.
+Use a Windows host with the .NET 10 SDK or later. The unpackaged app registers `links.scheme` at startup; run it once before opening a protocol URL. Windows forwards subsequent activations to the existing instance. HTTPS host registration is not provided on Windows.
 
 In the Weft UI workspace, building the kernel also requires PowerShell 7, Visual Studio Build Tools with the C++ toolchain and CMake tools, and Python 3 on `PATH`. The script writes `native/windows/build/win-<arch>/weft_core.dll` for the host architecture by default. If your app targets a different architecture, pass `-Arch arm64` or `-Arch x64` to match the app project’s `RuntimeIdentifier`.
 
