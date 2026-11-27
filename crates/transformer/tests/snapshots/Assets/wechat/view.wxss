@@ -30,7 +30,7 @@
 /* Clamp owns the inline display and overflow; keep hide and clip independent. */
 .w-text-hidden{display:none!important}
 .w-text-clip{overflow:hidden}
-.w-button.w-wx{margin:0}
+.w-button.w-wx{display:inline-flex;align-items:center;justify-content:center;margin:0}
 .w-input.w-wx{border:1px solid #ccc;padding:4px 8px}
 input.w-switch{appearance:none;display:inline-flex;align-items:center;box-sizing:border-box;width:51px;height:31px;margin:0;padding:2px;border:0;border-radius:999px;background:#78788052;cursor:pointer}
 input.w-switch::before{content:"";width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #00000026}
