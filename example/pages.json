@@ -34,7 +34,7 @@
   { "id": "me", "title": "Member profile", "link": "/me" },
   { "id": "publish", "title": "Publish", "link": "/publish" },
   { "id": "login", "title": "Login", "link": "/login" },
-  { "id": "settings", "title": "Journal settings", "link": "/settings", "dark": true },
+  { "id": "settings", "title": "Journal settings", "link": "/settings" },
   { "id": "empty", "title": "Empty saved notes" },
   { "id": "lifecycle", "title": "Lifecycle", "props": { "lifecycleCounts": ["Foreground: 0", "Background: 0", "Memory warnings: 0"] } },
   {
