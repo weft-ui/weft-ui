@@ -497,6 +497,7 @@ export class Application {
     const window = doc.defaultView;
     if (!window) throw new Error("weft: application target requires a window");
     this.document = doc;
+    if (target.nodeType === 1) (target as Element).classList.add("w-root");
     this.host = new WebNavigationHost(target as HTMLElement, urls => this.controller.restore(urls), index => this.controller.selectTab(index), host => this.controller.dismiss(host));
     activate(this.controller);
     doc.addEventListener("visibilitychange", this.visibility);

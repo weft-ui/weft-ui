@@ -261,10 +261,11 @@ test("WeChat generates a theme stylesheet and resolves dynamic theme colors", as
 });
 
 test("Web navigation preserves pages across browser back and refresh", async () => {
+  await writeFile(join(root, "index.html"), HTML.replace("<body>", '<body style="margin:0;height:100vh">'));
   await writeFile(join(root, "src/App.weft"), `
 event Open
 page Home() { Button(onClick = Open) { Text("Open detail") } }
-page Detail(id: String) path "/notes/{id}" { NavBar(title = "Detail") Text(id) }
+page Detail(id: String) path "/notes/{id}" { NavBar(title = "Detail") Column(fill = true, grow = 1) { Spacer() Text(id) } }
 app Notes { start = Home }
 `);
   await writeFile(join(root, "src/index.ts"), `
@@ -287,6 +288,9 @@ run(new Notes({
       await page.getByText("Open detail").click();
       await page.waitForURL("**/notes/42");
       expect(await page.getByText("42", { exact: true }).count()).toBe(1);
+      const frame = await page.getByText("42", { exact: true }).boundingBox();
+      expect(frame).not.toBeNull();
+      expect(frame!.y + frame!.height).toBeCloseTo(page.viewportSize()!.height, 0);
       await page.reload();
       expect(await page.getByText("42", { exact: true }).count()).toBe(1);
       await page.goBack();
