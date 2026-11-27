@@ -14,6 +14,10 @@
   "page" @context
   name: (identifier) @name) @item
 
+(app_declaration
+  "app" @context
+  name: (identifier) @name) @item
+
 (field
   name: (identifier) @name) @item
 

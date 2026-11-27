@@ -124,6 +124,38 @@ page About() {}
     (component_body)))
 
 ========================================
+Apps with a start page and with tabs
+========================================
+
+app Notes { start = Home }
+app Tabs {
+  tabs {
+    Home(title = "Home", icon = "asset:home")
+    Settings(title = "Settings", icon = "asset:gear")
+  }
+}
+
+----------------------------------------
+
+(source_file
+  (app_declaration
+    (identifier)
+    (app_start (identifier)))
+  (app_declaration
+    (identifier)
+    (app_tabs
+      (tab_item
+        (identifier)
+        (arguments
+          (argument (identifier) (string (string_content)))
+          (argument (identifier) (string (string_content)))))
+      (tab_item
+        (identifier)
+        (arguments
+          (argument (identifier) (string (string_content)))
+          (argument (identifier) (string (string_content))))))))
+
+========================================
 Type aliases and literal unions
 ========================================
 

@@ -114,6 +114,67 @@
     ]
   },
   {
+    "type": "app_declaration",
+    "named": true,
+    "fields": {
+      "entry": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "app_start",
+            "named": true
+          },
+          {
+            "type": "app_tabs",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "app_start",
+    "named": true,
+    "fields": {
+      "page": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "app_tabs",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "tab_item",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "argument",
     "named": true,
     "fields": {
@@ -1074,6 +1135,10 @@
       "required": false,
       "types": [
         {
+          "type": "app_declaration",
+          "named": true
+        },
+        {
           "type": "component_declaration",
           "named": true
         },
@@ -1242,6 +1307,32 @@
           },
           {
             "type": "true",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "tab_item",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "arguments",
+            "named": true
+          }
+        ]
+      },
+      "page": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
             "named": true
           }
         ]
@@ -1539,6 +1630,10 @@
     "named": false
   },
   {
+    "type": "app",
+    "named": false
+  },
+  {
     "type": "block_comment",
     "named": true,
     "extra": true
@@ -1625,11 +1720,19 @@
     "named": false
   },
   {
+    "type": "start",
+    "named": false
+  },
+  {
     "type": "state",
     "named": false
   },
   {
     "type": "style",
+    "named": false
+  },
+  {
+    "type": "tabs",
     "named": false
   },
   {

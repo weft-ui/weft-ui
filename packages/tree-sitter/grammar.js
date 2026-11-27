@@ -2,8 +2,8 @@
  * @file Tree-sitter grammar for Weft UI (`.weft`), following crates/parser/GRAMMAR.md.
  *
  * Used for syntax highlighting and structure in editors; the compiler has its
- * own parser. `import`, `model`, `event`, `component`, `page`, `path`, `type`, `style`, `theme`,
- * `dark`, `state`, `let` and `key` are contextual: the grammar only treats them as keywords where it
+ * own parser. `import`, `model`, `event`, `component`, `page`, `path`, `app`, `start`, `tabs`, `type`,
+ * `style`, `theme`, `dark`, `state`, `let` and `key` are contextual: the grammar only treats them as keywords where it
  * expects them, so `model` still works as a parameter name.
  */
 
@@ -54,6 +54,7 @@ export default grammar({
       $.event_declaration,
       $.component_declaration,
       $.page_declaration,
+      $.app_declaration,
       $.type_alias,
       $.style_declaration,
       $.theme_declaration,
@@ -95,6 +96,20 @@ export default grammar({
       optional(seq('path', field('path', alias($._constant_string, $.string)))),
       field('body', $.component_body),
     ),
+
+    app_declaration: $ => seq(
+      'app',
+      field('name', $.identifier),
+      '{',
+      field('entry', choice($.app_start, $.app_tabs)),
+      '}',
+    ),
+
+    app_start: $ => seq('start', '=', field('page', $.identifier)),
+
+    app_tabs: $ => seq('tabs', '{', repeat1($.tab_item), '}'),
+
+    tab_item: $ => seq(field('page', $.identifier), field('arguments', $.arguments)),
 
     parameters: $ => seq('(', commaSep($.parameter), ')'),
 
