@@ -7,6 +7,7 @@ export const settleMs = 1000;
 
 export interface Shot {
   id: string;
+  link: string;
   scheme: "light" | "dark";
   name: string;
   path: string;
@@ -22,10 +23,10 @@ export function prepareShots(platform: Platform): { directory: string; shots: Sh
   if (only?.length && selected.length !== only.length) {
     throw new Error(`Unknown or unavailable page in WEFT_SHOT_PAGES=${only.join(",")} for ${platform}`);
   }
-  for (const { id, dark } of selected) {
-    shots.push({ id, scheme: "light", name: `${id}.png`, path: join(directory, `${id}.png`) });
+  for (const { id, link, dark } of selected) {
+    shots.push({ id, link, scheme: "light", name: `${id}.png`, path: join(directory, `${id}.png`) });
     if (dark) {
-      shots.push({ id, scheme: "dark", name: `${id}-dark.png`, path: join(directory, `${id}-dark.png`) });
+      shots.push({ id, link, scheme: "dark", name: `${id}-dark.png`, path: join(directory, `${id}-dark.png`) });
     }
   }
   for (const { path } of shots) rmSync(path, { force: true });

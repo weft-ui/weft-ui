@@ -12,18 +12,13 @@ import "./pages/Tap.weft"
 import "./pages/Assets.weft"
 import "./pages/Safearea.weft"
 import "./pages/Keyboard.weft"
-import "./pages/Feed.weft"
-import "./pages/Detail.weft"
-import "./pages/Profile.weft"
-import "./pages/Form.weft"
-import "./pages/Settings.weft"
 import "./pages/Empty.weft"
 import "./pages/Lifecycle.weft"
 import "./pages/List.weft"
 import "./pages/Sections.weft"
 import "./pages/Overlays.weft"
 
-model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], fieldRegions: String[], lifecycleCounts: String[], listRows: String[], overlayResult: String[], listRefreshing: Bool, sections: ShowcaseSection[] }
+model ShowcaseModel { safeArea: ShowcaseInsets, regions: String[], channels: String[], unavailable: String[], lifecycleCounts: String[], listRows: String[], overlayResult: String[], listRefreshing: Bool, sections: ShowcaseSection[] }
 event Open(id: String)
 
 page Catalog() {
@@ -41,11 +36,6 @@ page Catalog() {
             Button(onClick = { Open("assets") }) { Text("page:assets") }
             Button(onClick = { Open("safearea") }) { Text("page:safearea") }
             Button(onClick = { Open("keyboard") }) { Text("page:keyboard") }
-            Button(onClick = { Open("feed") }) { Text("page:feed") }
-            Button(onClick = { Open("detail") }) { Text("page:detail") }
-            Button(onClick = { Open("profile") }) { Text("page:profile") }
-            Button(onClick = { Open("form") }) { Text("page:form") }
-            Button(onClick = { Open("settings") }) { Text("page:settings") }
             Button(onClick = { Open("empty") }) { Text("page:empty") }
             Button(onClick = { Open("lifecycle") }) { Text("page:lifecycle") }
             Button(onClick = { Open("list") }) { Text("page:list") }
@@ -97,26 +87,6 @@ page SafeareaPage(model: ShowcaseModel) path "/showcase/safearea" {
 page KeyboardPage(model: ShowcaseModel) path "/showcase/keyboard" {
     NavBar(title = "Keyboard")
     Keyboard()
-}
-page FeedPage(model: ShowcaseModel) path "/showcase/feed" {
-    NavBar(title = "Fieldnotes feed")
-    ShowcaseFeed()
-}
-page DetailPage(model: ShowcaseModel) path "/showcase/detail" {
-    NavBar(title = "Trail note")
-    ShowcaseDetail()
-}
-page ProfilePage(model: ShowcaseModel) path "/showcase/profile" {
-    NavBar(title = "Member profile")
-    Profile()
-}
-page FormPage(model: ShowcaseModel) path "/showcase/form" {
-    NavBar(title = "Registration")
-    Form(model.fieldRegions)
-}
-page SettingsPage(model: ShowcaseModel) path "/showcase/settings" {
-    NavBar(title = "Journal settings")
-    Settings()
 }
 page EmptyPage(model: ShowcaseModel) path "/showcase/empty" {
     NavBar(title = "Empty saved notes")

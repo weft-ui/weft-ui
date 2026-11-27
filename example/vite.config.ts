@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import weft from "@weft-ui/vite";
-import { componentName, pages } from "./scripts/pages.ts";
+import { componentName, showcasePages } from "./scripts/pages.ts";
 
 export default defineConfig({
   plugins: [weft({
@@ -8,6 +8,6 @@ export default defineConfig({
     include: "src/App.weft",
     links: { scheme: "weftexample" },
     // The showcase pages and the Inter fonts they use stay out of the main package.
-    wechat: { subPackages: { showcase: pages("wechat").map((page) => `${componentName(page)}Page`) } },
+    wechat: { subPackages: { showcase: showcasePages("wechat").map((page) => `${componentName(page)}Page`) } },
   })],
 });

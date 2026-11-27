@@ -27,17 +27,14 @@
   },
   { "id": "safearea", "title": "Safe area" },
   { "id": "keyboard", "title": "Keyboard" },
-  { "id": "feed", "title": "Fieldnotes feed" },
-  { "id": "detail", "title": "Trail note" },
-  { "id": "profile", "title": "Member profile" },
-  {
-    "id": "form",
-    "title": "Registration",
-    "props": {
-      "fieldRegions": ["North Coast", "High Country", "River Valley"]
-    }
-  },
-  { "id": "settings", "title": "Journal settings", "dark": true },
+  { "id": "feed", "title": "Fieldnotes feed", "link": "/" },
+  { "id": "detail", "title": "Trail note", "link": "/notes/1" },
+  { "id": "discover", "title": "Discover", "link": "/discover" },
+  { "id": "inbox", "title": "Inbox", "link": "/inbox" },
+  { "id": "me", "title": "Member profile", "link": "/me" },
+  { "id": "publish", "title": "Publish", "link": "/publish" },
+  { "id": "login", "title": "Login", "link": "/login" },
+  { "id": "settings", "title": "Journal settings", "link": "/settings", "dark": true },
   { "id": "empty", "title": "Empty saved notes" },
   { "id": "lifecycle", "title": "Lifecycle", "props": { "lifecycleCounts": ["Foreground: 0", "Background: 0", "Memory warnings: 0"] } },
   {

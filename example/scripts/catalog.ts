@@ -1,11 +1,11 @@
 import { writeFileSync } from "node:fs";
-import { componentName, pages, platforms } from "./pages.ts";
+import { componentName, showcasePages, platforms } from "./pages.ts";
 
 const platform = platforms.find((name) => name === process.argv[2]);
 if (!platform) throw new Error(`Usage: node scripts/catalog.ts <${platforms.join("|")}>`);
 
 const fields = new Set<string>();
-for (const { id, props } of pages()) {
+for (const { id, props } of showcasePages()) {
   if (props === undefined) continue;
   if (!props || typeof props !== "object" || Array.isArray(props)) {
     throw new Error(`${id}.props must be an object`);
@@ -20,11 +20,11 @@ for (const { id, props } of pages()) {
   }
 }
 
-const catalog = pages(platform).map(({ id, title, component, props }) => {
+const catalog = showcasePages(platform).map(({ id, title, component, props }) => {
   const file = id.split(/[-_]/).map((word) => word[0]!.toUpperCase() + word.slice(1)).join("");
   const args = id === "safearea" ? "model.safeArea" : id === "list" ? "model.listRows, model.listRefreshing" : id === "sections" ? "model.sections" : Object.keys(props ?? {}).map((name) => `model.${name}`).join(", ");
   const name = componentName({ id, title, component, props });
-  return { id, title, file, name: id === "feed" || id === "detail" ? `Showcase${name}` : name, page: `${name}Page`, args };
+  return { id, title, file, name, page: `${name}Page`, args };
 });
 
 writeFileSync(new URL("../src/App.weft", import.meta.url), [
