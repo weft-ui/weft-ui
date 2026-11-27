@@ -42,6 +42,8 @@
     "test:linux": "ctest --test-dir apps/linux/build --output-on-failure",
     "test:macos": "xcodebuild test -project apps/macos/App.xcodeproj -scheme App -destination platform=macOS -derivedDataPath apps/macos/build",
     "test:windows": "dotnet test apps/windows/UITests",
+    "test:web": "node --experimental-strip-types scripts/ui/web.ts",
+    "test:wechat": "node --experimental-strip-types scripts/ui/wechat.ts",
     "typecheck": "node --experimental-strip-types scripts/catalog.ts web && tsc -p . --runExternalCode"
   }
 }

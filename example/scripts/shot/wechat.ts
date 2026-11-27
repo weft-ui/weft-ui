@@ -3,8 +3,6 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import automator from "miniprogram-automator";
-import type Element from "miniprogram-automator/out/Element.js";
-import type { ScrollViewElement } from "miniprogram-automator/out/Element.js";
 import { componentName, pages } from "../pages.ts";
 import { build, prepareShots, settleMs } from "./cases.ts";
 import { compare } from "./compare.ts";
@@ -46,64 +44,75 @@ const miniProgram = await automator.launch({ cliPath, projectPath }).catch((caus
   throw new Error(`Could not start WeChat automation. ${help}`, { cause });
 });
 let activeScheme: "light" | "dark" | undefined;
+let failure: unknown;
+async function waitForPage(target: string): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const current = await miniProgram.currentPage();
+    if (current?.path.replace(/^\//, "") === target.split("?")[0]!.replace(/^\//, "")) {
+      const view = await current.$("#weft");
+      if (view && (await view.$$("text")).length) return;
+    }
+    await setTimeout(100);
+  }
+  throw new Error(`Timed out rendering ${target}`);
+}
 try {
   await miniProgram.callWxMethod("clearStorageSync");
-  for (const { id, scheme, path } of shots) {
+  // Finish mounting the application before the first reLaunch to a sub-package.
+  await miniProgram.reLaunch("/weft/pages/feed/index");
+  await waitForPage("/weft/pages/feed/index");
+  for (const { id, link, scheme, path } of shots) {
     if (hasDarkShots && scheme !== activeScheme) {
       setScheme(scheme);
       activeScheme = scheme;
+      // Changing the simulator appearance reloads the running mini program.
+      await miniProgram.reLaunch("/weft/pages/feed/index");
+      await waitForPage("/weft/pages/feed/index");
+      await setTimeout(settleMs);
     }
-    const page = await miniProgram.reLaunch("/weft/pages/catalog/index");
-    if (!page) throw new Error("Could not open the catalog");
+    // Start each route from a clean tab root; reLaunch does not restart DevTools.
+    await miniProgram.reLaunch("/weft/pages/feed/index");
+    await waitForPage("/weft/pages/feed/index");
+    // Mini-program links use generated page paths and query parameters, not app URLs.
+    const appRoutes: Record<string, string> = {
+      "/": "feed", "/discover": "discover", "/inbox": "inbox", "/me": "me",
+      "/settings": "social-settings", "/login": "login", "/publish": "publish",
+    };
+    let target: string;
+    const detail = /^\/notes\/([^/]+)$/.exec(link);
+    if (detail) target = `/weft/pages/detail/index?id=${encodeURIComponent(decodeURIComponent(detail[1]!))}`;
+    else if (appRoutes[link]) target = `/weft/pages/${appRoutes[link]}/index`;
+    else if (link === `/showcase/${id}`) {
+      const entry = pages("wechat").find((item) => item.id === id);
+      if (!entry) throw new Error(`Unknown WeChat showcase page ${id}`);
+      const slug = `${componentName(entry)}Page`.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+      target = `/showcase/weft/pages/${slug}/index`;
+    } else throw new Error(`Unsupported WeChat screenshot link ${link}`);
+    const page = await miniProgram.reLaunch(target);
+    if (!page) throw new Error(`Could not open ${target}`);
     if (hasDarkShots) {
       const theme = await miniProgram.evaluate("() => wx.getAppBaseInfo().theme");
       if (theme !== scheme) throw new Error(`Expected WeChat appearance ${scheme}, got ${theme}`);
     }
-    await page.waitFor("#weft");
-    const view = await page.$("#weft");
-    if (!view) throw new Error("Could not find the Weft view on the catalog");
-    let button: Element | undefined;
-    const deadline = Date.now() + 5000;
-    do {
-      const buttons: Element[] = await view.$$("button");
-      const labels = await Promise.all(buttons.map((element) => element.text()));
-      button = buttons[labels.indexOf(`page:${id}`)];
-      if (button) break;
-      await setTimeout(100);
-    } while (Date.now() < deadline);
-    if (!button) throw new Error(`No catalog button page:${id}`);
-
-    const viewport = await view.$("scroll-view") as ScrollViewElement | null;
-    if (!viewport) throw new Error("Could not find the catalog Scroll");
-    const top = Number((await button.offset()).top) - Number((await viewport.offset()).top);
-    if (top < 0 || top + Number((await button.size()).height) > Number((await viewport.size()).height)) {
-      await viewport.scrollTo(0, top);
-    }
-    await button.tap();
-    const entry = pages("wechat").find((item) => item.id === id)!;
-    const component = componentName(entry);
-    const slug = `${component}Page`.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
-    // The page may live in a sub-package, whose root prefixes the path.
-    const expectedPath = `weft/pages/${slug}/index`;
-    let destination = await miniProgram.currentPage();
-    const navigationDeadline = Date.now() + 5000;
-    while (!destination?.path.endsWith(expectedPath) && Date.now() < navigationDeadline) {
-      await setTimeout(100);
-      destination = await miniProgram.currentPage();
-    }
-    if (!destination?.path.endsWith(expectedPath)) throw new Error(`Could not navigate to ${expectedPath}`);
-    await destination.waitFor("#weft");
+    // reLaunch resolves before the new view is mounted.
+    await waitForPage(target);
     await setTimeout(settleMs);
     await miniProgram.screenshot({ path });
-    const catalog = await miniProgram.navigateBack();
-    if (catalog?.path.replace(/^\//, "") !== "weft/pages/catalog/index") throw new Error("Could not return to the catalog");
-    await catalog.waitFor("#weft");
   }
+} catch (error) {
+  failure = error;
+  throw error;
 } finally {
   try {
     if (activeScheme === "dark") setScheme("light");
   } finally {
-    await miniProgram.close();
+    try {
+      await miniProgram.close();
+    } catch (error) {
+      if (!failure) throw error;
+      console.error("Could not close WeChat DevTools:", error);
+    }
   }
 }
 compare("wechat", shots);

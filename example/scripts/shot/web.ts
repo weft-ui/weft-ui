@@ -13,7 +13,7 @@ const server = await preview({
 try {
   const browser = await chromium.launch();
   try {
-    for (const { id, scheme, path } of shots) {
+    for (const { link, scheme, path } of shots) {
       // A new browser context per page starts with empty local and session storage.
       const page = await browser.newPage({
         viewport: { width: 390, height: 844 },
@@ -21,17 +21,11 @@ try {
         colorScheme: scheme,
       });
       try {
-        await page.goto("http://127.0.0.1:4179/");
-        const entry = page.getByRole("button", { name: `page:${id}`, exact: true });
-        await entry.click();
-        // Park the pointer so no control on the pushed page is shot in its hover state.
+        await page.goto(`http://127.0.0.1:4179${link}`);
+        // Park the pointer so no control is shot in its hover state.
         await page.mouse.move(0, 0);
-        await page.waitForURL(`**/showcase/${id}`);
-        await page.getByRole("button", { name: "Back", exact: true }).waitFor();
         await setTimeout(settleMs);
         await page.screenshot({ path });
-        await page.goBack();
-        await entry.waitFor({ state: "visible" });
       } finally {
         await page.close();
       }
