@@ -857,9 +857,9 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R3.d | ☑ | ce89778 | 顺带修正只有文字的 BarButton 被裁切 |
 | R3.n | ☑ | e201d90 | |
 | R3.g | ☑ | 09dfa29 | |
-| R4.w | ☑ | 4081f7f | 修正 bbdf0b7（小程序 `ui.confirm` 总是失败）；开发者工具里四个按钮由编排者用 automator 验证（截图与 `mockWxMethod` 结果）；截图基线待维护者确认 |
-| R4.a | ☑ | 03f1196 | iOS `overlays` 基线待维护者确认；macOS C-ui 与 `overlays` 浮层操作由编排者运行通过 |
-| R4.d | ☑ | 6418daa | Android `overlays` 基线待维护者确认 |
+| R4.w | ☑ | 4081f7f | 修正 bbdf0b7（小程序 `ui.confirm` 总是失败）；开发者工具里四个按钮由编排者用 automator 验证（截图与 `mockWxMethod` 结果）；web、wechat `overlays` 基线由编排者确认（维护者授权） |
+| R4.a | ☑ | 03f1196 | iOS `overlays` 基线由编排者确认（维护者授权）；macOS C-ui 与 `overlays` 浮层操作由编排者运行通过 |
+| R4.d | ☑ | 6418daa | Android `overlays` 基线由编排者确认（维护者授权） |
 | R4.n | ☑ | 4638a69 | |
 | R4.g | ☑ | a6bd73a | 含本波次的启用改动（`overlays` 不再 `pending`、platform-api 指南） |
 | R5.w | ☐ | | |
@@ -885,7 +885,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R9.w | ☐ | | |
 | R9.a | ☐ | | |
 | R9.d | ☐ | | |
-| W1 | ⏸ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告），字体 1630 KiB；开发者工具里推入分包页面（`notes/weft/pages/detail/index`）由编排者验证；开发者工具「详情」面板里的包大小待维护者 |
+| W1 | ☑ | c5faf61 | C-wxsize：example 主包 2005 KiB（预算 1536 KiB，打印警告，T2 解决），字体 1630 KiB；开发者工具里推入分包页面（`notes/weft/pages/detail/index`）由编排者验证；`cli preview --info-output`（维护者授权）报主包 1982387 B、分包 `/notes/` 1691 B，按 §8.3 规则统计的源文件为 1959064 B 与 1729 B |
 | T2 | ☐ | | |
 | B1 | ☐ | | |
 | X1 | ☐ | | |
@@ -920,7 +920,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R2.a] iOS 上 Tab 根页不显示标题、Tab 栏底部被裁切，由代理自查截图发现并修正（1b547b6）；macOS 的 `TabView` 呈现为工具栏里的分段控件，不显示图标与根页标题，`.badge` 不显示——角标改为写进 Tab 标题（`Home 3`、空串为 `Home •`），指南注明（48f4b6b）。结论：已修正
 - [R2.g] GTK 的 `GtkStackPage:needs-attention` 只能显示圆点，文字角标在 Linux 上也显示为圆点，指南注明。结论：接受（计划已预见）
 - [R2.n] Windows 虚拟机重启后 `prlctl exec` 需要等控制台用户登录；`weft-interactive` 计划任务曾经由 ssh（提升权限）注册，之后控制台会话无法覆盖它（Access denied），删除后恢复。交互式 UI 步骤只经 `prlctl exec --current-user` 运行。结论：环境问题，已处理
-- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时，三项的开发者工具检查先标 ⏸。R3 原生波次结束后，编排者关闭残留的开发者工具实例，在主工作区用临时应用（两个 Tab、角标、推入分包页面、两种模态、模态内推入、在模态标题行上合成下滑触摸）以 automator 运行通过。剩下「详情」面板里的包大小需要人工查看（或经 `cli preview --info-output` 上传到微信服务器取得）。结论：W1 的这一项待维护者
+- [R2.w、R3.w、W1] 代理在私有 worktree 里用 miniprogram-automator 打开开发者工具均超时，三项的开发者工具检查先标 ⏸。R3 原生波次结束后，编排者关闭残留的开发者工具实例，在主工作区用临时应用（两个 Tab、角标、推入分包页面、两种模态、模态内推入、在模态标题行上合成下滑触摸）以 automator 运行通过。包大小经维护者授权用 `cli preview --info-output` 取得（会把临时应用上传到微信服务器生成预览二维码，不是发布）。结论：已验证
 - [W1、R3.w] 预期变化写 C-apps 只有 web、wechat 变化，实际五个原生平台的 `js/index.js` 也变化：W1 的分包路由与 R3.w 的模态都改了共用的运行时。结论：接受，已重新录制 C-apps 基线
 - [R3.w] 代理顺带在 C++ conformance 宿主实现了 `dismiss` 动作（原属 R3.g），因此合并后 `navigation` 不必再放回 `pending.json`。结论：接受
 - [R2.w、W1] 开发者工具检查后把 example 改回组件根重新构建，`app.json` 残留只有颜色、没有 `list` 的 `tabBar`（开发者工具会拒绝）；组件根构建也不会删除旧的 `subPackages`。原因：去掉 Tab 时只删除 `list`，而默认颜色是 Weft 写入的。修正：程序不声明 Tab 时删除整个 `tabBar`，组件根构建同时删除 `subPackages`（4e9f9df，含测试）。结论：已修正
@@ -931,3 +931,4 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R4] example 的 `overlays` 页已在所有平台启用，`index.ts` 里按事件名注册的过渡写法改为生成的 `onOverlay*` 方法（5bb3e39）。结论：已清理
 - [R3.w] 小程序 sheet 不能下滑关闭：`page-container` 的 `close-on-slide-down` 默认 `false`，§8.1 的模板没有设置，指南却写了可以下滑关闭。修正：`close-on-slide-down="{{ms == 0}}"`（只对 sheet），同时去掉关闭按钮的默认边框（533d7cd）。对照：不加该属性时，同样的合成下滑不关闭模态。结论：已修正，§8.1 模板已更新
 - [R4.w] 小程序 `ui.confirm` 总是失败：非危险确认传 `confirmColor: undefined`，`wx.showModal` 报 `parameter.confirmColor should be String instead of Undefined`；没有 `title` 或 `message` 的 `alert`、没有 `title` 的 `actionSheet` 同理。单测的 `wx` 桩不校验参数，所以没有发现。修正：去掉值为 `undefined` 的可选参数，单测的桩改为像微信一样拒绝 `undefined`（bbdf0b7）。结论：已修正
+- [W1] 开发者工具报告的主包比 Weft 按源文件统计的大约 1.2%（23 KB，编译产物与源文件的差异），分包小 38 B。Weft 的检查在 2048 KiB 上限附近可能放行开发者工具会拒绝的包，但 1536 KiB 的预算警告留有足够余量。结论：记录，不调整
