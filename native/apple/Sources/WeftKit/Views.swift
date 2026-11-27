@@ -6,6 +6,28 @@ import UIKit
 import AppKit
 #endif
 
+#if os(iOS)
+@MainActor
+private enum TabIcons {
+    private static var cache: [String: UIImage] = [:]
+
+    static func image(_ name: String, bundle: Bundle) -> Image {
+        let key = bundle.bundleURL.path + ":" + name
+        if let image = cache[key] { return Image(uiImage: image) }
+        guard let source = UIImage(named: name, in: bundle, compatibleWith: nil),
+              source.size.width > 0, source.size.height > 0 else {
+            return Image(name, bundle: bundle)
+        }
+        let scale = min(24 / source.size.width, 24 / source.size.height)
+        let size = CGSize(width: source.size.width * scale, height: source.size.height * scale)
+        let image = UIGraphicsImageRenderer(size: size).image { _ in source.draw(in: CGRect(origin: .zero, size: size)) }
+            .withRenderingMode(.alwaysTemplate)
+        cache[key] = image
+        return Image(uiImage: image)
+    }
+}
+#endif
+
 struct WeftOverlayOptions: Decodable {
     var title: String?
     var message: String?
@@ -313,7 +335,11 @@ public struct WeftRoot: View {
                                 Text(tab.title)
                                 #endif
                             } icon: {
+                                #if os(iOS)
+                                TabIcons.image(index == Int(session.navigationTab) ? tab.activeIcon : tab.icon, bundle: session.assets.bundle)
+                                #else
                                 Image(index == Int(session.navigationTab) ? tab.activeIcon : tab.icon, bundle: session.assets.bundle)
+                                #endif
                             }
                         }
                         .badge(session.badges[index])
