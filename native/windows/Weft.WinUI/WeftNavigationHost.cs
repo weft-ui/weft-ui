@@ -310,7 +310,7 @@ internal sealed class WeftNavigationHost
         {
             var appearing = visible && back.Visibility != Visibility.Visible;
             back.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            header.Padding = new Thickness(visible ? 0 : 20, 0, 0, 0);
+            header.Padding = new Thickness(visible ? 0 : 20, 0, 20, 0);
             // NavigationView leaves breathing room between its back button and header.
             header.ColumnSpacing = visible ? 12 : 0;
             back.Content = modal ? "×" : new SymbolIcon(Symbol.Back);

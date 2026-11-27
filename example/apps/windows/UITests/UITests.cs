@@ -163,6 +163,8 @@ public sealed class UITests
             Assert.IsNotNull(headerAction);
             Assert.IsTrue(headerTitle.BoundingRectangle.Left - window.BoundingRectangle.Left >= 16,
                 $"Root title needs a leading inset: {headerTitle.BoundingRectangle}");
+            Assert.IsTrue(window.BoundingRectangle.Right - headerAction.BoundingRectangle.Right >= 16,
+                $"Header action needs a trailing inset: {headerAction.BoundingRectangle}");
             var titleCenter = headerTitle.BoundingRectangle.Top + headerTitle.BoundingRectangle.Height / 2.0;
             var actionCenter = headerAction.BoundingRectangle.Top + headerAction.BoundingRectangle.Height / 2.0;
             Assert.IsTrue(Math.Abs(titleCenter - actionCenter) <= 5,
