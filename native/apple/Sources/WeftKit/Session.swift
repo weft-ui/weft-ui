@@ -131,6 +131,14 @@ public final class WeftSession {
         #endif
     }
 
+    func openLink(_ url: URL) {
+        guard let data = try? JSONSerialization.data(withJSONObject: ["url": url.absoluteString]),
+              let json = String(data: data, encoding: .utf8) else { return }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { signal(name: "link", json: json) }
+    }
+
     func update(phase: ScenePhase) {
         guard let state = lifecycle.update(phase) else { return }
         signal(name: "lifecycle", json: "{\"state\":\"\(state)\"}")

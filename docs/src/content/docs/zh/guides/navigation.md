@@ -88,6 +88,8 @@ const unsubscribe = navigation.onOpen((route, originalURL) => {
 
 Web 上 `url` 包含 Vite 的 `base`；微信小程序返回带查询参数的小程序页面路径，可用于分享。scheme 和主机的配置见[平台指南](/zh/guides/platforms/#配置-vite)。
 
+iOS 和 macOS 上，SwiftUI 将传入链接交给运行中的应用，包括冷启动首帧后才交付的链接。这些链接会无动画打开；SwiftUI 在会话启动后交付的链接不会出现在 `lifecycle.launch.url` 中。
+
 Android 通过生成的转发 Activity 接收已配置的链接。冷启动链接可从 `lifecycle.launch.url` 读取；运行中收到的链接在现有会话中打开。
 
 冷启动时，`lifecycle.launch.url` 是打开应用的链接，没有链接时为 `null`。匹配的路由不播放转场：Tab 页直接选中，其他页面放在起始页之上。微信小程序直接打开时，初始栈中只有目标页。Web 启动时使用当前地址；普通 HTML 链接不会被拦截。

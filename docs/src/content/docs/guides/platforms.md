@@ -131,6 +131,8 @@ pnpm --filter example test:ios
 
 Open `apps/macos/App.xcodeproj` or `apps/ios/App.xcodeproj` in Xcode. Each links the generated `WeftApp` Swift package in `weft/`, which contains the SwiftUI views and bytecode. The plugin runs `xcodebuild` with scheme `App`. For iOS it builds for the simulator in Debug and for a device in Release; configure signing in the Xcode project for the device build.
 
+The plugin generates `weft/Info.plist` for the configured URL scheme and `weft/App.entitlements` for associated domains. Configure signing and deploy the Apple association file on each host to enable Universal Links; domain verification is a separate deployment step.
+
 The test scripts run XCUITest. `test:ios` defaults to the `iPhone 17` simulator; set `WEFT_IOS_DEVICE` to the name of an installed simulator to change it.
 
 ## Android

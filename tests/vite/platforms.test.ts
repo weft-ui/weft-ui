@@ -884,7 +884,7 @@ test("Apple platforms generate an Xcode project around the WeftApp package", asy
   const project = join(root, "apps/ios");
   expect((await readdir(project)).sort()).toEqual([".gitignore", "App", "App.xcodeproj", "UITests", "weft"]);
   expect((await readdir(join(project, "weft"))).sort())
-    .toEqual(["Generated.swift", "Package.swift", "bundle.hbc", "js", "layout.json"]);
+    .toEqual(["App.entitlements", "Generated.swift", "Info.plist", "Package.swift", "bundle.hbc", "js", "layout.json"]);
   const pbxproj = await readFile(join(project, "App.xcodeproj/project.pbxproj"), "utf8");
   expect(pbxproj).toContain('PRODUCT_NAME = "Test \\"App\\"";');
   expect(pbxproj).toContain('PRODUCT_BUNDLE_IDENTIFIER = "com.example.test";');

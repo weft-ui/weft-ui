@@ -131,6 +131,8 @@ pnpm --filter example test:ios
 
 可以在 Xcode 中打开 `apps/macos/App.xcodeproj` 或 `apps/ios/App.xcodeproj`。两个工程都链接 `weft/` 下生成的 `WeftApp` Swift 包，SwiftUI 视图和字节码都在包里。插件通过 `xcodebuild` 构建 `App` scheme。iOS 的 Debug 版本面向模拟器，Release 版本面向真机；构建真机版本前请在 Xcode 工程中配置签名。
 
+插件生成 `weft/Info.plist` 注册配置的 URL scheme，并生成 `weft/App.entitlements` 配置关联域名。启用 Universal Links 还需配置签名，并在各主机部署 Apple 关联文件；域名验证是单独的部署步骤。
+
 测试脚本使用 XCUITest。`test:ios` 默认使用 `iPhone 17` 模拟器；要换设备，将 `WEFT_IOS_DEVICE` 设为已安装的模拟器名称。
 
 ## Android

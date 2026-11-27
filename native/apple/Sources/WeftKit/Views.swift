@@ -249,6 +249,15 @@ public struct WeftRoot: View {
         .onChange(of: scenePhase, initial: true) { _, phase in
             session.update(phase: phase)
         }
+        .onOpenURL { url in
+            session.openLink(url)
+        }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { session.openLink(url) }
+        }
+        #if os(macOS)
+        .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+        #endif
         #if os(iOS)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
             session.signal(name: "memory", json: "{}")

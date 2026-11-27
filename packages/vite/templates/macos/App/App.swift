@@ -9,6 +9,7 @@ struct WeftMain: App {
         WindowGroup {
             WeftAppView()
         }
+        .handlesExternalEvents(matching: ["*"])
         .defaultSize(width: 480, height: 640)
     }
 }

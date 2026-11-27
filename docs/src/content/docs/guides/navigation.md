@@ -88,6 +88,8 @@ Route URLs encode path parameters and query values as UTF-8. Query parameters fo
 
 On Web, `url` includes Vite's `base`; on WeChat it returns the mini program page path and query, suitable for sharing. Configure schemes and hosts in the [platform guide](/guides/platforms/#configure-vite).
 
+On iOS and macOS, SwiftUI delivers incoming URLs to the running app, including links delivered after its first frame at cold start. Those links are opened without an animation; they are not available in `lifecycle.launch.url` when SwiftUI delivers them after the session starts.
+
 On Android, configured links arrive through a generated forwarding activity. Cold-start URLs are available in `lifecycle.launch.url`; links received while the app is running open in its existing session.
 
 At cold start, `lifecycle.launch.url` contains the opening URL or `null`. A matching route opens without a transition: a tab is selected, or the target is placed above the start page. On WeChat, a directly opened page is the only page in the initial stack. Web uses the current location at startup; ordinary HTML links are not intercepted.

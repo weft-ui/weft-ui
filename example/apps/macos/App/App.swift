@@ -14,6 +14,7 @@ struct WeftMain: App {
                 .frame(minHeight: appearance == nil ? nil : captureHeight)
                 .preferredColorScheme(appearance.map { $0 == "dark" ? .dark : .light })
         }
+        .handlesExternalEvents(matching: ["*"])
         .defaultSize(width: 480, height: appearance == nil ? 640 : captureHeight)
     }
 }

@@ -31,7 +31,7 @@ let package = Package(
             name: "WeftApp",
             dependencies: [.product(name: "WeftKit", package: ${JSON.stringify(basename(kit))})],
             path: ".",
-            exclude: ["js", "layout.json"],
+            exclude: ["js", "layout.json", "Info.plist", "App.entitlements"],
             sources: ["Generated.swift"],
             resources: [${resources.join(", ")}]
         ),
@@ -40,12 +40,26 @@ let package = Package(
 `;
 }
 
+function xml(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
+}
+
+/** Write the Xcode-merged URL registration and signing entitlements. */
+export function writeAppleLinks(generated: string, links: { scheme?: string; hosts?: string[] } = {}): void {
+  const plist = (body: string) => `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n${body}</dict>\n</plist>\n`;
+  const urls = links.scheme ? `  <key>CFBundleURLTypes</key>\n  <array><dict><key>CFBundleURLSchemes</key><array><string>${xml(links.scheme)}</string></array></dict></array>\n` : "";
+  const domains = links.hosts?.length ? `  <key>com.apple.developer.associated-domains</key>\n  <array>\n${links.hosts.map((host) => `    <string>applinks:${xml(host)}</string>\n`).join("")}  </array>\n` : "";
+  writeFileSync(join(generated, "Info.plist"), plist(urls));
+  writeFileSync(join(generated, "App.entitlements"), plist(domains));
+}
+
 export function appleAdapter(runTool: RunTool, kit: string): NativeAdapter {
   return {
     bytecode: "bundle.hbc",
     host: "darwin",
     hostWarning: "xcodebuild needs macOS",
-    writeGlue(generated) {
+    writeGlue(generated, _project, links) {
+      writeAppleLinks(generated, links);
       writeFileSync(join(generated, "Package.swift"), packageManifest(kit, generated));
     },
     // Build for the iOS simulator in debug builds, or a device in release builds (which need signing).
