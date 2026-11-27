@@ -55,6 +55,48 @@ public sealed class UITests
         }
     }
 
+    [TestMethod]
+    public void ListLoadsMoreAtTheEnd()
+    {
+        ClearStorage();
+        using var automation = new UIA3Automation();
+        using var app = Application.Launch(AppPath());
+        try
+        {
+            var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
+            Assert.IsNotNull(window);
+            var entry = Screenshots.FindButton(window, "page:list");
+            Assert.IsNotNull(entry);
+            entry.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
+            entry.AsButton().Invoke();
+            Assert.IsNotNull(Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByName("Row 2")),
+                TimeSpan.FromSeconds(5), ignoreException: true).Result, "List did not render");
+            Thread.Sleep(TimeSpan.FromSeconds(1)); // Let the page transition finish before selecting its scroll viewer.
+            var scroll = Retry.WhileNull(() => window.FindAllDescendants()
+                .LastOrDefault(element => element.Patterns.Scroll.PatternOrDefault is { } pattern && pattern.VerticallyScrollable.Value),
+                TimeSpan.FromSeconds(5), ignoreException: true).Result;
+            Assert.IsNotNull(scroll, "List scroll viewer was not found");
+            var loaded = Retry.WhileFalse(() =>
+            {
+                scroll.Patterns.Scroll.Pattern.SetScrollPercent(-1, 100);
+                return window.FindAllDescendants().Any(element =>
+                {
+                    var name = element.Properties.Name.ValueOrDefault ?? "";
+                    if (!name.StartsWith("Row ", StringComparison.Ordinal)) return false;
+                    var number = new string(name.Skip(4).TakeWhile(char.IsDigit).ToArray());
+                    return int.TryParse(number, out var row) && row > 1000;
+                });
+            }, TimeSpan.FromSeconds(15), ignoreException: true).Result;
+            var rows = window.FindAllDescendants().Select(element => element.Properties.Name.ValueOrDefault ?? "")
+                .Where(name => name.StartsWith("Row ", StringComparison.Ordinal)).Take(20);
+            Assert.IsTrue(loaded, $"Loading more rows did not fire; visible rows: {string.Join(", ", rows)}; scroll percent: {scroll.Patterns.Scroll.Pattern.VerticalScrollPercent.Value}");
+        }
+        finally
+        {
+            app.Close();
+        }
+    }
+
     internal static void ClearStorage()
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
