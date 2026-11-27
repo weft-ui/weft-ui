@@ -38,6 +38,29 @@ final class UITests: XCTestCase {
     }
 
     @MainActor
+    func testListPullToRefresh() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        let entry = app.buttons["page:list"]
+        for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        entry.tap()
+
+        let first = app.staticTexts["Row 1 — a longer note from the trail"]
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        app.swipeUp()
+        app.swipeDown()
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+
+        // Record the accessibility tree; SwiftUI's refresh indicator may not be exposed.
+        app.swipeDown()
+        print(app.debugDescription)
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        XCTAssertTrue(first.isHittable, "The list should settle back at its first row after refresh")
+    }
+
+    @MainActor
     func testKeyboardAvoidance() {
         continueAfterFailure = false
         let app = XCUIApplication()
