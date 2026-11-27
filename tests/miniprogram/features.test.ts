@@ -220,6 +220,65 @@ test("refresher follows the synchronously updated refreshing value", () => {
   expect(calls.at(-1)).toEqual({ "r.refreshing": false });
 });
 
+test("page list updates do not resend the scroll-top binding", () => {
+  const page = loadView(out);
+  const modal = loadView(out);
+  const sink = new WechatSink(page, { hash: "test", templates: [{ n: "ListPage", p: ["l5"], v: [["label"]] }] });
+  sink.open({ hash: "test", dispatch: () => true, window: () => {}, signal: () => {}, detach: () => {} });
+  sink.create(1, 0);
+  sink.splice(1, 0, 0, 0, Array.from({ length: 40 }, (_, index) => ({ item: index + 1, template: 0 })));
+  sink.nav(0, [1], [], 0, "sheet");
+  sink.commit();
+  expect((page.calls.at(-1)!.r as Record<string, unknown>).z5).toBe(0);
+  page.calls.length = 0;
+  sink.scroll({ type: "scroll", currentTarget: { dataset: { scope: 1, point: 0 } }, detail: { scrollTop: 1000 } });
+  sink.splice(1, 0, 40, 0, [{ item: 41, template: 0 }]);
+  sink.commit();
+  expect(page.calls).toHaveLength(1);
+  expect(Object.keys(page.calls[0])).toEqual(["r.l5"]);
+  expect((page.data.r as Record<string, unknown>).z5).toBe(0);
+
+  sink.bindModal(modal, { setData() {} });
+  sink.create(2, 0);
+  sink.splice(2, 0, 0, 0, [{ item: 1, template: 0 }]);
+  sink.nav(0, [1], [], 2, "sheet");
+  sink.commit();
+  modal.calls.length = 0;
+  sink.splice(2, 0, 1, 0, [{ item: 2, template: 0 }]);
+  sink.commit();
+  expect(modal.calls).toEqual([expect.objectContaining({ "r.l5": expect.any(Array) })]);
+  sink.close();
+  page.detach();
+  modal.detach();
+});
+
+test("appending rows keeps measured segment heights for the new spacer estimate", () => {
+  const calls: Record<string, unknown>[] = [];
+  type Rect = { dataset: Record<string, unknown>; top: number; bottom: number; height: number };
+  const view = {
+    setData(data: Record<string, unknown>, callback?: () => void) { calls.push(structuredClone(data)); callback?.(); },
+    createSelectorQuery() {
+      const query = {
+        select: () => ({ boundingClientRect: (callback: (rect: Rect | null) => void) => { callback({ dataset: {}, top: 0, bottom: 600, height: 600 }); return query; } }),
+        selectAll: () => ({ boundingClientRect: (callback: (rects: Rect[]) => void) => { callback([{ dataset: { segment: 0 }, top: 0, bottom: 2000, height: 2000 }]); return query; } }),
+        exec() {},
+      };
+      return query;
+    },
+  };
+  const sink = new WechatSink(view, { hash: "test", templates: [{ n: "List", p: ["l5"] }, { n: "Row" }] });
+  sink.open({ hash: "test", dispatch: () => true, window: () => {}, signal: () => {}, detach: () => {} });
+  sink.create(1, 0);
+  sink.splice(1, 0, 0, 0, Array.from({ length: 20 }, (_, index) => ({ item: index + 1, template: 0 })));
+  for (let i = 1; i <= 20; i++) { sink.create(i + 1, 1); sink.bind(1, 0, i, i + 1); }
+  sink.attach(0, 0, 1);
+  sink.commit();
+  sink.splice(1, 0, 20, 0, Array.from({ length: 10 }, (_, index) => ({ item: index + 21, template: 0 })));
+  sink.commit();
+  const segments = calls.at(-1)!["r.l5"] as { h: number }[];
+  expect(segments.map(segment => segment.h)).toEqual([2000, 1000]);
+});
+
 test("scrolling a segmented list requests the visible window even without observer notifications", () => {
   type Rect = { dataset: Record<string, unknown>; top: number; bottom: number; height: number };
   type Query = {

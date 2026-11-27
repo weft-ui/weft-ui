@@ -184,6 +184,8 @@ export class WechatSink implements Sink {
   #lastHandler = 0;
   #pages: number[] = [];
   #views = new Map<number, View>();
+  /** Root scope currently rendered by each platform view. */
+  #rendered = new Map<View, number>();
   #routeCount = 0;
   #hostNavigating = 0;
   #pageTypes: readonly PageClass[] = [];
@@ -346,7 +348,11 @@ export class WechatSink implements Sink {
     const removed = lazy.items.splice(index, remove, ...inserted);
     const remaining = new Set(lazy.items);
     for (const item of removed) if (!remaining.has(item) && item.child) this.#destroy(item.child);
-    lazy.heights.clear();
+    // Keep measurements before the changed segment. In particular, appending
+    // a page must not collapse every spacer back to the initial estimate.
+    const firstChanged = Math.floor(index / lazy.size);
+    for (const segment of lazy.heights.keys()) if (segment >= firstChanged) lazy.heights.delete(segment);
+    for (const segment of lazy.positions.keys()) if (segment >= firstChanged) lazy.positions.delete(segment);
     lazy.requestedStart = -1;
     lazy.requestedEnd = -1;
     lazy.observer?.disconnect();
@@ -571,7 +577,10 @@ export class WechatSink implements Sink {
     this.#views.set(index, view);
     view.$sink = this;
     const scope = this.#scopes.get(this.#pages[index]);
-    if (scope) view.setData({ t: scope.keys.n, r: scope.o }, () => this.#observeView(view));
+    if (scope) {
+      this.#rendered.set(view, scope.id);
+      view.setData({ t: scope.keys.n, r: scope.o }, () => this.#observeView(view));
+    }
   }
 
   /** Associates the modal component and its page-container owner with a stack position. */
@@ -593,8 +602,14 @@ export class WechatSink implements Sink {
   }
 
   unloadPage(index: number, view?: View): void {
+    const modal = this.#modalViews.get(index);
+    if (modal) this.#rendered.delete(modal.view);
     this.#modalViews.delete(index);
-    if (!view || this.#views.get(index) === view) this.#views.delete(index);
+    if (!view || this.#views.get(index) === view) {
+      const old = this.#views.get(index);
+      if (old) this.#rendered.delete(old);
+      this.#views.delete(index);
+    }
     if (this.#hostNavigating > 0) {
       this.#hostNavigating--;
       return;
@@ -670,15 +685,19 @@ export class WechatSink implements Sink {
         this.#segments(lazy);
       }
     }
-    const data = new Map<string, unknown>();
+    const changes = new Map<number, Map<string, unknown>>();
     for (const [scope, key] of this.#pending) {
       if (scope.dead) continue;
       const path = this.#locate(scope, key);
-      if (path !== null) data.set(path, key === null ? scope.o : scope.o[key]);
+      if (path === null) continue;
+      let root = scope;
+      while (root.up) root = root.up;
+      let data = changes.get(root.id);
+      if (!data) changes.set(root.id, data = new Map());
+      data.set(path, key === null ? scope.o : scope.o[key]);
     }
     if (this.#rootFresh && this.#root) {
-      data.set("t", this.#root.keys.n);
-      data.set("r", this.#root.o);
+      changes.set(this.#root.id, new Map<string, unknown>([["t", this.#root.keys.n], ["r", this.#root.o]]));
     }
     this.#pending = [];
     this.#rootFresh = false;
@@ -687,19 +706,36 @@ export class WechatSink implements Sink {
     if (this.#pages.length) {
       for (const [index, view] of this.#views) {
         const scope = this.#scopes.get(this.#pages[index]);
-        if (scope) view.setData({ t: scope.keys.n, r: scope.o }, () => this.#observeView(view));
+        if (scope) this.#updateView(view, scope, changes.get(scope.id));
       }
-      this.#renderModal(this.#pages.length - 1);
-    } else if (data.size > 0) this.#view.setData(uncovered(data), () => this.#observeView(this.#view));
+      this.#renderModal(this.#pages.length - 1, changes);
+    } else if (this.#root) {
+      const data = changes.get(this.#root.id);
+      if (data?.size) this.#view.setData(uncovered(data), () => this.#observeView(this.#view));
+    }
   }
 
-  #renderModal(index: number): void {
+  /** Send a complete root only on a page change; subsequent updates stay granular. */
+  #updateView(view: View, scope: Scope, data?: Map<string, unknown>): void {
+    if (this.#rendered.get(view) !== scope.id) {
+      this.#rendered.set(view, scope.id);
+      view.setData({ t: scope.keys.n, r: scope.o }, () => this.#observeView(view));
+    } else if (data?.size) {
+      view.setData(uncovered(data), () => this.#observeView(view));
+    }
+  }
+
+  #renderModal(index: number, changes?: Map<number, Map<string, unknown>>): void {
     const binding = this.#modalViews.get(index);
     if (!binding) return;
     const scope = this.#scopes.get(this.#modal);
     const bar = scope?.keys.bar;
     const title = bar?.key === undefined ? bar?.title : scope?.o[bar.key];
-    binding.view.setData({ t: scope?.keys.n ?? "", r: scope?.o ?? null }, () => this.#observeView(binding.view));
+    if (scope) this.#updateView(binding.view, scope, changes?.get(scope.id));
+    else if (this.#rendered.has(binding.view)) {
+      this.#rendered.delete(binding.view);
+      binding.view.setData({ t: "", r: null });
+    }
     const hidden = scope?.keys.barHiddenKey ? scope.o[scope.keys.barHiddenKey] : scope?.keys.barHidden;
     binding.page.setData({ m: !!scope, ms: this.#modalStyle === "sheet" ? 0 : 1, mc: this.#modalStyle === "sheet" ? "max-height:90vh" : "height:100vh", mt: typeof title === "string" ? title : "", mh: !!hidden });
   }
@@ -859,6 +895,7 @@ export class WechatSink implements Sink {
     this.#tab = 0;
     this.#rootPage = undefined;
     this.#views.clear();
+    this.#rendered.clear();
     this.#modalViews.clear();
     this.#modal = 0;
     this.#modalStyle = "sheet";
