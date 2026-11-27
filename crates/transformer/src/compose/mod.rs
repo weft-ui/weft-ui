@@ -169,9 +169,9 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
                 "var p{point} by mutableStateOf<List<S{}>>(emptyList())",
                 template.0
             )),
-            PointKind::Lazy { .. } => {
-                unreachable!("lazy lists are not supported on native platforms")
-            }
+            PointKind::Lazy { .. } => out
+                .writer
+                .line(format_args!("val p{point} = lazy({point})")),
             PointKind::Instance { template } => out.writer.line(format_args!(
                 "var p{point} by mutableStateOf<S{}?>(null)",
                 template.0
@@ -209,9 +209,7 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
                     "{point} -> p{point} = children.map {{ it as S{} }}",
                     template.0
                 )),
-                PointKind::Lazy { .. } => {
-                    unreachable!("lazy lists are not supported on native platforms")
-                }
+                PointKind::Lazy { .. } => {}
                 PointKind::Instance { template } => out.writer.line(format_args!(
                     "{point} -> p{point} = children.firstOrNull() as S{}?",
                     template.0

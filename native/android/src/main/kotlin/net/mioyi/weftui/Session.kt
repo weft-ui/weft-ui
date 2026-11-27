@@ -180,10 +180,6 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
         committing = true
         try {
             val batch = OpReader.readAll(ops)
-            if (batch.any { it is Op.Splice || it is Op.Bind }) {
-                fail("weft: cannot apply ops (lazy lists are not supported by these views)")
-                return
-            }
             for (op in batch) {
                 if (!apply(op)) break
             }
@@ -223,7 +219,8 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
                 val kept = next.pages().toSet()
                 old?.pages()?.forEach { if (it !in kept) scopes[it]?.let(::destroy) }
             }
-            is Op.Splice, is Op.Bind -> error("unsupported op")
+            is Op.Splice -> scopes[op.scope]?.lazy(op.point)?.splice(op.index, op.remove, op.items, ::destroy)
+            is Op.Bind -> scopes[op.scope]?.lazy(op.point)?.bind(op.item, if (op.child == 0) null else scopes[op.child], ::destroy)
         }
         return true
     }
@@ -247,6 +244,7 @@ class WeftSession private constructor(context: Context, layoutHash: Long, privat
     private fun destroy(scope: WeftScope) {
         scopes.remove(scope.id)
         for (children in scope.children.values) children.forEach(::destroy)
+        for (list in scope.lazyLists.values) list.destroyChildren(::destroy)
     }
 
     private fun fail(message: String) {

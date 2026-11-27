@@ -125,7 +125,7 @@ private object WeftHiddenModifier : ParentDataModifier {
     override fun Density.modifyParentData(parentData: Any?): Any = parentData.weftData().copy(hidden = true)
 }
 
-private object WeftScrollModifier : ParentDataModifier {
+internal object WeftScrollModifier : ParentDataModifier {
     override fun Density.modifyParentData(parentData: Any?): Any {
         val data = parentData.weftData()
         return data.copy(child = data.child.copy(

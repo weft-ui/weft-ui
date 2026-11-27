@@ -14,6 +14,12 @@ abstract class WeftScope(
 ) {
     /** Children by mount point, as last mounted; the session uses them to destroy subtrees. */
     internal val children = HashMap<Int, List<WeftScope>>()
+    internal val lazyLists = HashMap<Int, WeftLazyList>()
+
+    /** Observable state of a lazy mount point, shared by generated views and the session. */
+    fun lazy(point: Int): WeftLazyList = lazyLists.getOrPut(point) {
+        WeftLazyList { start, end -> session.window(id, point, start, end) }
+    }
 
     /** Writes value slot [slot] (a `set` op). */
     open fun apply(slot: Int, value: WeftValue) {}

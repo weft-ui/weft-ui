@@ -128,6 +128,10 @@ impl Body<'_> {
         props: &[StaticProp],
         children: &[u32],
     ) {
+        if matches!(element, Element::List | Element::Grid) {
+            self.lazy(out, node, element, props, children);
+            return;
+        }
         let prop = |name: &str| self.template.prop(node, props, name);
         let line = out.writer.start_line();
         line.push_str("Weft");
@@ -308,6 +312,73 @@ impl Body<'_> {
                 out.close("}");
             }
         }
+    }
+
+    fn lazy(
+        &self,
+        out: &mut Code,
+        node: u32,
+        element: Element,
+        props: &[StaticProp],
+        children: &[u32],
+    ) {
+        let (position, point) = children
+            .iter()
+            .enumerate()
+            .find_map(
+                |(i, &child)| match self.template.nodes[child as usize].kind {
+                    ViewNodeKind::Point(point)
+                        if matches!(
+                            self.template.points[point as usize].kind,
+                            PointKind::Lazy { .. }
+                        ) =>
+                    {
+                        Some((i, point))
+                    }
+                    _ => None,
+                },
+            )
+            .expect("a lazy list has a lazy mount point");
+        let prop = |name: &str| self.template.prop(node, props, name);
+        let line = out.writer.start_line();
+        line.push_str("WeftLazy");
+        let mut args = CallArgs::new(line);
+        args.push(format_args!("model = s.p{point}"));
+        args.push(format_args!("grid = {}", element == Element::Grid));
+        if let PointKind::Lazy { templates } = &self.template.points[point as usize].kind {
+            args.push(format_args!("sections = {}", templates.len() == 2));
+        }
+        for name in [
+            "columns",
+            "gap",
+            "indicators",
+            "stickyHeaders",
+            "refreshing",
+        ]
+        .into_iter()
+        .chain(PADDING.iter().copied())
+        {
+            if let Some(value) = prop(name) {
+                args.push(format_args!("{name} = {}", KotlinProp(value, None)));
+            }
+        }
+        if let Some(slot) = self.template.event(node, "onRefresh") {
+            args.push(format_args!("onRefresh = {{ s.dispatch({slot}) }}"));
+        }
+        modifiers(&mut args, prop, self.template.event(node, "onTap"));
+        args.finish(false);
+        out.open_after(" {");
+        for &child in &children[..position] {
+            out.open("header {");
+            self.node(out, child);
+            out.close("}");
+        }
+        for &child in &children[position + 1..] {
+            out.open("footer {");
+            self.node(out, child);
+            out.close("}");
+        }
+        out.close("}");
     }
 
     fn point(&self, out: &mut Code, point: u32) {
