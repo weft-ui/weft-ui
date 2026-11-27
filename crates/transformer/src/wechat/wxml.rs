@@ -4,7 +4,7 @@
 //! instance (keys are listed in [`super::elements`]); nested scopes are
 //! reached through their key (`b3.n7_0`, `r0.n9_0`). Slot content is
 //! rendered by a template of the calling component, chosen at run time
-//! through `t`, so all templates of the app live in one file.
+//! through `t`. Each package view defines its reachable templates together.
 
 use std::fmt::{self, Write as _};
 

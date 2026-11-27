@@ -103,7 +103,7 @@ weft({
 })
 ```
 
-Keys are package roots and may contain only lowercase letters, digits, `_` and `-`. Values are page names. Every page must exist and occur in at most one sub-package; the start page and tab pages must remain in the main package. Weft updates `app.json` on each build while preserving unrelated settings. Sub-package pages and views are emitted under `<root>/weft/`; their views import the main package templates. Assets referenced only by pages in one sub-package are placed there; shared assets and assets that may be referenced dynamically stay in the main package. All logic JavaScript remains in the main package; it is not loaded asynchronously by sub-package.
+Keys are package roots and may contain only lowercase letters, digits, `_` and `-`. Values are page names. Every page must exist and occur in at most one sub-package; the start page and tab pages must remain in the main package. Weft updates `app.json` on each build while preserving unrelated settings. Sub-package pages and views are emitted under `<root>/weft/`; their views include copies of main-package templates so shared components can render sub-package slots. Assets referenced only by pages in one sub-package are placed there; shared assets and assets that may be referenced dynamically stay in the main package. All logic JavaScript remains in the main package; it is not loaded asynchronously by sub-package.
 
 The build warns when the main package exceeds 1536 KiB and fails if the main package or any sub-package exceeds 2048 KiB, or the total exceeds 20 MiB. The size calculation excludes `project.config.json`, `project.private.config.json`, and files excluded by `packOptions.ignore`.
 

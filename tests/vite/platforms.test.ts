@@ -497,10 +497,11 @@ run(new Notes({ Home: () => new Home({}), Detail: (params) => new Detail(params)
 
 async function writeSubPackageFixture() {
   await writeFile(join(root, "src/App.weft"), `
-page Home() { Image("asset:shared") }
-page Gallery() { Column { Image("asset:shared") Image("asset:gallery") Image("asset:gallery_icon") Text("Gallery", font = "Inter") } }
+component Screen(body: Children) { Column { body } }
+page Home() { Screen { Image("asset:shared") } }
+page Gallery() { Screen { Image("asset:shared") Image("asset:gallery") Image("asset:gallery_icon") Text("Gallery", font = "Inter") } }
 page GalleryMore() { Text("More", font = "Inter") }
-page Account() { Column { Image("asset:account") Text("Account") } }
+page Account() { Screen { Image("asset:account") Text("Account") } }
 app Notes { start = Home }
 `);
   await writeFile(join(root, "src/index.ts"), `
@@ -512,7 +513,7 @@ run(new Notes({ Home: () => new Home({}), Gallery: () => new Gallery({}), Galler
 
 const subPackages = { gallery: ["Gallery", "GalleryMore"], account: ["Account"] };
 
-test("WeChat emits two sub-packages, imports main templates and places assets by reachability", async () => {
+test("WeChat emits two sub-packages with visible slot templates and places assets by reachability", async () => {
   await writeSubPackageFixture();
   const project = join(root, "apps/wechat");
   await mkdir(join(root, "assets/images"), { recursive: true });
@@ -539,7 +540,14 @@ test("WeChat emits two sub-packages, imports main templates and places assets by
     for (const extension of ["js", "json", "wxml", "wxss"]) {
       expect(existsSync(join(project, `${name}/weft/pages/${name}/index.${extension}`))).toBe(true);
     }
-    expect(await readFile(join(project, `${name}/weft/view.wxml`), "utf8")).toContain('<import src="/weft/view.wxml"');
+    const mainWxml = await readFile(join(project, "weft/view.wxml"), "utf8");
+    const packageWxml = await readFile(join(project, `${name}/weft/view.wxml`), "utf8");
+    const page = name === "gallery" ? "Gallery" : "Account";
+    expect(mainWxml).toMatch(/<template name="Screen">.*<template is="{{y\d+\.t}}"/);
+    expect(mainWxml).not.toMatch(new RegExp(`<template name="${page}-s\\d+"`));
+    expect(packageWxml).toMatch(/<template name="Screen">.*<template is="{{y\d+\.t}}"/);
+    expect(packageWxml).toMatch(new RegExp(`<template name="${page}-s\\d+"`));
+    expect(packageWxml).not.toContain('<import src="/weft/view.wxml"');
     expect(existsSync(join(project, `weft/pages/${name}/index.js`))).toBe(false);
     expect(existsSync(join(project, `${name}/weft/assets/${name}.png`))).toBe(true);
     expect(existsSync(join(project, `weft/assets/${name}.png`))).toBe(false);

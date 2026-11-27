@@ -371,12 +371,14 @@ pub fn transform(cx: &Context<'_>, options: &AppOptions) -> Vec<OutputFile> {
                     .filter(|(_, c)| c.page.is_some() && pages.contains(&c.name))
                     .map(|(i, _)| i),
             );
+            // Imports are not transitive: a host template must be defined in the
+            // same file as dynamically selected children from this package.
             for (item, in_main) in included.iter_mut().zip(&main) {
-                *item &= !in_main;
+                *item |= in_main;
             }
             let (extra, _) = wxml::templates(program, layout, Some(&included));
             let base = format!("../{root}/weft/view");
-            files.push(OutputFile { path: format!("{base}.wxml"), contents: format!("<import src=\"/weft/view.wxml\"/>\n{extra}<view wx:if=\"{{{{t}}}}\" class=\"w-root\" style=\"padding-bottom:{{{{kh}}}}px\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: '', wFocus: kf}}}}\"/></view>\n") });
+            files.push(OutputFile { path: format!("{base}.wxml"), contents: format!("{extra}<view wx:if=\"{{{{t}}}}\" class=\"w-root\" style=\"padding-bottom:{{{{kh}}}}px\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: '', wFocus: kf}}}}\"/></view>\n") });
             files.push(OutputFile {
                 path: format!("{base}.js"),
                 contents: format!(
