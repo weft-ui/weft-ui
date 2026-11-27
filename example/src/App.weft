@@ -9,6 +9,7 @@ import "./pages/Inputs.weft"
 import "./pages/Tap.weft"
 import "./pages/Assets.weft"
 import "./pages/Safearea.weft"
+import "./pages/Keyboard.weft"
 import "./pages/Feed.weft"
 import "./pages/Detail.weft"
 import "./pages/Profile.weft"
@@ -34,6 +35,7 @@ page Catalog() {
             Button(onClick = { Open("tap") }) { Text("page:tap") }
             Button(onClick = { Open("assets") }) { Text("page:assets") }
             Button(onClick = { Open("safearea") }) { Text("page:safearea") }
+            Button(onClick = { Open("keyboard") }) { Text("page:keyboard") }
             Button(onClick = { Open("feed") }) { Text("page:feed") }
             Button(onClick = { Open("detail") }) { Text("page:detail") }
             Button(onClick = { Open("profile") }) { Text("page:profile") }
@@ -83,6 +85,10 @@ page AssetsPage(model: ShowcaseModel) path "/showcase/assets" {
 page SafeareaPage(model: ShowcaseModel) path "/showcase/safearea" {
     NavBar(title = "Safe area")
     Safearea(model.safeArea)
+}
+page KeyboardPage(model: ShowcaseModel) path "/showcase/keyboard" {
+    NavBar(title = "Keyboard")
+    Keyboard()
 }
 page FeedPage(model: ShowcaseModel) path "/showcase/feed" {
     NavBar(title = "Fieldnotes feed")

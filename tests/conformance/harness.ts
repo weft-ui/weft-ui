@@ -296,7 +296,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
   navigation?.bindRootModal();
   const find = (type: string, index: number) => {
     const found: [WxElement | string, string][] = [];
-    reduce(view().render(), wxClassify, found);
+    reduce(view().render().flatMap((root) => root.children), wxClassify, found);
     return nth(found, type, index) as WxElement;
   };
   return {
@@ -307,7 +307,7 @@ export async function wechat<A extends AppLike>(script: Script<A>, built: Built<
     dismiss: () => navigation?.dismiss(),
     tab: (index) => navigation?.tab(index),
     dispose: () => navigation?.dispose(),
-    tree: () => reduce(view().render(), wxClassify),
+    tree: () => reduce(view().render().flatMap((root) => root.children), wxClassify),
     click: (type, index, event) => {
       view().fire(find(type, index), actionEvent(type, event).wechat);
     },

@@ -78,14 +78,15 @@ export interface Layout {
 
 /** The generated view component instance (`Component(view(layout))`). */
 export interface View {
-  setData(data: Data): void;
+  setData(data: Data, callback?: () => void): void;
   $sink?: WechatSink;
+  $keyboardRevision?: number;
 }
 
 /** The event object of WXML `bind` and `catch` handlers. */
 interface ViewEvent {
   type: string;
-  currentTarget: { dataset: Data };
+  currentTarget: { id?: string; dataset: Data };
   detail?: { value?: unknown; width?: number; height?: number };
 }
 
@@ -642,7 +643,7 @@ function uncovered(data: Map<string, unknown>): Data {
  */
 export function view(layout: Layout, assets?: AssetVariants) {
   return {
-    data: { t: "", r: null },
+    data: { t: "", r: null, kh: 0, kf: "" },
     lifetimes: {
       created(this: View) {
         this.$sink = new WechatSink(this, layout, assets);
@@ -652,6 +653,19 @@ export function view(layout: Layout, assets?: AssetVariants) {
       },
     },
     methods: {
+      $focus(this: View, event: ViewEvent): void {
+        this.$sink?.event(event);
+        this.$keyboardRevision = (this.$keyboardRevision ?? 0) + 1;
+        this.setData({ kf: event.currentTarget.id ?? "" });
+      },
+      $keyboard(this: View, event: ViewEvent): void {
+        const revision = this.$keyboardRevision = (this.$keyboardRevision ?? 0) + 1;
+        const height = event.detail?.height ?? 0;
+        const target = height > 0 ? event.currentTarget.id ?? "" : "";
+        this.setData({ kh: height, kf: "" }, () => {
+          if (target && this.$keyboardRevision === revision) this.setData({ kf: target });
+        });
+      },
       $image(this: View, event: ViewEvent): void {
         this.$sink?.imageLoaded(event);
       },

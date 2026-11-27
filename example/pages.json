@@ -26,6 +26,7 @@
     "title": "Assets"
   },
   { "id": "safearea", "title": "Safe area" },
+  { "id": "keyboard", "title": "Keyboard", "pending": ["ios", "macos", "android", "windows", "linux"] },
   { "id": "feed", "title": "Fieldnotes feed" },
   { "id": "detail", "title": "Trail note" },
   { "id": "profile", "title": "Member profile" },

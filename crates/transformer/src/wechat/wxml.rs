@@ -231,7 +231,7 @@ impl Markup<'_> {
                 let arg = parent.argument();
                 let _ = write!(
                     out,
-                    "<template is=\"{callee}\" data=\"{{{{...{prefix}c{n}, wParent: {arg}}}}}\"/>"
+                    "<template is=\"{callee}\" data=\"{{{{...{prefix}c{n}, wParent: {arg}, wFocus: wFocus}}}}\"/>"
                 );
                 for fill in slots {
                     let mut body = String::new();
@@ -245,7 +245,7 @@ impl Markup<'_> {
                 let arg = parent.argument();
                 let _ = write!(
                     out,
-                    "<block wx:if=\"{{{{{y}}}}}\"><template is=\"{{{{{y}.t}}}}\" data=\"{{{{...{y}, wParent: {arg}}}}}\"/></block>"
+                    "<block wx:if=\"{{{{{y}}}}}\"><template is=\"{{{{{y}.t}}}}\" data=\"{{{{...{y}, wParent: {arg}, wFocus: wFocus}}}}\"/></block>"
                 );
             }
         }
@@ -283,6 +283,15 @@ impl Markup<'_> {
         let mut default_grow = element == Element::Scroll;
         let mut default_fill = element == Element::Scroll;
         let mut attrs = String::new();
+        if matches!(element, Element::Input | Element::TextArea) {
+            let _ = write!(
+                attrs,
+                " id=\"w{{{{{prefix}ws}}}}-{}\" adjust-position=\"{{{{false}}}}\" cursor-spacing=\"16\" bindkeyboardheightchange=\"$keyboard\" bindfocus=\"$focus\"",
+                id.0
+            );
+        } else if element == Element::Scroll {
+            attrs.push_str(" scroll-into-view=\"{{wFocus}}\"");
+        }
         let mut image_attrs = String::new();
         let mut classes = String::new();
         let mut style = String::new();
@@ -563,10 +572,14 @@ impl Markup<'_> {
                 } else {
                     "bind"
                 };
-                let _ = write!(
-                    out,
-                    " {binding}{kind}=\"$e\" data-e{kind}=\"{{{{{prefix}{key}}}}}\""
-                );
+                if *kind == "focus" && matches!(element, Element::Input | Element::TextArea) {
+                    let _ = write!(out, " data-e{kind}=\"{{{{{prefix}{key}}}}}\"");
+                } else {
+                    let _ = write!(
+                        out,
+                        " {binding}{kind}=\"$e\" data-e{kind}=\"{{{{{prefix}{key}}}}}\""
+                    );
+                }
             }
         }
         if !style.is_empty() {
@@ -602,9 +615,11 @@ impl Markup<'_> {
                 out,
                 "<view class=\"w-scroll-content-{axis}{scroll_classes}\""
             );
-            if !inner_style.is_empty() {
-                let _ = write!(out, " style=\"{inner_style}\"");
-            }
+            let separator = if inner_style.is_empty() { "" } else { ";" };
+            let _ = write!(
+                out,
+                " style=\"{inner_style}{{{{wFocus ? '{separator}padding-bottom:16px' : ''}}}}\""
+            );
             out.push('>');
         } else if element == Element::Progress {
             out.push_str("<view class=\"w-progress-bar\"");

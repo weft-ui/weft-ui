@@ -319,10 +319,11 @@ function createView(options: ViewOptions, templates: Templates): TestView {
   const view: TestView & Data = {
     data: structuredClone(options.data),
     calls: [],
-    setData(data) {
+    setData(data, callback?: () => void) {
       const copy = structuredClone(data);
       view.calls.push(copy);
       for (const [path, value] of Object.entries(copy)) assign(view.data, path, value);
+      callback?.();
     },
     render: () => renderNodes(templates.root, view.data, templates),
     texts: () => texts(view.render()),
@@ -359,8 +360,8 @@ function fire(view: TestView & Data, element: Element, type: string, value: unkn
       .filter(([name]) => name.startsWith("data-")).map(([name, data]) => [name.slice(5), data]));
     result = handler.call(view, {
       type,
-      currentTarget: { dataset },
-      detail: type === "load" ? value : { value },
+      currentTarget: { id: node.attrs.id, dataset },
+      detail: type === "load" || type === "keyboardheightchange" ? value : { value },
     });
     handled = true;
     if (catchAttr in node.attrs) break;
@@ -510,10 +511,14 @@ function interpolate(text: string, scope: Scope): string {
 
 function expression(expr: string, scope: Scope): unknown {
   // Template data spreads the scope and can pass an extra layout class.
-  const spread = /^\.\.\.([^,]+)(?:,\s*(\w+):\s*(.+))?$/.exec(expr);
+  const spread = /^\.\.\.([^,]+)(.*)$/.exec(expr);
   if (spread) {
-    const data = path(spread[1].trim(), scope);
-    return spread[2] ? { ...(data as Data), [spread[2]]: expression(spread[3], scope) } : data;
+    const data = { ...(path(spread[1].trim(), scope) as Data) };
+    for (const field of spread[2].split(",").filter(Boolean)) {
+      const colon = field.indexOf(":");
+      data[field.slice(0, colon).trim()] = expression(field.slice(colon + 1).trim(), scope);
+    }
+    return data;
   }
   const conditional = /^(.+?)\s*\?\s*('[^']*')\s*:\s*('[^']*')$/.exec(expr);
   if (conditional) return expression(expression(conditional[1], scope) ? conditional[2] : conditional[3], scope);

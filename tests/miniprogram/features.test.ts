@@ -109,7 +109,7 @@ test("renders nested components, slots and defaults", async () => {
   expect(labels(view)).toEqual(["a", "b", "c"]);
   const title = view.all("text").find((t) => text(t) === "first")!;
   expect(title.attrs.style).toBe("font-weight:700");
-  const card = view.all("view").find((v) => String(v.attrs.style).includes("padding"))!;
+  const card = view.all("view").find((v) => v.attrs.class === "w-column" && String(v.attrs.style).includes("padding"))!;
   expect(card.attrs.class).toBe("w-column");
   expect(card.attrs.style).toBe("padding-top:4px;padding-right:4px;padding-bottom:4px;padding-left:4px");
   const tag = view.all("text").find((t) => text(t) === "x")!;

@@ -141,6 +141,10 @@ component SearchBox() {
 }
 ```
 
+## 键盘避让
+
+在 Web 和微信小程序上，软键盘弹出时内容区域缩到键盘上方，底部输入栏保持可见。`Scroll` 中的 `Input` 或 `TextArea` 获得焦点时会滚动到可见位置，下方留出 16 逻辑像素的间距。键盘收起后不恢复滚动位置。Web 的 viewport meta 标签需要包含 `interactive-widget=resizes-content`。macOS、Windows 和 Linux 上键盘避让无效果；iOS 和 Android 支持尚在开发中。
+
 ## 让元素可点击
 
 给 `Column`、`Row`、`Stack`、`Text` 或 `Image` 加上 `onTap`，就能像按钮一样点击它。按住时，整个元素的不透明度降为平时的 60%。在 Web 上，可用 Tab 聚焦，再按 Enter 或空格激活。`onTap` 不接收参数。

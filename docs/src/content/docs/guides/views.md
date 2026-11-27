@@ -141,6 +141,10 @@ component SearchBox() {
 }
 ```
 
+## Keyboard avoidance
+
+On Web and WeChat, the content area shrinks above the soft keyboard, keeping a bottom input row visible. A focused `Input` or `TextArea` inside a `Scroll` is scrolled into view with 16 logical pixels of clearance. Scrolling is not restored when the keyboard closes. On Web, include `interactive-widget=resizes-content` in the viewport meta tag. Keyboard avoidance has no effect on macOS, Windows, or Linux; iOS and Android support is forthcoming.
+
 ## Make an element tappable
 
 Add `onTap` to a `Column`, `Row`, `Stack`, `Text`, or `Image` to make it act as a button. While pressed, the whole element is drawn at 60% of its usual opacity. On the Web, Tab focuses the element and Enter or Space activates it. `onTap` takes no arguments.

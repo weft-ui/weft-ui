@@ -232,7 +232,8 @@ fn entry(program: &Program, template: &Template, needs_assets: &mut bool) -> Str
         };
         let local = u32::try_from(local).expect("node indices fit in u32");
         let (ir_props, (_, source)) = props_of(local);
-        tracks_images |= *element == Element::Image && image_layout(ir_props).is_some();
+        tracks_images |= matches!(element, Element::Input | Element::TextArea)
+            || *element == Element::Image && image_layout(ir_props).is_some();
         for prop in props {
             let target = target(*element, prop.name);
             if !needs_data(target, &prop.value) {

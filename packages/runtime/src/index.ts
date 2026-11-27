@@ -36,6 +36,38 @@ import { WebNavigationHost, decorate } from "./web-navigation.ts";
 
 const noop = (): void => {};
 
+/** Keeps a mounted root above the visual viewport's occluded bottom edge. */
+function avoidKeyboard(root: HTMLElement): () => void {
+  const view = root.ownerDocument.defaultView;
+  const viewport = view?.visualViewport;
+  const original = root.style.getPropertyValue("--w-keyboard-height");
+  const priority = root.style.getPropertyPriority("--w-keyboard-height");
+  const reveal = (target: EventTarget | null): void => {
+    if (target instanceof (view?.HTMLElement ?? HTMLElement) &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA") && root.contains(target)) {
+      target.scrollIntoView?.({ block: "nearest" });
+    }
+  };
+  const focus = (event: FocusEvent): void => reveal(event.target);
+  let previousHeight = viewport?.height ?? 0;
+  const resize = (): void => {
+    if (!view || !viewport) return;
+    const height = Math.max(0, view.innerHeight - viewport.height - viewport.offsetTop);
+    root.style.setProperty("--w-keyboard-height", `${height}px`);
+    if (viewport.height < previousHeight) reveal(root.ownerDocument.activeElement);
+    previousHeight = viewport.height;
+  };
+  root.addEventListener("focusin", focus);
+  viewport?.addEventListener("resize", resize);
+  resize();
+  return () => {
+    root.removeEventListener("focusin", focus);
+    viewport?.removeEventListener("resize", resize);
+    if (original) root.style.setProperty("--w-keyboard-height", original, priority);
+    else root.style.removeProperty("--w-keyboard-height");
+  };
+}
+
 function layoutContext(parent: Node | null): string {
   if (parent?.nodeType !== 1) return "";
   const classes = (parent as Element).classList;
@@ -392,6 +424,7 @@ export class App extends AppBase {
 
   #create: Create;
   #root: Instance | null = null;
+  #keyboardCleanup: (() => void) | null = null;
 
   constructor(create: Create, args: unknown[]) {
     super(args);
@@ -406,7 +439,7 @@ export class App extends AppBase {
       const base = doc.createElement("style");
       base.dataset.weft = "";
       // WXSS cannot compile :has(); WeChat stops ancestor hover via WXML instead.
-      base.textContent = `${CSS}\n.w-safe{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}\n:root{color-scheme:light dark}\n.w-tap:active:not(:has(.w-tap:active,.w-button:active)){filter:opacity(.6)}\nimg.w-image{object-fit:cover}\n.w-image-placeholder:not(.w-image-loaded){background-color:var(--w-image-placeholder)!important;content:linear-gradient(transparent,transparent)}\n${assetFonts()}`;
+      base.textContent = `${CSS}\n.w-safe{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}\n.w-root.w-safe{padding-bottom:calc(env(safe-area-inset-bottom) + var(--w-keyboard-height, 0px))}\n.w-root:not(.w-safe){padding-bottom:var(--w-keyboard-height, 0px)}\n.w-input,.w-textarea{scroll-margin-bottom:16px}\n:root{color-scheme:light dark}\n.w-tap:active:not(:has(.w-tap:active,.w-button:active)){filter:opacity(.6)}\nimg.w-image{object-fit:cover}\n.w-image-placeholder:not(.w-image-loaded){background-color:var(--w-image-placeholder)!important;content:linear-gradient(transparent,transparent)}\n${assetFonts()}`;
       doc.head.append(base);
     }
     if (target.nodeType === 1) {
@@ -422,12 +455,15 @@ export class App extends AppBase {
       throw error;
     }
     this.#root = root;
+    if (target.nodeType === 1) this.#keyboardCleanup = avoidKeyboard(target as HTMLElement);
   }
 
   unmount(): void {
     const root = this.#root;
     if (!root) return;
     this.#root = null;
+    this.#keyboardCleanup?.();
+    this.#keyboardCleanup = null;
     root.destroy(true);
   }
 }

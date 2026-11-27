@@ -111,6 +111,65 @@ test("remote sessions report and ignore lazy window requests before lazy points 
   }
 });
 
+test("web keyboard avoidance resizes the root, reveals focused controls and cleans up", () => {
+  const originalViewport = Object.getOwnPropertyDescriptor(window, "visualViewport");
+  const viewport = new EventTarget() as EventTarget & { height: number; offsetTop: number };
+  viewport.height = window.innerHeight;
+  viewport.offsetTop = 0;
+  Object.defineProperty(window, "visualViewport", { configurable: true, value: viewport });
+  const root = document.createElement("div");
+  root.style.setProperty("--w-keyboard-height", "7px", "important");
+  document.body.append(root);
+  const app = new DomApp((owner, args, children, depth) => {
+    const instance = new DomInstance(owner, 1, depth, args, children);
+    const fragment = document.createDocumentFragment();
+    const input = document.createElement("input");
+    input.className = "w-input";
+    const textarea = document.createElement("textarea");
+    textarea.className = "w-textarea";
+    fragment.append(input, textarea);
+    instance.init(fragment);
+    return instance;
+  }, []);
+  try {
+    app.mount(root);
+    const input = root.querySelector("input")!;
+    const textarea = root.querySelector("textarea")!;
+    const scrollInput = vi.fn();
+    const scrollTextarea = vi.fn();
+    input.scrollIntoView = scrollInput;
+    textarea.scrollIntoView = scrollTextarea;
+    input.focus();
+    expect(scrollInput).toHaveBeenCalledWith({ block: "nearest" });
+    viewport.height = window.innerHeight - 300;
+    viewport.offsetTop = 20;
+    viewport.dispatchEvent(new Event("resize"));
+    expect(root.style.getPropertyValue("--w-keyboard-height")).toBe("280px");
+    expect(scrollInput).toHaveBeenCalledTimes(2);
+    textarea.focus();
+    expect(scrollTextarea).toHaveBeenCalledWith({ block: "nearest" });
+    viewport.height = window.innerHeight;
+    viewport.offsetTop = 0;
+    viewport.dispatchEvent(new Event("resize"));
+    expect(root.style.getPropertyValue("--w-keyboard-height")).toBe("0px");
+    expect(document.querySelector("style[data-weft]")!.textContent).toContain("scroll-margin-bottom:16px");
+    app.unmount();
+    expect(root.style.getPropertyValue("--w-keyboard-height")).toBe("7px");
+    expect(root.style.getPropertyPriority("--w-keyboard-height")).toBe("important");
+    viewport.height -= 200;
+    viewport.dispatchEvent(new Event("resize"));
+    expect(root.style.getPropertyValue("--w-keyboard-height")).toBe("7px");
+    root.append(input);
+    input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(scrollInput).toHaveBeenCalledTimes(2);
+  } finally {
+    app.unmount();
+    root.remove();
+    if (originalViewport) Object.defineProperty(window, "visualViewport", originalViewport);
+    else Reflect.deleteProperty(window, "visualViewport");
+  }
+});
+
 test("theme() populates webThemeColors even when a theme style tag already exists", () => {
   const existing = document.createElement("style");
   existing.dataset.weftTheme = "";

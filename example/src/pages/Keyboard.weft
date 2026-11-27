@@ -1,0 +1,34 @@
+component KeyboardField(label: String) {
+    state value = ""
+    Column(fill = true, gap = 4) {
+        Text(label, size = 14, weight = "semibold")
+        Input(value, fill = true, placeholder = label, onChange = { text -> value = text })
+    }
+}
+
+component Keyboard() {
+    state message = ""
+    Column(fill = true, grow = 1) {
+        Scroll {
+            Column(fill = true, padding = 16, gap = 12) {
+                Text("Keyboard avoidance", size = 24, weight = "bold")
+                KeyboardField("Field 1")
+                KeyboardField("Field 2")
+                KeyboardField("Field 3")
+                KeyboardField("Field 4")
+                KeyboardField("Field 5")
+                KeyboardField("Field 6")
+                KeyboardField("Field 7")
+                KeyboardField("Field 8")
+                KeyboardField("Field 9")
+                KeyboardField("Field 10")
+                KeyboardField("Field 11")
+                KeyboardField("Field 12")
+            }
+        }
+        Row(fill = true, padding = 16, gap = 8, align = "center") {
+            Input(message, grow = 1, placeholder = "Message", onChange = { text -> message = text })
+            Button(onClick = { message = "" }) { Text("Send") }
+        }
+    }
+}

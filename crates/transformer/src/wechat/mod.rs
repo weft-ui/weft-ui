@@ -242,7 +242,7 @@ pub fn transform(cx: &Context<'_>, options: &AppOptions) -> Vec<OutputFile> {
         OutputFile {
             path: "view.wxml".to_owned(),
             contents: format!(
-                "{templates}<block wx:if=\"{{{{t}}}}\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: ''}}}}\"/></block>\n"
+                "{templates}<view wx:if=\"{{{{t}}}}\" class=\"w-root\" style=\"padding-bottom:{{{{kh}}}}px\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: '', wFocus: kf}}}}\"/></view>\n"
             ),
         },
         OutputFile {
@@ -376,7 +376,7 @@ pub fn transform(cx: &Context<'_>, options: &AppOptions) -> Vec<OutputFile> {
             }
             let (extra, _) = wxml::templates(program, layout, Some(&included));
             let base = format!("../{root}/weft/view");
-            files.push(OutputFile { path: format!("{base}.wxml"), contents: format!("<import src=\"/weft/view.wxml\"/>\n{extra}<block wx:if=\"{{{{t}}}}\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: ''}}}}\"/></block>\n") });
+            files.push(OutputFile { path: format!("{base}.wxml"), contents: format!("<import src=\"/weft/view.wxml\"/>\n{extra}<view wx:if=\"{{{{t}}}}\" class=\"w-root\" style=\"padding-bottom:{{{{kh}}}}px\"><template is=\"{{{{t}}}}\" data=\"{{{{...r, wParent: '', wFocus: kf}}}}\"/></view>\n") });
             files.push(OutputFile {
                 path: format!("{base}.js"),
                 contents: format!(

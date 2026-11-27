@@ -64,7 +64,7 @@ async function mount(options: { handlers?: boolean } = {}) {
   await tick();
   const input = () => view.all("input")[0];
   const toggle = () => view.all("button")[0];
-  const names = () => view.all("view").slice(1).map((row) => row.children.flatMap(textOf)[0]);
+  const names = () => view.all("view").slice(2).map((row) => row.children.flatMap(textOf)[0]);
   /** `setData` payloads sent by `action` and the flush it triggers. */
   const sent = async (action: () => unknown) => {
     const before = view.calls.length;
@@ -78,6 +78,22 @@ async function mount(options: { handlers?: boolean } = {}) {
 function textOf(node: { children: unknown[] } | string): string[] {
   return typeof node === "string" ? [node] : node.children.flatMap((child) => textOf(child as never));
 }
+
+test("keyboard height resizes the component root and targets the focused input", async () => {
+  const { view, input } = await mount();
+  const field = input();
+  expect(field.attrs["adjust-position"]).toBe(false);
+  expect(field.attrs["cursor-spacing"]).toBe("16");
+  view.fire(field, "focus");
+  expect(view.data.kf).toBe(field.attrs.id);
+  view.fire(field, "keyboardheightchange", { height: 240 });
+  expect(view.data.kh).toBe(240);
+  expect(view.data.kf).toBe(field.attrs.id);
+  expect(view.render()[0].attrs.style).toBe("padding-bottom:240px");
+  view.fire(field, "keyboardheightchange", { height: 0 });
+  expect(view.data.kh).toBe(0);
+  expect(view.data.kf).toBe("");
+});
 
 test("the first setData sends the root template and its data", async () => {
   const { view, input, toggle, names } = await mount();
