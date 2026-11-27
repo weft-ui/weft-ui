@@ -70,6 +70,44 @@ test("host page loads reconstruct the stack without replacing known pages", asyn
   }
 });
 
+test("relaunch refreshes the title after the replacement page is mounted", async () => {
+  const out = await mkdtemp(join(tmpdir(), "weft-wx-relaunch-title-"));
+  const globals = globalThis as unknown as Record<string, unknown>;
+  const saved = { App: globals.App, wx: globals.wx, getCurrentPages: globals.getCurrentPages };
+  try {
+    await compile({ entries: [join(import.meta.dirname, "../fixtures/navigation/Navigation.weft")], outDir: out });
+    // The compiled fixture is created at a temporary path at runtime.
+    const { Notes, Home, Settings, Detail, Modal } = await import(pathToFileURL(join(out, "Navigation.js")).href);
+    const app = new Notes({ Home: () => new Home({}), Settings: () => new Settings({}), Detail: (params: object) => new Detail(params), Modal: () => new Modal({}) });
+    const registered: { app?: { weft: { page(name: string): Record<string, (this: object, ...args: never[]) => void> } } } = {};
+    let title = "";
+    globals.App = (options: NonNullable<typeof registered.app>) => { registered.app = options; };
+    globals.wx = { getLaunchOptionsSync: () => ({}), onMemoryWarning: () => {}, setNavigationBarTitle: (options: { title: string }) => { title = options.title; } };
+    const pages: object[] = [];
+    globals.getCurrentPages = () => pages;
+    run(app);
+    const mount = (name: string, query: Record<string, string>) => {
+      const callbacks = registered.app!.weft.page(name);
+      const instance = { route: `weft/pages/${name.toLowerCase()}/index`, selectComponent: () => loadView(out), setData: () => {} };
+      pages.splice(0, pages.length, instance);
+      callbacks.onLoad!.call(instance, query as never);
+      callbacks.onReady!.call(instance);
+    };
+    mount("Home", {});
+    await tick();
+    expect(title).toBe("Home");
+    mount("Detail", { id: "3" });
+    await tick();
+    expect(title).toBe("Note 3");
+    app.unmount();
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete globals[key]; else globals[key] = value;
+    }
+    await rm(out, { recursive: true, force: true });
+  }
+});
+
 test("cold page launch decodes route parameters and shows its dynamic title", async () => {
   const out = await mkdtemp(join(tmpdir(), "weft-wx-navigation-"));
   const globals = globalThis as unknown as Record<string, unknown>;

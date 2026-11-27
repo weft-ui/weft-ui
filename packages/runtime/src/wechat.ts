@@ -655,7 +655,6 @@ export class WechatSink implements Sink {
   }
 
   nav(tab: number, tabs: readonly number[], stack: readonly number[], modal: number, style: "sheet" | "fullScreen"): void {
-    const initial = this.#pages.length === 0;
     const next = [tabs[tab], ...stack].filter((id) => id !== 0);
     const kept = new Set([...tabs, ...stack]);
     this.#tab = tab;
@@ -674,7 +673,11 @@ export class WechatSink implements Sink {
     if (modal) this.#scope(modal).seg = "r";
     for (const id of next) this.#scope(id).seg = "r";
     if (!this.#views.size) this.#views.set(0, this.#view);
-    if (initial && next.length) this.showPage(0);
+    // A host reLaunch can replace the page at an already-bound stack index.
+    // Its new navigation state arrives after onReady, so refresh the title once
+    // the new scope exists. Do not update an outgoing page during a push: the
+    // new top index is not bound until the host creates its view.
+    if (next.length && this.#views.has(next.length - 1)) this.showPage(next.length - 1);
   }
 
   /** Sends the batch with one `setData`. */
