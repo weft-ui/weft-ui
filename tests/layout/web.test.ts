@@ -142,6 +142,26 @@ afterAll(async () => {
   await browser?.close();
 });
 
+test("WeChat lazy segments stretch to the scroll content width", async () => {
+  // WXML block and template tags do not create boxes; model their rendered views.
+  const wxml = readFileSync(new URL("../../crates/transformer/tests/snapshots/Lists/wechat/view.wxml", import.meta.url), "utf8");
+  const styles = [...wxml.matchAll(/class="w-lazy-segment [^"]+"[^>]*style="([^"{]*)/g)].map((match) => match[1]);
+  expect(styles).toHaveLength(2);
+  for (const [index, segmentStyle] of styles.entries()) {
+    await page.setContent(`<style>${CSS}</style><div class="w-scroll-content-v" style="width:300px;box-sizing:border-box;padding:20px">`
+      + `<div class="w-lazy-segment" style="${segmentStyle}">`
+      + `<div class="w-lazy-row">a</div><div class="w-lazy-row">b</div></div></div>`);
+    const widths = await page.locator(".w-lazy-segment").evaluate((segment) => ({
+      segment: segment.getBoundingClientRect().width,
+      rows: Array.from(segment.children, (row) => row.getBoundingClientRect().width),
+    }));
+    expect(widths.segment).toBe(260);
+    // The fixture's Grid has three columns and 4px gaps, including an incomplete row.
+    const expected = index === 0 ? 260 : (260 - 8) / 3;
+    for (const width of widths.rows) expect(width).toBeCloseTo(expected, 1);
+  }
+});
+
 test.each(cases)("Chromium layout: $name", async (fixture) => {
   await page.setContent(render(fixture));
   const { size, frames } = await page.locator("#layout").evaluate((container) => {

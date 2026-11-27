@@ -308,6 +308,7 @@ impl Markup<'_> {
         let mut classes = String::new();
         let mut style = String::new();
         let mut inner_style = String::new();
+        let mut lazy_padding = String::new();
         let mut picker_classes = String::new();
         let mut scroll_classes = String::new();
         if let Some((size, _)) = track_image.filter(|(size, _)| *size != "fixed") {
@@ -467,7 +468,9 @@ impl Markup<'_> {
                             _ => {}
                         }
                     }
-                    let style = if css.target == CssTarget::Inner
+                    let style = if lazy && prop.name.starts_with("padding") {
+                        &mut lazy_padding
+                    } else if css.target == CssTarget::Inner
                         || scrolling && matches!(prop.name, "gap" | "align")
                     {
                         &mut inner_style
@@ -690,10 +693,21 @@ impl Markup<'_> {
                 out,
                 "<view class=\"w-scroll-content-{axis}{scroll_classes}\""
             );
-            let separator = if inner_style.is_empty() { "" } else { ";" };
+            out.push_str(" style=\"");
+            if lazy {
+                out.push_str("box-sizing:border-box;");
+                if !lazy_padding.is_empty() {
+                    let _ = write!(out, "{lazy_padding};");
+                }
+            }
+            let separator = if lazy || !inner_style.is_empty() {
+                ";"
+            } else {
+                ""
+            };
             let _ = write!(
                 out,
-                " style=\"{inner_style}{{{{wFocus ? '{separator}padding-bottom:16px' : ''}}}}\""
+                "{inner_style}{{{{wFocus ? '{separator}padding-bottom:16px' : ''}}}}\""
             );
             out.push('>');
         } else if element == Element::Progress {
@@ -754,10 +768,12 @@ impl Markup<'_> {
                         .unwrap_or(1);
                     let grid = if element == Element::Grid {
                         format!(
-                            "display:grid;grid-template-columns:repeat({columns},minmax(0,1fr));{inner_style};"
+                            "display:grid;align-self:stretch;grid-template-columns:repeat({columns},minmax(0,1fr));{inner_style};"
                         )
                     } else {
-                        format!("display:flex;flex-direction:column;{inner_style};")
+                        format!(
+                            "display:flex;flex-direction:column;align-self:stretch;{inner_style};"
+                        )
                     };
                     let point = self.layout.point(self.id, child);
                     let content = if section.is_some() {

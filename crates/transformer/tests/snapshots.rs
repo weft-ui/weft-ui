@@ -232,6 +232,40 @@ fn lists() {
 }
 
 #[test]
+fn wechat_grid_padding_stays_inside_scroll_width() {
+    let source = LISTS.source.replace(
+        "Grid(columns = 3, gap = 4)",
+        "Grid(columns = 3, gap = 4, padding = 20)",
+    );
+    let mut loader = MemoryLoader::new();
+    loader.insert("Lists.weft", &source);
+    let output = compile_app(
+        load(&["Lists.weft"], &mut loader),
+        Platform::Wechat,
+        &Default::default(),
+    );
+    assert!(
+        output.compilation.diagnostics.is_empty(),
+        "{}",
+        output.compilation.render_diagnostics()
+    );
+    let files = generated_files(output);
+    let grid = files["view.wxml"]
+        .split("class=\"w-grid ")
+        .nth(1)
+        .expect("grid is generated");
+    let (viewport, rest) = grid.split_once('>').expect("grid viewport closes");
+    assert!(
+        !viewport.contains("padding-"),
+        "padding must not expand the viewport: {viewport}"
+    );
+    let content = rest.split_once('>').expect("scroll content opens").0;
+    assert!(content.contains("box-sizing:border-box"), "{content}");
+    assert!(content.contains("padding-left:20px"), "{content}");
+    assert!(content.contains("padding-right:20px"), "{content}");
+}
+
+#[test]
 fn todo_list() {
     check_fixture(&TODO_LIST);
 }
