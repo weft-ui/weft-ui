@@ -13,10 +13,8 @@ export const script: Script<ListFixture> = {
       { id: 1, title: "A", items: [{ id: 1, label: "Apple" }, { id: 2, label: "Apricot" }] },
       { id: 2, title: "B", items: [{ id: 1, label: "Banana" }] },
     ],
-    refreshing: false,
   }),
   setup(app, log) {
-    app.onRefresh((model) => { model.refreshing = true; log("refresh"); });
     app.onEndReached((model) => {
       log(`end ${model.items.length}`);
       const start = model.items.length;
@@ -33,8 +31,6 @@ export const script: Script<ListFixture> = {
     { name: "update hidden item", run: (_, model) => { model.items[45]!.label = "hidden updated"; } },
     { name: "near end loads more", run: (ui, model) => ui.window("List", 0, model.items.length - 10, model.items.length) },
     { name: "same window does not load again", run: (ui, model) => ui.window("List", 0, model.items.length - 20, model.items.length - 10) },
-    { name: "pull to refresh", run: (ui) => ui.refresh("List", 0) },
-    { name: "finish refresh", run: (_, model) => { model.refreshing = false; } },
     { name: "update section", run: (_, model) => { model.sections[0]!.items[0]!.label = "Apple updated"; } },
   ],
 };

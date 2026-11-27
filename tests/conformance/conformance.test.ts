@@ -18,6 +18,7 @@ import { script as inputs } from "../fixtures/inputs/script.ts";
 import { script as language } from "../fixtures/language/script.ts";
 import { script as navigation } from "../fixtures/navigation/script.ts";
 import { script as list } from "../fixtures/list/script.ts";
+import { script as listRefresh } from "../fixtures/list-refresh/script.ts";
 import { script as tap } from "../fixtures/tap/script.ts";
 import { script as theme } from "../fixtures/theme/script.ts";
 import { script as todo } from "../fixtures/todo/script.ts";
@@ -30,6 +31,7 @@ const fixtures: [string, Script<AppLike>][] = [
   ["inputs", inputs as unknown as Script<AppLike>],
   ["language", language as unknown as Script<AppLike>],
   ["list", list as unknown as Script<AppLike>],
+  ["list-refresh", listRefresh as unknown as Script<AppLike>],
   ["navigation", navigation as unknown as Script<AppLike>],
   ["tap", tap as unknown as Script<AppLike>],
   ["theme", theme as unknown as Script<AppLike>],
@@ -65,11 +67,12 @@ test.each(fixtures)("%s renders alike on every platform and matches its golden o
         await driver.settle();
       }
       check(step.name);
-      if (name === "list" && (step.name === "pull to refresh" || step.name === "finish refresh")) {
+      if (name === "list-refresh" && (step.name === "pull to refresh" || step.name === "finish refresh")) {
         expect(renderer.renderer.all("List")[0]!.props.refreshing).toBe(step.name === "pull to refresh");
       }
     }
-    if (name === "list") expect(renderer.log).toEqual(["end 56", "refresh"]);
+    if (name === "list") expect(renderer.log).toEqual(["end 56"]);
+    if (name === "list-refresh") expect(renderer.log).toEqual(["refresh"]);
     if (name === "controls") expect(renderer.log).toEqual(["switch true", "slider 45", "picker 0", "note First\nSecond", "picker 1"]);
     if (name === "inputs") expect(renderer.log).toEqual(["draft abcde", "submit", "focus true", "note a😀bc", "note abcd", "focus false"]);
     if (name === "language") expect(renderer.log).toEqual(["Rated 1", "Rated 2", "Rated 4", "Rated 5"]);

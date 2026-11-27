@@ -1,0 +1,19 @@
+model RefreshItem {
+  id: Int,
+  label: String,
+}
+
+model RefreshModel {
+  items: RefreshItem[],
+  refreshing: Bool,
+}
+
+event Refresh()
+
+component RefreshFixture(model: RefreshModel) {
+  List(refreshing = model.refreshing, onRefresh = { Refresh() }) {
+    for (item in model.items; key = item.id) {
+      Text(item.label)
+    }
+  }
+}

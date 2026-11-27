@@ -9,8 +9,8 @@ option(WEFT_LINUX_TESTS "Build the shell's unit tests" OFF)
 # The kernel comes prebuilt from build-core.sh.
 
 find_package(PkgConfig REQUIRED)
-# GTK 4.10 is the minimum supported version.
-pkg_check_modules(WEFT_DEPS REQUIRED IMPORTED_TARGET gtk4>=4.10 libsoup-3.0 json-glib-1.0 fontconfig pangocairo pangoft2)
+# GtkSectionModel is available from GTK 4.12.
+pkg_check_modules(WEFT_DEPS REQUIRED IMPORTED_TARGET gtk4>=4.12 libsoup-3.0 json-glib-1.0 fontconfig pangocairo pangoft2)
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
   set(weft_arch x64)
@@ -46,6 +46,7 @@ add_library(weft_linux STATIC
   src/elements.cpp
   src/frame.cpp
   src/layout.cpp
+  src/list.cpp
   src/platform.cpp
   src/scope.cpp
   src/session.cpp

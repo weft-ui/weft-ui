@@ -13,15 +13,13 @@ model ListModel {
   items: ListItem[],
   cells: ListItem[],
   sections: ListSection[],
-  refreshing: Bool,
 }
 
-event Refresh()
 event EndReached()
 
 component ListFixture(model: ListModel) {
   Column {
-    List(refreshing = model.refreshing, onRefresh = { Refresh() }, onEndReached = { EndReached() }) {
+    List(onEndReached = { EndReached() }) {
       Text("header")
       for (item in model.items; key = item.id) {
         Text(item.label)

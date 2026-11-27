@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <span>
@@ -31,6 +32,7 @@ namespace platform { class Ui; }
 
 class Scope;
 class Session;
+class List;
 struct Point;
 
 /// Implemented by the generated views: starts the app compiled to
@@ -146,6 +148,7 @@ class Region {
   explicit Region(GtkWidget *container) : container_(container) {}
   /// The top-level nodes of `scope`.
   explicit Region(Scope &scope) : scope_(&scope) {}
+  ~Region();
   Region(const Region &) = delete;
   Region &operator=(const Region &) = delete;
 
@@ -153,10 +156,13 @@ class Region {
   void add(const Element &element);
   /// Appends mount point `index` of `owner`.
   void point(Scope &owner, size_t index);
+  /// Registers the lazy point of a List or Grid.
+  void lazy_point(Scope &owner, size_t index, std::initializer_list<uint32_t> templates);
 
  private:
   friend struct Point;
   friend class Scope;
+  friend class List;
 
   /// A widget, or a mount point when `point` is set.
   struct Part {
@@ -174,8 +180,11 @@ class Region {
   static bool locate(const Point &point, Region *&container, size_t &index);
 
   std::vector<Part> parts_;
+  std::vector<std::unique_ptr<Region>> static_regions_;
+  std::vector<GtkWidget *> static_containers_;
   GtkWidget *container_ = nullptr;
   Scope *scope_ = nullptr;
+  List *list_ = nullptr;
 };
 
 /// An element whose WeftWidget paints its own decoration.
@@ -259,6 +268,33 @@ class Scroll final : public Padded {
   GtkScrolledWindow *scroll_;
   GtkWidget *content_;
   Region children_;
+};
+
+/// A vertically virtualized list. Grid groups consecutive items into equal-width rows.
+class List : public Padded {
+ public:
+  explicit List(int columns = 1);
+  ~List() override;
+  Region &children() { return children_; }
+  void set_gap(double gap);
+  void set_indicators(bool indicators);
+
+ private:
+  friend class Region;
+  friend class Session;
+  struct Impl;
+  void register_point(Scope &owner, size_t index, Point &point, std::initializer_list<uint32_t> templates);
+  void children_changed();
+  void splice(const ops::Splice &splice);
+  void bind(uint32_t item, Scope *child);
+  void shutdown();
+  std::unique_ptr<Impl> impl_;
+  Region children_{static_cast<GtkWidget *>(nullptr)};
+};
+
+class Grid final : public List {
+ public:
+  explicit Grid(int columns) : List(columns) {}
 };
 
 /// `Spacer`: empty space on the main axis, flexible until `size` is set.
@@ -652,8 +688,10 @@ class Scope {
   friend class Region;
   friend struct Point;
   friend class Session;
+  friend class List;
 
   uint32_t id_;
+  uint32_t template_index_ = 0;
   Session &session_;
   Region roots_;
   GtkWidget *page_widget_ = nullptr;
@@ -698,7 +736,9 @@ class Session {
 
  private:
   friend class Scope;
+  friend class List;
   friend class NavigationTest;
+  friend class ListTest;
 
   Session(GtkWidget *page, Factory make, bool app, std::vector<Tab> tabs = {});
   void select_tab();

@@ -24,6 +24,7 @@ struct Point {
   void mount(std::vector<Scope *> next);
 
   Region &region;
+  List *list = nullptr;
   /// The mounted scopes, in order.
   std::vector<Scope *> children;
 };

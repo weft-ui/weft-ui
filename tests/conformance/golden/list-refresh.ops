@@ -1,0 +1,10 @@
+# mount
+create 1 0  # RefreshFixture
+set 1 0 false  # List.refreshing
+attach 0 0 1
+
+# pull to refresh
+set 1 0 true  # List.refreshing
+
+# finish refresh
+set 1 0 false  # List.refreshing

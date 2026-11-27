@@ -20,7 +20,8 @@ if (process.argv.length !== 3) {
 const out = resolve(process.argv[2]!);
 const fixtures = join(import.meta.dirname, "../../fixtures").replaceAll("\\", "/");
 const driver = join(import.meta.dirname, "driver.ts").replaceAll("\\", "/");
-// These fixtures still depend on elements or features not supported on Linux.
+// These fixtures depend on features not supported on Linux; list-refresh uses
+// onRefresh and refreshing, which Linux ignores.
 const pending = new Set<string>(JSON.parse(readFileSync(new URL("pending.json", import.meta.url), "utf8")));
 
 process.env.WEFT_PLATFORM = "linux";

@@ -96,15 +96,37 @@ void Scope::dispatch_focus(uint32_t slot, bool focused) { session_.queue_focus(i
 
 // Region.
 
+Region::~Region() {
+  for (auto *widget : static_containers_) g_object_unref(widget);
+}
+
 void Region::add(const Element &element) {
   parts_.push_back({element.widget(), nullptr});
   if (container_) gtk_widget_set_parent(element.widget(), container_);
+  if (list_) list_->children_changed();
 }
 
 void Region::point(Scope &owner, size_t index) {
+  if (list_) {
+    auto *container = GTK_WIDGET(g_object_ref_sink(linear_new(Axis::Vertical)));
+    static_containers_.push_back(container);
+    parts_.push_back({container, nullptr});
+    static_regions_.push_back(std::make_unique<Region>(container));
+    static_regions_.back()->point(owner, index);
+    list_->children_changed();
+    return;
+  }
   auto &point = owner.points_.at(index);
   point = std::make_unique<Point>(*this);
   parts_.push_back({nullptr, point.get()});
+}
+
+void Region::lazy_point(Scope &owner, size_t index, std::initializer_list<uint32_t> templates) {
+  if (!list_) throw std::logic_error("lazy point is not in a list");
+  auto &point = owner.points_.at(index);
+  point = std::make_unique<Point>(*this);
+  parts_.push_back({nullptr, point.get()});
+  list_->register_point(owner, index, *point, templates);
 }
 
 size_t Region::count() const {

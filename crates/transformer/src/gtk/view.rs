@@ -3,7 +3,7 @@
 use std::fmt::Write;
 
 use crate::elements::Element;
-use crate::view::{Constant, Template, ValueType, ViewNodeKind};
+use crate::view::{Constant, PointKind, Template, ValueType, ViewNodeKind};
 
 use super::cpp::{self, Code};
 
@@ -26,9 +26,13 @@ fn node(out: &mut Code, template: &Template, index: u32, parent: Option<u32>) {
             children,
         } => {
             let args = match element {
-                Element::List | Element::Grid => {
-                    unreachable!("lazy lists are not supported on native platforms")
-                }
+                Element::List => String::new(),
+                Element::Grid => props
+                    .iter()
+                    .find(|prop| prop.name == "columns")
+                    .map_or_else(String::new, |prop| {
+                        literal(*element, prop.name, &prop.value)
+                    }),
                 Element::NavBar => String::new(),
                 Element::BarButton => match template.event(index, "onTap") {
                     Some(slot) => format!("[this] {{ dispatch({slot}); }}"),
@@ -119,9 +123,21 @@ fn node(out: &mut Code, template: &Template, index: u32, parent: Option<u32>) {
                 }
             }
         }
-        ViewNodeKind::Point(point) => out
-            .writer
-            .line(format_args!("{region}.point(*this, {point});")),
+        ViewNodeKind::Point(point) => {
+            if let PointKind::Lazy { templates } = &template.points[*point as usize].kind {
+                let ids = templates
+                    .iter()
+                    .map(|template| template.0.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                out.writer.line(format_args!(
+                    "{region}.lazy_point(*this, {point}, {{{ids}}});"
+                ));
+            } else {
+                out.writer
+                    .line(format_args!("{region}.point(*this, {point});"));
+            }
+        }
     }
 }
 
@@ -143,10 +159,10 @@ fn initialize(out: &mut Code, template: &Template, index: u32, instance: &str) -
             .line(format_args!("auto &n{index} = {instance};"));
         format!("n{index}.")
     };
-    for prop in props
-        .iter()
-        .filter(|prop| !is_constructor_prop(*element, prop.name))
-    {
+    for prop in props.iter().filter(|prop| {
+        !is_constructor_prop(*element, prop.name)
+            && !(matches!(element, Element::List | Element::Grid) && prop.name == "endThreshold")
+    }) {
         out.writer.line(format_args!(
             "{member}{}({});",
             setter(prop.name),
@@ -159,7 +175,9 @@ fn initialize(out: &mut Code, template: &Template, index: u32, instance: &str) -
 fn is_constructor_prop(element: Element, prop: &str) -> bool {
     matches!(
         (element, prop),
-        (Element::Scroll, "direction") | (Element::Divider, "vertical")
+        (Element::Scroll, "direction")
+            | (Element::Divider, "vertical")
+            | (Element::Grid, "columns")
     )
 }
 
@@ -188,9 +206,8 @@ fn member(template: &Template, index: u32) -> String {
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
-        Element::List | Element::Grid => {
-            unreachable!("lazy lists are not supported on native platforms")
-        }
+        Element::List => "List",
+        Element::Grid => "Grid",
         Element::NavBar => "NavBar",
         Element::BarButton => "BarButton",
         Element::Column | Element::Row => "Linear",

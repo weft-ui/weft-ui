@@ -1,5 +1,9 @@
 # @weft-ui/native-linux
 
+## Unreleased
+
+- Add virtualized GTK List and Grid views, including grouped sections and estimated row heights. GTK 4.12 or newer is required.
+
 ## 0.2.0
 
 ### Minor Changes

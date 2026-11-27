@@ -243,6 +243,10 @@ Session::~Session() {
   if (timer_) g_source_remove(timer_);
   if (sweep_) g_source_remove(sweep_);
   if (focus_idle_) g_source_remove(focus_idle_);
+  for (auto &[id, scope] : scopes_)
+    for (auto &point : scope->points_) if (point && point->list) point->list->shutdown();
+  for (auto &scope : dead_)
+    for (auto &point : scope->points_) if (point && point->list) point->list->shutdown();
   scopes_.clear();
   dead_.clear();
   if (bytecode_) g_mapped_file_unref(bytecode_);
@@ -410,8 +414,7 @@ void Session::commit(const uint8_t *ops, size_t len) {
   try {
     auto batch = ops::read_all(ops, len);
     for (const auto &op : batch) {
-      if (op.code == protocol::Code::Splice || op.code == protocol::Code::Bind ||
-          (op.code == protocol::Code::Nav && !stack_widget_))
+      if (op.code == protocol::Code::Nav && !stack_widget_)
         throw OpError("the layout has no lazy mount point or app");
     }
     for (const auto &op : batch) apply(op);
@@ -427,6 +430,7 @@ void Session::apply(const ops::Op &op) {
     case protocol::Code::Create: {
       auto scope = make_(op.index, op.scope, *this);
       if (!scope) throw OpError("the views have no template " + std::to_string(op.index));
+      scope->template_index_ = op.index;
       scopes_[op.scope] = std::move(scope);
       break;
     }
@@ -445,8 +449,20 @@ void Session::apply(const ops::Op &op) {
       navigate(op.nav);
       break;
     case protocol::Code::Splice:
-    case protocol::Code::Bind:
-      throw OpError("the layout has no lazy mount point or app");
+    case protocol::Code::Bind: {
+      auto owner = scopes_.find(op.scope);
+      if (owner == scopes_.end() || op.index >= owner->second->points_.size() ||
+          !owner->second->points_[op.index] || !owner->second->points_[op.index]->list)
+        throw OpError("the layout has no lazy mount point");
+      auto *list = owner->second->points_[op.index]->list;
+      if (op.code == protocol::Code::Splice) list->splice(op.splice);
+      else {
+        auto child = scopes_.find(op.bind.child);
+        if (op.bind.child && child == scopes_.end()) throw OpError("bind references an unknown scope");
+        list->bind(op.bind.item, op.bind.child ? child->second.get() : nullptr);
+      }
+      break;
+    }
     case protocol::Code::Rows: {
       std::vector<uint32_t> rows(op.count);
       for (uint32_t i = 0; i < op.count; i++) rows[i] = op.row(i);
@@ -635,6 +651,7 @@ void Session::mount(uint32_t parent, uint32_t index, std::vector<uint32_t> ids) 
 void Session::destroy(Scope &scope) {
   for (auto &point : scope.points_) {
     if (!point) continue;
+    if (point->list) point->list->shutdown();
     for (Scope *child : point->children) destroy(*child);
   }
   auto found = scopes_.find(scope.id());

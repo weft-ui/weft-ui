@@ -440,6 +440,23 @@ void keyboard_page(GtkWidget *root) {
   check(label(root, "Keyboard avoidance") && label(root, "Send"), "Keyboard page missing");
 }
 
+void lazy_list(GtkWidget *root) {
+  open_page(root, "page:list");
+  std::vector<GtkWidget *> views;
+  collect(root, GTK_TYPE_LIST_VIEW, views);
+  check(views.size() == 1, "Lazy list view missing");
+  auto *scroll = gtk_widget_get_ancestor(views.front(), GTK_TYPE_SCROLLED_WINDOW);
+  check(scroll, "Lazy list scroller missing");
+  auto *adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll));
+  const auto deadline = g_get_monotonic_time() + 10 * G_TIME_SPAN_SECOND;
+  while (!label(root, "Row 1001") && g_get_monotonic_time() < deadline) {
+    gtk_adjustment_set_value(adjustment, gtk_adjustment_get_upper(adjustment) - gtk_adjustment_get_page_size(adjustment));
+    g_usleep(10000);
+    pump();
+  }
+  check(label(root, "Row 1001"), "Scrolling to the end did not load more rows");
+}
+
 void catalog_walkthrough(GtkWidget *root) {
   auto *stack = catalog_stack(root, "page:controls");
   auto *catalog = gtk_stack_get_visible_child(stack);
@@ -504,6 +521,7 @@ int main(int argc, char **argv) {
   run(catalog_walkthrough, true);
   run(lifecycle_page);
   run(keyboard_page);
+  run(lazy_list);
   run(controls);
   run(inputs);
   run(overlays);

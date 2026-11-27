@@ -125,7 +125,7 @@ Layout load_layout(const json::Value &root) {
     }
     for (auto &p : t["points"].array()) {
       Point point{p["kind"].string(), {}};
-      if (point.kind == "branch") point.templates = ids(p["templates"]);
+      if (point.kind == "branch" || point.kind == "lazy") point.templates = ids(p["templates"]);
       else if (point.kind != "slot") point.templates = {p["template"].u32()};
       tpl.points.push_back(point);
     }
@@ -137,6 +137,12 @@ Layout load_layout(const json::Value &root) {
 /// Children of a mount point: none, one scope, or the rows of a list.
 using Kids = std::variant<std::monostate, uint32_t, std::vector<uint32_t>>;
 
+struct LazyItem {
+  uint32_t id;
+  uint32_t template_index;
+  uint32_t child = 0;
+};
+
 struct Scope {
   uint32_t id;
   uint32_t tpl;
@@ -144,6 +150,8 @@ struct Scope {
   /// What the view shows per value slot; differs from `values` during an edit.
   std::vector<std::optional<Value>> shown;
   std::vector<Kids> kids;
+  std::vector<std::vector<LazyItem>> lazy;
+  std::vector<std::unordered_set<uint32_t>> lazy_ids;
   bool mounted = false;
 };
 
@@ -158,10 +166,6 @@ class Renderer {
   std::vector<std::string> commit(const uint8_t *bytes, size_t len) {
     std::vector<std::string> lines;
     auto batch = weft::ops::read_all(bytes, len);
-    for (const auto &op : batch) {
-      if (op.code == Code::Splice || op.code == Code::Bind)
-        throw Protocol("the layout has no lazy mount point");
-    }
     for (const auto &op : batch) {
       lines.push_back(annotate(op));
       apply(op);
@@ -211,6 +215,22 @@ class Renderer {
     } else if (root_) expand_scope(*root_, type, found);
     if (index >= found.size()) throw Protocol("no " + type + " #" + std::to_string(index));
     return found[index];
+  }
+
+  /// The single lazy point directly contained by a list or grid element.
+  uint32_t lazy_point(uint32_t id, uint32_t local) const {
+    const Scope &scope = at(id);
+    const Template &tpl = layout_.templates[scope.tpl];
+    std::optional<uint32_t> result;
+    for (uint32_t index : tpl.nodes[local].children) {
+      const Node &node = tpl.nodes[index];
+      if (node.element.empty() && tpl.points[node.point].kind == "lazy") {
+        if (result) throw Protocol("element has more than one lazy point");
+        result = node.point;
+      }
+    }
+    if (!result) throw Protocol("element has no lazy point");
+    return *result;
   }
 
   /// The first event slot on the element matching the predicate.
@@ -282,6 +302,12 @@ class Renderer {
     const Scope &scope = at(id);
     const Node &node = layout_.templates[scope.tpl].nodes[local];
     if (node.element.empty()) {
+      if (layout_.templates[scope.tpl].points[node.point].kind == "lazy") {
+        for (const auto &item : scope.lazy[node.point]) {
+          if (item.child) expand_scope(item.child, type, found);
+        }
+        return;
+      }
       const Kids &kid = scope.kids[node.point];
       if (auto *one = std::get_if<uint32_t>(&kid)) expand_scope(*one, type, found);
       if (auto *rows = std::get_if<std::vector<uint32_t>>(&kid)) {
@@ -342,6 +368,9 @@ class Renderer {
     if (found == scopes_.end()) return;
     auto scope = std::move(found->second);
     scopes_.erase(found);
+    for (const auto &items : scope->lazy) {
+      for (const auto &item : items) if (item.child) destroy(item.child);
+    }
     for (auto &kid : scope->kids) {
       if (auto *one = std::get_if<uint32_t>(&kid)) destroy(*one);
       if (auto *rows = std::get_if<std::vector<uint32_t>>(&kid)) {
@@ -352,9 +381,53 @@ class Renderer {
 
   void apply(const weft::ops::Op &op) {
     switch (op.code) {
-      case Code::Splice:
-      case Code::Bind:
-        throw Protocol("the layout has no lazy mount point");
+      case Code::Splice: {
+        Scope &scope = at(op.scope);
+        const Point &p = point(scope, op.index, "lazy");
+        auto &old = scope.lazy[op.index];
+        auto &used = scope.lazy_ids[op.index];
+        const auto &splice = op.splice;
+        if (splice.index > old.size() || splice.remove > old.size() - splice.index)
+          throw Protocol("invalid lazy splice range");
+        std::unordered_map<uint32_t, LazyItem> by_id;
+        for (const auto &item : old) by_id.emplace(item.id, item);
+        std::vector<LazyItem> next;
+        next.reserve(old.size() - splice.remove + splice.items.count);
+        next.insert(next.end(), old.begin(), old.begin() + splice.index);
+        for (const auto item : splice.items) {
+          if (!item.item || item.template_index >= p.templates.size()) throw Protocol("invalid lazy item");
+          auto found = by_id.find(item.item);
+          if (found != by_id.end()) {
+            if (found->second.template_index != item.template_index)
+              throw Protocol("lazy item changed template");
+            next.push_back(found->second);
+          } else {
+            if (used.count(item.item)) throw Protocol("lazy item was already used");
+            next.push_back({item.item, item.template_index, 0});
+          }
+        }
+        next.insert(next.end(), old.begin() + splice.index + splice.remove, old.end());
+        std::unordered_set<uint32_t> ids;
+        for (const auto &item : next) {
+          if (!ids.insert(item.id).second) throw Protocol("duplicate lazy item");
+        }
+        for (const auto &item : old) if (!ids.count(item.id) && item.child) destroy(item.child);
+        for (const auto item : splice.items) used.insert(item.item);
+        old = std::move(next);
+        return;
+      }
+      case Code::Bind: {
+        Scope &scope = at(op.scope);
+        const Point &p = point(scope, op.index, "lazy");
+        auto &items = scope.lazy[op.index];
+        auto item = std::find_if(items.begin(), items.end(), [&](const LazyItem &entry) {
+          return entry.id == op.bind.item;
+        });
+        if (item == items.end()) throw Protocol("unknown lazy item " + std::to_string(op.bind.item));
+        if (item->child) destroy(item->child);
+        item->child = op.bind.child ? child(op.bind.child, {p.templates[item->template_index]}) : 0;
+        return;
+      }
       case Code::Nav: {
         Navigation next{op.nav.tab, {}, {}, op.nav.modal};
         next.tabs.reserve(op.nav.tabs.count);
@@ -374,6 +447,8 @@ class Renderer {
         scope->values.resize(tpl.values.size());
         scope->shown.resize(tpl.values.size());
         scope->kids.resize(tpl.points.size());
+        scope->lazy.resize(tpl.points.size());
+        scope->lazy_ids.resize(tpl.points.size());
         scopes_.emplace(op.scope, std::move(scope));
         return;
       }
@@ -577,6 +652,13 @@ struct Host {
     } else if (call.method == "edit") {
       auto [scope, node] = renderer.find(args["type"].string(), args["index"].u32());
       edit(scope, node, args["value"]);
+    } else if (call.method == "window") {
+      auto [scope, node] = renderer.find(args["type"].string(), args["index"].u32());
+      weft_runtime_window(rt, scope, renderer.lazy_point(scope, node), args["start"].u32(), args["end"].u32());
+    } else if (call.method == "refresh") {
+      auto [scope, node] = renderer.find(args["type"].string(), args["index"].u32());
+      uint32_t slot = renderer.event_of(scope, node, [](const Event &event) { return event.name == "onRefresh"; });
+      dispatch(scope, slot, {});
     } else if (call.method == "back") {
       if (auto signal = renderer.back()) weft_runtime_signal(rt, "navigation", signal->data(), signal->size());
     } else if (call.method == "tab") {
