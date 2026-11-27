@@ -1,0 +1,6 @@
+{
+  "coldStartMs": 2869.5992334,
+  "jankRatio": null,
+  "memoryDeltaMiB": 8.296897888183594,
+  "notes": "hitch metrics are not reported on the simulator"
+}

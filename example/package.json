@@ -30,6 +30,8 @@
     "build:web": "node --experimental-strip-types scripts/catalog.ts web && WEFT_PLATFORM=web vite build",
     "build:wechat": "node --experimental-strip-types scripts/catalog.ts wechat && WEFT_PLATFORM=wechat vite build",
     "build:windows": "node --experimental-strip-types scripts/catalog.ts windows && WEFT_PLATFORM=windows vite build",
+    "perf:android": "node --experimental-strip-types scripts/perf/android.ts",
+    "perf:ios": "node --experimental-strip-types scripts/perf/ios.ts",
     "shot:android": "node --experimental-strip-types scripts/shot/android.ts",
     "shot:ios": "node --experimental-strip-types scripts/shot/ios.ts",
     "shot:linux": "node --experimental-strip-types scripts/shot/linux.ts",

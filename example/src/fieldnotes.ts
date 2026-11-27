@@ -3,10 +3,10 @@ import { About, Bench, Catalog, Detail, Discover, Feed, Inbox, Login, Me, Publis
 import { appendFeed, createBench, createComments, createFeed, noteForId, refreshFeed } from "./data.ts";
 
 let unread = 3;
-function feedEvents(page: Feed | Bench) {
+function feedEvents(page: Feed | Bench, paginate = true) {
   page.onFeedOpen((_, event) => navigation.push(Detail, { id: event.id }));
   page.onFeedPublish(() => navigation.present(Publish, {}, { style: "fullScreen" }));
-  page.onFeedEndReached(() => { page.model.notes = appendFeed(page.model.notes); });
+  if (paginate) page.onFeedEndReached(() => { page.model.notes = appendFeed(page.model.notes); });
   page.onFeedRefresh(() => {
     if (page.model.refreshing) return;
     page.model.refreshing = true;
@@ -26,7 +26,7 @@ export const fieldnotesPages = {
   },
   Bench: (params: ConstructorParameters<typeof Bench>[1]) => {
     const page = new Bench({ notes: createBench(params.count ?? 10000), refreshing: false }, params);
-    feedEvents(page);
+    feedEvents(page, false);
     return page;
   },
   Detail: (params: ConstructorParameters<typeof Detail>[1]) => {
