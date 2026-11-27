@@ -77,7 +77,7 @@ internal sealed class WeftNavigationHost
         {
             tabView = new NavigationView
             {
-                PaneDisplayMode = NavigationViewPaneDisplayMode.Left,
+                PaneDisplayMode = NavigationViewPaneDisplayMode.Top,
                 IsSettingsVisible = false,
                 IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
                 IsPaneToggleButtonVisible = false,
