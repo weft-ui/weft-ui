@@ -218,8 +218,59 @@ impl Body<'_> {
             }
         }
         match element {
-            Element::NavBar | Element::BarButton | Element::List | Element::Grid => {
-                unreachable!("navigation is not supported on native platforms")
+            Element::NavBar | Element::BarButton => {
+                unreachable!("navigation elements are rendered separately")
+            }
+            Element::List | Element::Grid => {
+                let (position, point) = children
+                    .iter()
+                    .enumerate()
+                    .find_map(
+                        |(i, &child)| match self.template.nodes[child as usize].kind {
+                            ViewNodeKind::Point(point)
+                                if matches!(
+                                    self.template.points[point as usize].kind,
+                                    PointKind::Lazy { .. }
+                                ) =>
+                            {
+                                Some((i, point))
+                            }
+                            _ => None,
+                        },
+                    )
+                    .expect("a lazy list has a lazy mount point");
+                let columns = if element == Element::Grid {
+                    with_default(prop("columns"), "1")
+                } else {
+                    Argument::Default("1")
+                };
+                let sections = matches!(
+                    &self.template.points[point as usize].kind,
+                    PointKind::Lazy { templates } if templates.len() == 2
+                );
+                let gap = with_default(prop("gap"), "0");
+                let indicators = with_default(prop("indicators"), "true");
+                let sticky = with_default(prop("stickyHeaders"), "false");
+                let refreshing = with_default(prop("refreshing"), "false");
+                let refresh = self
+                    .template
+                    .event(node, "onRefresh")
+                    .map_or(Argument::Default("nil"), Argument::Action);
+                if !padding.is_empty() {
+                    out.open(format_args!("weftLeaf(padding: .init({padding})) {{"));
+                }
+                out.open(format_args!("WeftLazyView(list: s.lazyList({point}), columns: Int({columns}), sections: {sections}, gap: {gap}, indicators: {indicators}, stickyHeaders: {sticky}, refreshing: {{ {refreshing} }}, onRefresh: {refresh}, header: {{"));
+                for &child in &children[..position] {
+                    self.node(out, child);
+                }
+                out.reopen("}, footer: {");
+                for &child in &children[position + 1..] {
+                    self.node(out, child);
+                }
+                out.close("})");
+                if !padding.is_empty() {
+                    out.close("}");
+                }
             }
             Element::Column | Element::Row | Element::Stack | Element::Scroll => {
                 let gap = with_default(prop("gap"), "0");
@@ -426,8 +477,12 @@ impl Body<'_> {
             prop(name)
                 .map(Argument::Property)
                 .or(match (element, name) {
-                    (Element::Scroll, "grow") => Some(Argument::Default("1")),
-                    (Element::Scroll, "fill") => Some(Argument::Default("true")),
+                    (Element::Scroll | Element::List | Element::Grid, "grow") => {
+                        Some(Argument::Default("1"))
+                    }
+                    (Element::Scroll | Element::List | Element::Grid, "fill") => {
+                        Some(Argument::Default("true"))
+                    }
                     _ => None,
                 })
         });

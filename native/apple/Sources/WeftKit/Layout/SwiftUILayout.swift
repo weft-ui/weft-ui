@@ -284,6 +284,11 @@ private struct WeftConfiguredBox<Content: View>: View {
     }
 }
 
+/// Gives a lazy list item the list's full cross-axis proposal.
+@MainActor func weftLazyItem<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    content().weftChildren(of: .linear(.vertical, .stretch))
+}
+
 /// Places children on the specified axis using Weft's linear layout rules.
 @MainActor public func weftLinear<Content: View>(
     axis: WeftAxis, gap: CGFloat = 0, align: WeftCrossAlign = .start,

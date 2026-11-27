@@ -107,7 +107,7 @@ private func decode(_ bytes: [UInt8]) throws -> [Op] {
     #expect(createdScopes.isEmpty)
 }
 
-@Test @MainActor func unsupportedOpsRejectTheWholeBatch() throws {
+@Test @MainActor func lazyOpsApplyAfterCreate() throws {
     let cases = try #require(corpus("ops")["cases"] as? [JSONObject])
     for name in ["splice-rows", "bind"] {
         let test = try #require(cases.first { $0["name"] as? String == name })
@@ -119,8 +119,7 @@ private func decode(_ bytes: [UInt8]) throws -> [Op] {
             return WeftScope(id: id, session: session)
         }
         bytes.withUnsafeBytes { session.commit($0) }
-        #expect(session.failure?.hasPrefix("weft: cannot apply ops") == true, "\(name)")
-        #expect(createdScopes.isEmpty, "\(name)")
+        #expect(createdScopes == [1], "\(name)")
     }
 }
 

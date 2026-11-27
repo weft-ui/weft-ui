@@ -167,9 +167,7 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
         let declaration = match &mount.kind {
             PointKind::Branch { .. } | PointKind::Slot => "WeftScope?".to_owned(),
             PointKind::List { template } => format!("[S{}] = []", template.0),
-            PointKind::Lazy { .. } => {
-                unreachable!("lazy lists are not supported on native platforms")
-            }
+            PointKind::Lazy { .. } => continue,
             PointKind::Instance { template } => format!("S{}?", template.0),
         };
         out.writer.line(format_args!("var p{point}: {declaration}"));
@@ -203,9 +201,7 @@ fn scope(out: &mut Code, index: usize, template: &Template) {
                 PointKind::List { template } => {
                     format!("children.map {{ $0 as! S{} }}", template.0)
                 }
-                PointKind::Lazy { .. } => {
-                    unreachable!("lazy lists are not supported on native platforms")
-                }
+                PointKind::Lazy { .. } => continue,
                 PointKind::Instance { template } => {
                     format!("children.first.map {{ $0 as! S{} }}", template.0)
                 }
@@ -269,6 +265,26 @@ mod tests {
             edge_to_edge.contains("safeArea: false,\n"),
             "{edge_to_edge}"
         );
+    }
+
+    #[test]
+    fn lazy_lists_and_grids_render_mounts_and_surrounding_content() {
+        let code = swift(
+            include_str!("../../tests/fixtures/Lists.weft"),
+            &AppOptions::default(),
+        );
+        assert!(code.contains("WeftLazyView(list: s.lazyList("), "{code}");
+        assert!(
+            code.contains("columns: Int(1), sections: false, gap: 8"),
+            "{code}"
+        );
+        assert!(
+            code.contains("columns: Int(3), sections: false, gap: 4"),
+            "{code}"
+        );
+        assert!(code.contains("value: \"Header\""), "{code}");
+        assert!(code.contains("}, footer: {"), "{code}");
+        assert!(code.contains("value: \"Footer\""), "{code}");
     }
 
     #[test]

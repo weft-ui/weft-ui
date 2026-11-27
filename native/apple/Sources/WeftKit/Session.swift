@@ -192,14 +192,6 @@ public final class WeftSession {
         do {
             let ops = try OpReader.readAll(bytes)
             for op in ops {
-                switch op {
-                case .splice, .bind:
-                    fail("weft: cannot apply ops (lazy lists are not supported by these views)")
-                    return
-                default: break
-                }
-            }
-            for op in ops {
                 if !apply(op) { break }
             }
         } catch {
@@ -256,9 +248,14 @@ public final class WeftSession {
                 if let scope = scopes[id], id != 0 { destroy(scope) }
             }
             return true
-        case .splice, .bind:
-            fail("weft: cannot apply ops (lazy lists are not supported by these views)")
-            return false
+        case let .splice(scope, point, index, remove, items):
+            guard let parent = scopes[scope] else { return true }
+            parent.lazyList(Int(point)).splice(index: Int(index), remove: Int(remove), items: items, destroy: destroy)
+            return true
+        case let .bind(scope, point, item, child):
+            guard let parent = scopes[scope] else { return true }
+            parent.lazyList(Int(point)).bind(item: item, child: child == 0 ? nil : scopes[child], destroy: destroy)
+            return true
         }
     }
 
@@ -330,6 +327,7 @@ public final class WeftSession {
 
     private func destroy(_ scope: WeftScope) {
         scopes[scope.id] = nil
+        scope.destroyLazyChildren(destroy)
         for children in scope.children.values {
             children.forEach(destroy)
         }

@@ -11,6 +11,22 @@ open class WeftScope: Identifiable {
     /// Children by mount point, as last mounted; the session uses them to
     /// destroy subtrees.
     var children: [UInt32: [WeftScope]] = [:]
+    private var lazyLists: [Int: WeftLazyList] = [:]
+
+    public func lazyList(_ point: Int) -> WeftLazyList {
+        if let list = lazyLists[point] { return list }
+        let list = WeftLazyList(scope: self, point: point)
+        lazyLists[point] = list
+        return list
+    }
+
+    func destroyLazyChildren(_ destroy: (WeftScope) -> Void) {
+        for list in lazyLists.values {
+            for item in list.items {
+                if let child = item.child { destroy(child) }
+            }
+        }
+    }
 
     public required init(id: UInt32, session: WeftSession) {
         self.id = id
