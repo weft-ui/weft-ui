@@ -863,25 +863,25 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R4.n | ☑ | 4638a69 | |
 | R4.g | ☑ | a6bd73a | 含本波次的启用改动（`overlays` 不再 `pending`、platform-api 指南） |
 | R5.w | ☑ | a7678db | Playwright 10 000 项滚到底部 DOM 少于 200 项；开发者工具里滚动弹回顶部，由 3240703 修正（见执行中发现） |
-| R5.a | ☐ | | |
-| R5.d | ☐ | | |
-| R5.n | ☐ | | |
-| R5.g | ☐ | | |
+| R5.a | ☑ | 53eb16c | 视口内的帧决定请求窗口（见执行中发现）；iOS 万行快速滑动的停稳截图无空白行（自动滑动，非人工连续观察） |
+| R5.d | ☑ | 1d260ea | 万行快速滑动截图无空白行；刷新与分组的组合函数随本提交 |
+| R5.n | ☑ | 6aada42 | 万行滚动后截图正常；连续快速滑动中的空白行未逐帧观察 |
+| R5.g | ☑ | 192ed93 | 与 R6.g 合为一个提交（编排者同意）；万行滚到 Row 10000，抽样截图无空白行 |
 | R6.w | ☑ | bb68eab | 小程序 `stickyHeaders` 标 `ignored`（见执行中发现）；Playwright 覆盖吸顶、触摸下拉刷新、加载更多只触发一次 |
-| R6.a | ☐ | | |
-| R6.d | ☐ | | |
-| R6.n | ☐ | | |
-| R6.g | ☐ | | |
+| R6.a | ☑ | e61a90e | iOS 的 `.refreshable` 指示器不进入无障碍树，测试改为断言回到首行；iOS 的加载更多由共用 SwiftUI 代码的 macOS 测试覆盖（滚动 1000 行在 iOS 上超出 C-ui 时间） |
+| R6.d | ☑ | 1a6ba35 | |
+| R6.n | ☑ | 5edebef | 刷新与吸顶在 Windows 为 `ignored` |
+| R6.g | ☑ | 192ed93 | conformance 的刷新步骤拆为 `list-refresh`，原生宿主（编译 Linux 布局，`onRefresh` 被忽略）将它列入 pending |
 | R7.w | ⏸ | 1103221 | Playwright 切换标签页不改变 Chromium 的 `visibilityState`，自动化验收缺（见执行中发现）；单测覆盖 `visibilitychange` |
 | R7.a | ☑ | eb18eed | |
 | R7.d | ☑ | 5af7b6e | 主屏再打开计数正确；`RUNNING_LOW` 低于 `TRIM_MEMORY_BACKGROUND`，按规范不触发 |
 | R7.n | ☑ | dc63f8d | 非打包应用订阅 `MemoryManager.AppMemoryUsageIncreased` 失败（`0xD0000225`），指南注明 Windows 不触发内存告警 |
 | R7.g | ☑ | 9c0f0ef | |
 | R8.w | ☑ | e7eb2ed | Playwright 冷启动 `/notes/3` 后退回到起始页 |
-| R8.a | ☐ | | |
-| R8.d | ☐ | | |
-| R8.n | ☐ | | |
-| R8.g | ☐ | | |
+| R8.a | ☑ | b8c094a | XCUITest 用 `XCUIApplication.open` 验证 iOS、macOS 冷启动与运行中链接（`simctl openurl` 首次会弹系统确认框）；macOS 运行中链接不再新开窗口（见执行中发现）；Universal Links 域名验证 ⏸（规则 7） |
+| R8.d | ☑ | 9c412da | `am start` 冷启动、返回、运行中链接在 Pixel_10_API_37.2 上验证；App Links 域名验证 ⏸（规则 7） |
+| R8.n | ☑ | 8af75a7 | 虚拟机里用协议 URI 验证冷启动与运行中激活（截图已看）；协议激活 UI 测试通过 |
+| R8.g | ☑ | f1be1da | 容器里注册 `.desktop` 后 `gio open` 冷启动与运行中验证，始终一个窗口；全量 C-rust、C-ts 由编排者运行 |
 | R9.w | ⏸ | 7033aa5 | 小程序真机预览需要维护者（规则 7） |
 | R9.a | ☑ | 8ab27ab | iOS 基线 af32e41（截图待维护者确认） |
 | R9.d | ☑ | c893a49 | |
@@ -950,3 +950,6 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R5.a] iOS 列表行与分组头只占文字宽度：惰性项的横轴提议没有传入列表宽度。截图发现，已修正（53eb16c）
 - [R5.n] Windows 推入页面的标题与返回按钮重叠，导航后返回按钮显示键盘焦点框（R1.n 起就有，截图里一直存在）。修正：标题栏留出返回按钮的宽度，程序设置的焦点不显示焦点框，FlaUI 断言标题左沿不小于按钮右沿（435f4dd）。结论：已修正
 - [R5、R6 原生波次] 五个代理共用 `apps`、`example` 锁，排队常超过 15 分钟；有代理先持有 `example` 再等 `apps`，与截图脚本（`example` → `apps`）方向相反，存在死锁风险。约定加锁顺序 `example` → `apps` → 设备，等待中不持有其他锁。macOS UI 与 iOS UI 测试同时运行时，macOS 的 ⌘[ 与 UI 自动化模式启动失败，二者必须错开。Android 的 `InputsTest` 只在 ATD 镜像（Weft_Shots）上失败，C-ui 用 Pixel_10_API_37.2。结论：环境约定，已写入代理规则
+- [R8.a] §6 的 unverified 一项成立：SwiftUI 在会话创建之后才通过 `onOpenURL` 交付冷启动链接，`lifecycle.launch.url` 在 Apple 平台上为空，链接按退路在首帧后无动画打开；navigation 指南注明。结论：接受（平台限制）
+- [R8.a] macOS 上运行中的链接让 `WindowGroup` 每次新开一个共用同一会话的窗口（截图里叠着三个窗口，⌘[ 落到别的窗口）。修正：场景声明 `handlesExternalEvents`，链接交给已有窗口；UI 测试断言窗口数为 1（b8c094a）。结论：已修正
+- [R8] 四个平台的 Vite 适配器都需要 `links`：编排者先提交 `NativeAdapter.writeGlue(generated, project, links)` 的契约（416e1ea），各平台在自己的文件里生成注册文件。example 还没有 `/notes/{id}`，原生验收改用 `weftexample://showcase/<id>`，`/notes/1` 由 T2 覆盖。结论：已处理
