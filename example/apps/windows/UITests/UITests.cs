@@ -28,8 +28,6 @@ public sealed class UITests
             foreach (var page in pages.RootElement.EnumerateArray())
             {
                 if (page.TryGetProperty("link", out _)) continue;
-                if (page.TryGetProperty("pending", out var pending) &&
-                    pending.EnumerateArray().Any(platform => platform.GetString() == "windows")) continue;
                 var id = page.GetProperty("id").GetString();
                 var label = $"page:{id}";
                 var entry = Screenshots.FindButton(window, label);

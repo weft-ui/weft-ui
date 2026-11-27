@@ -1,7 +1,4 @@
 {
-  "features": {
-    "navigation": {}
-  },
   "unions": {
     "CrossAlign": ["start", "center", "end", "stretch"],
     "Justify": ["start", "center", "end", "spaceBetween", "spaceAround", "spaceEvenly"],

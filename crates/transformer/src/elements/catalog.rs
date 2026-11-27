@@ -13,9 +13,6 @@ pub(crate) enum Level {
     Ignored,
 }
 
-/// Platform support exceptions for language features.
-pub(crate) const FEATURES: &[(&str, &[(Platform, Level)])] = &[("navigation", &[])];
-
 /// Built-in elements available in Weft views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Element {

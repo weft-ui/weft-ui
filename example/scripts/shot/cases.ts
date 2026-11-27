@@ -19,9 +19,9 @@ export function prepareShots(platform: Platform): { directory: string; shots: Sh
   const shots: Shot[] = [];
   // WEFT_SHOT_PAGES=a,b limits a run to those page ids (for example, the page a change affects).
   const only = process.env.WEFT_SHOT_PAGES?.split(",").filter(Boolean);
-  const selected = pages(platform).filter(({ id }) => !only?.length || only.includes(id));
+  const selected = pages().filter(({ id }) => !only?.length || only.includes(id));
   if (only?.length && selected.length !== only.length) {
-    throw new Error(`Unknown or unavailable page in WEFT_SHOT_PAGES=${only.join(",")} for ${platform}`);
+    throw new Error(`Unknown page in WEFT_SHOT_PAGES=${only.join(",")} for ${platform}`);
   }
   for (const { id, link, dark } of selected) {
     shots.push({ id, link, scheme: "light", name: `${id}.png`, path: join(directory, `${id}.png`) });

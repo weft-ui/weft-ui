@@ -8,6 +8,6 @@ export default defineConfig({
     include: "src/App.weft",
     links: { scheme: "weftexample" },
     // The showcase pages and the Inter fonts they use stay out of the main package.
-    wechat: { subPackages: { showcase: showcasePages("wechat").map((page) => `${componentName(page)}Page`) } },
+    wechat: { subPackages: { showcase: showcasePages().map((page) => `${componentName(page)}Page`) } },
   })],
 });

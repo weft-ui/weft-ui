@@ -54,7 +54,6 @@ interface Element extends Documented {
 }
 
 interface Schema {
-  features?: Record<string, Support>;
   unions?: Record<string, string[]>;
   groups?: Record<string, Member[]>;
   elements: Element[];
@@ -161,10 +160,6 @@ function validateMembers(members: LocatedMember[], unions: Record<string, string
 }
 
 function expand(schema: Schema, platforms: Platforms): ExpandedElement[] {
-  for (const [name, support] of Object.entries(schema.features ?? {})) {
-    if (!/^[a-z][A-Za-z0-9]*$/.test(name)) invalid(`features.${name}`, "expected a lowerCamelCase feature name");
-    validateSupport(support, `features.${name}`, platforms);
-  }
   const unions = schema.unions ?? {};
   for (const [name, values] of Object.entries(unions)) {
     const path = `unions.${name}`;
@@ -334,7 +329,7 @@ function rustChildren(children: Children = "none"): string {
 
 function rust(
   elements: ExpandedElement[], platforms: Platforms,
-  unions: Record<string, string[]>, css: CssCatalog, sheet: string, features: Record<string, Support>,
+  unions: Record<string, string[]>, css: CssCatalog, sheet: string,
 ): string {
   // Elements with identical expanded members share one slice.
   const shared = new Map<string, string>();
@@ -371,15 +366,6 @@ function rust(
       : `${prefix}[\n${values.map((value) => `    ${quote(value)},`).join("\n")}\n];`;
   }).join("\n");
   const customImport = css.mappings.some((mapping) => mapping.unit === "custom") ? "CustomCss, " : "";
-  const featureEntries = Object.entries(features).map(([name, support]) => {
-    const entries = rustSupport(support, platforms);
-    return entries.includes("\n")
-      ? `(\n        ${quote(name)},\n        ${entries},\n    )`
-      : `(${quote(name)}, ${entries})`;
-  });
-  const featureList = featureEntries.length === 1 ? `&[${featureEntries[0]!.replaceAll("\n    ", "\n")}]`
-    : featureEntries.length === 0 ? "&[]"
-    : `&[\n${featureEntries.map((entry) => `    ${entry},`).join("\n")}\n]`;
   return `${header}
 use super::{
     Children, Css, CssTarget, CssUnit, ${customImport}ElementSpec, PropKind, PropSpec, PropType,
@@ -392,9 +378,6 @@ pub(crate) enum Level {
     #[allow(dead_code, reason = "the catalog may omit ignored entries")]
     Ignored,
 }
-
-/// Platform support exceptions for language features.
-pub(crate) const FEATURES: &[(&str, &[(Platform, Level)])] = ${featureList};
 
 /// Built-in elements available in Weft views.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -627,7 +610,7 @@ export function generateElements(platforms: Platforms): Record<string, string> {
   const css = collectCss(elements);
   const sheet = readFileSync(new URL("weft.css", import.meta.url), "utf8");
   const outputs: Record<string, string> = {
-    "crates/transformer/src/elements/catalog.rs": rust(elements, platforms, unions, css, sheet, schema.features ?? {}),
+    "crates/transformer/src/elements/catalog.rs": rust(elements, platforms, unions, css, sheet),
     "packages/runtime/src/elements.ts": typescript(elements, unions, css.mappings, sheet),
     ...nativeUnions(unions),
   };

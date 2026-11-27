@@ -84,7 +84,7 @@ try {
     if (detail) target = `/weft/pages/detail/index?id=${encodeURIComponent(decodeURIComponent(detail[1]!))}`;
     else if (appRoutes[link]) target = `/weft/pages/${appRoutes[link]}/index`;
     else if (link === `/showcase/${id}`) {
-      const entry = pages("wechat").find((item) => item.id === id);
+      const entry = pages().find((item) => item.id === id);
       if (!entry) throw new Error(`Unknown WeChat showcase page ${id}`);
       const slug = `${componentName(entry)}Page`.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
       target = `/showcase/weft/pages/${slug}/index`;

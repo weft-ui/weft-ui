@@ -9,7 +9,6 @@ interface Page {
   component?: string;
   link?: string;
   dark?: boolean;
-  pending?: Platform[];
   props?: Record<string, string[]>;
 }
 
@@ -21,15 +20,14 @@ export function componentName({ id, component }: Page): string {
 
 export type ResolvedPage = Page & { link: string };
 
-function resolvePages(entries: Page[], platform?: Platform): ResolvedPage[] {
-  return entries.filter(({ pending }) => platform === undefined || !pending?.includes(platform))
-    .map((page) => ({ ...page, link: page.link ?? `/showcase/${page.id}` }));
+function resolvePages(entries: Page[]): ResolvedPage[] {
+  return entries.map((page) => ({ ...page, link: page.link ?? `/showcase/${page.id}` }));
 }
 
-export function pages(platform?: Platform): ResolvedPage[] {
-  return resolvePages(manifest, platform);
+export function pages(): ResolvedPage[] {
+  return resolvePages(manifest);
 }
 
-export function showcasePages(platform?: Platform): ResolvedPage[] {
-  return resolvePages(manifest.filter(({ link }) => link === undefined), platform);
+export function showcasePages(): ResolvedPage[] {
+  return resolvePages(manifest.filter(({ link }) => link === undefined));
 }

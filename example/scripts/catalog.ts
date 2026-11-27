@@ -20,7 +20,7 @@ for (const { id, props } of showcasePages()) {
   }
 }
 
-const catalog = showcasePages(platform).map(({ id, title, component, props }) => {
+const catalog = showcasePages().map(({ id, title, component, props }) => {
   const file = id.split(/[-_]/).map((word) => word[0]!.toUpperCase() + word.slice(1)).join("");
   const args = id === "safearea" ? "model.safeArea" : id === "list" ? "model.listRows, model.listRefreshing" : id === "sections" ? "model.sections" : Object.keys(props ?? {}).map((name) => `model.${name}`).join(", ");
   const name = componentName({ id, title, component, props });
@@ -60,7 +60,6 @@ writeFileSync(new URL("../src/catalog.ts", import.meta.url), [
   "",
   `type Model = ConstructorParameters<typeof ${catalog[0]!.page}>[0];`,
   'const props = Object.fromEntries(manifest.flatMap(({ props }) => Object.entries(props ?? {}))) as Pick<Model, Exclude<keyof Model, "safeArea" | "listRefreshing" | "sections">>;',
-  // A page pending on this platform is absent from App.weft, so setup.ts may name pages this catalog lacks.
   "const handlers: Partial<Record<string, (page: never) => void>> = setup;", 
   "",
   "export const app = new Example({",

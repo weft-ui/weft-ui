@@ -3,7 +3,7 @@
 mod catalog;
 
 pub use catalog::Element;
-pub(crate) use catalog::{CSS, CSS_PROPS, ELEMENTS, FEATURES, Level};
+pub(crate) use catalog::{CSS, CSS_PROPS, ELEMENTS, Level};
 
 use crate::ir::Type;
 use crate::protocol::Platform;
