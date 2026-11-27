@@ -124,11 +124,13 @@ public sealed class WeftRegion
     }
 
     /// <summary>Appends mount point <paramref name="index"/> of <paramref name="owner"/>.</summary>
-    public void Point(WeftScope owner, int index)
+    public void Point(WeftScope owner, int index) => owner.Points[index] = CreatePoint();
+
+    internal WeftPoint CreatePoint()
     {
         var point = new WeftPoint(this);
-        owner.Points[index] = point;
         parts.Add(point);
+        return point;
     }
 
     internal int Count
@@ -223,6 +225,10 @@ internal sealed class WeftPoint(WeftRegion region)
 
     /// <summary>The mounted scopes, in order.</summary>
     public IReadOnlyList<WeftScope> Children { get; private set; } = [];
+
+    internal WeftLazyList? Lazy { get; set; }
+
+    internal void SetLazyChildren(IReadOnlyList<WeftScope> children) => Children = children;
 
     public int Count
     {

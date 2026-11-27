@@ -8,6 +8,71 @@ namespace Weft.WinUI;
 
 internal readonly record struct SpliceItem(uint Item, uint Template);
 
+/// <summary>Ordered protocol items and their materialized scope IDs.</summary>
+internal sealed class LazyItems
+{
+    internal sealed class Item(uint id, uint template)
+    {
+        internal uint Id { get; } = id;
+        internal uint Template { get; } = template;
+        internal uint Child { get; set; }
+    }
+
+    private readonly List<Item> items = [];
+    private readonly Dictionary<uint, Item> byId = [];
+    internal IReadOnlyList<Item> Items => items;
+    internal bool TryGet(uint id, out Item? item) => byId.TryGetValue(id, out item);
+
+    /// <summary>Replaces a range, preserving bindings for IDs that survive the splice.</summary>
+    internal List<uint> Splice(uint index, uint remove, IReadOnlyList<SpliceItem> added)
+    {
+        if (index > items.Count || remove > items.Count - index)
+            throw new OpException("lazy splice is out of range");
+        var old = new Dictionary<uint, Item>();
+        for (var i = (int)index; i < index + remove; i++) old.Add(items[i].Id, items[i]);
+        var inserted = new List<Item>(added.Count);
+        var seen = new HashSet<uint>();
+        foreach (var entry in added)
+        {
+            if (entry.Item == 0 || !seen.Add(entry.Item) || (byId.ContainsKey(entry.Item) && !old.ContainsKey(entry.Item)))
+                throw new OpException("duplicate lazy item ID");
+            if (old.TryGetValue(entry.Item, out var existing))
+            {
+                if (existing.Template != entry.Template) throw new OpException("lazy item template changed");
+                inserted.Add(existing);
+                old.Remove(entry.Item);
+            }
+            else inserted.Add(new Item(entry.Item, entry.Template));
+        }
+        var destroyed = new List<uint>();
+        foreach (var item in old.Values)
+        {
+            byId.Remove(item.Id);
+            if (item.Child != 0) destroyed.Add(item.Child);
+        }
+        items.RemoveRange((int)index, (int)remove);
+        items.InsertRange((int)index, inserted);
+        foreach (var item in inserted) byId[item.Id] = item;
+        return destroyed;
+    }
+
+    /// <summary>Expands the realized interval by one interval on either side.</summary>
+    internal static (uint Start, uint End) Window(int count, int first, int last)
+    {
+        var extra = last - first + 1;
+        return ((uint)Math.Max(0, first - extra), (uint)Math.Min(count, last + 1 + extra));
+    }
+
+    /// <summary>Updates one binding and returns the previously bound scope ID.</summary>
+    internal uint Bind(uint id, uint child)
+    {
+        if (!byId.TryGetValue(id, out var item)) throw new OpException("unknown lazy item ID");
+        var previous = item.Child;
+        item.Child = child;
+        return previous;
+    }
+}
+
 /// <summary>
 /// One decoded op. <see cref="Arg"/> is the field after the scope: the
 /// template (create), slot (set) or point (branch / rows / attach);

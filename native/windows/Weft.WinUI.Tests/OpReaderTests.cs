@@ -8,6 +8,41 @@ namespace Weft.WinUI.Tests;
 public sealed class OpReaderTests
 {
     [TestMethod]
+    public void LazySplicePreservesSurvivingBindingsAndReleasesRemovedItems()
+    {
+        var items = new LazyItems();
+        items.Splice(0, 0, [new(1, 0), new(2, 0), new(3, 1)]);
+        items.Bind(1, 11);
+        items.Bind(2, 12);
+        items.Bind(3, 13);
+        items.Splice(0, 0, [new(4, 0)]);
+        items.Splice(4, 0, [new(5, 0)]);
+        CollectionAssert.AreEqual(new uint[] { 4, 1, 2, 3, 5 }, items.Items.Select(item => item.Id).ToArray());
+        CollectionAssert.AreEquivalent(new uint[] { 11, 13 }, items.Splice(0, 5, [new(2, 0), new(6, 1)]));
+        Assert.AreEqual(12u, items.Items[0].Child);
+        Assert.AreEqual(12u, items.Bind(2, 0));
+        Assert.AreEqual(0u, items.Items[0].Child);
+    }
+
+    [TestMethod]
+    public void LazyWindowExpandsAndClampsBothEnds()
+    {
+        Assert.AreEqual((0u, 30u), LazyItems.Window(100, 0, 14));
+        Assert.AreEqual((30u, 75u), LazyItems.Window(100, 45, 59));
+        Assert.AreEqual((70u, 100u), LazyItems.Window(100, 85, 99));
+    }
+
+    [TestMethod]
+    public void LazySpliceRejectsInvalidRangesAndDuplicateIds()
+    {
+        var items = new LazyItems();
+        items.Splice(0, 0, [new(1, 0), new(2, 0)]);
+        Assert.ThrowsExactly<OpException>(() => items.Splice(3, 0, []));
+        Assert.ThrowsExactly<OpException>(() => items.Splice(1, 1, [new(1, 0)]));
+        CollectionAssert.AreEqual(new uint[] { 1, 2 }, items.Items.Select(item => item.Id).ToArray());
+    }
+
+    [TestMethod]
     public void ParsesColors()
     {
         Assert.IsTrue(WeftColor.TryParse("#3B82f6", out var color));

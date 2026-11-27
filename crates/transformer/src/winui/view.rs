@@ -1,7 +1,7 @@
 //! Imperative construction of a template's elements and mount points.
 
 use crate::elements::Element;
-use crate::view::{Constant, Template, ValueType, ViewNodeKind};
+use crate::view::{Constant, PointKind, Template, ValueType, ViewNodeKind};
 
 use super::csharp::{self, Code};
 
@@ -30,9 +30,7 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                 .peekable();
             let declaration = if slots.peek().is_some() { "" } else { "var " };
             let args = std::fmt::from_fn(|out| match element {
-                Element::List | Element::Grid => {
-                    unreachable!("lazy lists are not supported on native platforms")
-                }
+                Element::List | Element::Grid => write!(out, "{}", *element == Element::Grid),
                 Element::NavBar => Ok(()),
                 Element::BarButton => match template.event(index, "onTap") {
                     Some(slot) => write!(out, "() => Dispatch({slot})"),
@@ -101,10 +99,11 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
             {
                 out.writer.line(format_args!("TrackColors(n{index});"));
             }
-            for prop in props
-                .iter()
-                .filter(|p| !matches!(p.name, "direction" | "vertical"))
-            {
+            for prop in props.iter().filter(|p| {
+                !matches!(p.name, "direction" | "vertical")
+                    && !(matches!(element, Element::List | Element::Grid)
+                        && matches!(p.name, "refreshing" | "stickyHeaders" | "endThreshold"))
+            }) {
                 out.writer.line(format_args!(
                     "n{index}.{} = {};",
                     property(prop.name),
@@ -133,17 +132,25 @@ fn node(out: &mut Code, template: &Template, has_theme: bool, index: u32, parent
                 }
             }
         }
-        ViewNodeKind::Point(point) => out
-            .writer
-            .line(format_args!("{region}.Point(this, {point});")),
+        ViewNodeKind::Point(point) => {
+            if matches!(
+                template.points[*point as usize].kind,
+                PointKind::Lazy { .. }
+            ) {
+                let parent = parent.expect("a lazy point belongs to a List or Grid");
+                out.writer
+                    .line(format_args!("n{parent}.Point(this, {point});"));
+            } else {
+                out.writer
+                    .line(format_args!("{region}.Point(this, {point});"));
+            }
+        }
     }
 }
 
 pub(crate) fn wrapper(element: Element) -> &'static str {
     match element {
-        Element::List | Element::Grid => {
-            unreachable!("lazy lists are not supported on native platforms")
-        }
+        Element::List | Element::Grid => "WeftLazyList",
         Element::NavBar => "WeftNavigationBar",
         Element::BarButton => "WeftBarButton",
         Element::Column | Element::Row => "WeftStack",

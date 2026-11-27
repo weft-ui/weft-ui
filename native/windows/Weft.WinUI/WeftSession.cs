@@ -278,9 +278,6 @@ public sealed class WeftSession
         try
         {
             OpReader.ReadAll(bytes, batch);
-            foreach (ref readonly var op in CollectionsMarshal.AsSpan(batch))
-                if (op.Code is OpCode.Splice or OpCode.Bind)
-                    throw new OpException("lazy lists are not supported by these views");
             foreach (ref readonly var op in CollectionsMarshal.AsSpan(batch)) Apply(op);
         }
         catch (Exception error)
@@ -314,6 +311,23 @@ public sealed class WeftSession
             case OpCode.Rows:
                 Mount(op.Scope, op.Arg, op.Rows!);
                 break;
+            case OpCode.Splice:
+            {
+                var lazy = LazyPoint(op.Scope, op.Arg);
+                foreach (var id in lazy.Splice(op.Index, op.Remove, op.Items!))
+                    if (scopes.TryGetValue(id, out var removed)) Destroy(removed);
+                break;
+            }
+            case OpCode.Bind:
+            {
+                var lazy = LazyPoint(op.Scope, op.Arg);
+                WeftScope? child = null;
+                if (op.Child != 0 && !scopes.TryGetValue(op.Child, out child))
+                    throw new OpException($"unknown lazy child scope {op.Child}");
+                var previous = lazy.Bind(op.Item, child);
+                if (previous != 0 && previous != op.Child && scopes.TryGetValue(previous, out var removed)) Destroy(removed);
+                break;
+            }
             case OpCode.Nav:
                 if (navigation is null)
                 {
@@ -346,6 +360,13 @@ public sealed class WeftSession
             if (scopes.TryGetValue(id, out var child)) children.Add(child);
         }
         point.Mount(children);
+    }
+
+    private WeftLazyList LazyPoint(uint scopeId, uint index)
+    {
+        if (!scopes.TryGetValue(scopeId, out var scope) || index >= scope.Points.Length || scope.Points[(int)index].Lazy is not { } lazy)
+            throw new OpException($"scope {scopeId} has no lazy point {index}");
+        return lazy;
     }
 
     internal WeftScope Page(uint id) => scopes.TryGetValue(id, out var scope)

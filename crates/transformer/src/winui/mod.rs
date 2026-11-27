@@ -29,6 +29,7 @@
 mod csharp;
 mod view;
 
+use crate::elements::Element;
 use crate::transform::{Context, OutputFile};
 use crate::view::{Template, ValueType, ViewLayout, ViewNodeKind};
 
@@ -181,6 +182,9 @@ fn scope(out: &mut Code, index: usize, template: &Template, has_theme: bool) {
             else {
                 unreachable!("value slots belong to elements");
             };
+            if matches!(element, Element::List | Element::Grid) && value.prop == "refreshing" {
+                continue;
+            }
             let accessor = match value.ty {
                 ValueType::Int | ValueType::Float => "value.Number",
                 ValueType::Bool => "value.Bool",
