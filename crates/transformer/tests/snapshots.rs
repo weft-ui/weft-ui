@@ -51,7 +51,7 @@ const ALL_NATIVES: &[Platform] = &[
 const LISTS: Fixture = Fixture {
     name: "Lists",
     source: include_str!("fixtures/Lists.weft"),
-    natives: &[],
+    natives: ALL_NATIVES,
     diverges: &[],
 };
 const TODO_LIST: Fixture = Fixture {

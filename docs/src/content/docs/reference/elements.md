@@ -400,8 +400,6 @@ Overlays children in declaration order.
 
 Displays a vertically scrolling lazy list.
 
-**Platform exceptions:** Unsupported: `ios`; Unsupported: `macos`; Unsupported: `android`; Unsupported: `windows`; Unsupported: `linux`.
-
 **Children:** Any.
 
 | Property | Type | Default | Description | Platform exceptions |
@@ -451,8 +449,6 @@ Displays a vertically scrolling lazy list.
 ## Grid
 
 Displays a vertically scrolling lazy grid.
-
-**Platform exceptions:** Unsupported: `ios`; Unsupported: `macos`; Unsupported: `android`; Unsupported: `windows`; Unsupported: `linux`.
 
 **Children:** Any.
 

@@ -5981,13 +5981,7 @@ pub(crate) const ELEMENTS: [ElementSpec; 22] = [
         page_root: false,
         parents: &[],
         content: None,
-        support: &[
-            (Platform::Ios, Level::No),
-            (Platform::Macos, Level::No),
-            (Platform::Android, Level::No),
-            (Platform::Windows, Level::No),
-            (Platform::Linux, Level::No),
-        ],
+        support: &[],
     },
     ElementSpec {
         element: Element::Grid,
@@ -5997,13 +5991,7 @@ pub(crate) const ELEMENTS: [ElementSpec; 22] = [
         page_root: false,
         parents: &[],
         content: None,
-        support: &[
-            (Platform::Ios, Level::No),
-            (Platform::Macos, Level::No),
-            (Platform::Android, Level::No),
-            (Platform::Windows, Level::No),
-            (Platform::Linux, Level::No),
-        ],
+        support: &[],
     },
     ElementSpec {
         element: Element::Scroll,

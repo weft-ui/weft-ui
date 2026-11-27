@@ -44,13 +44,11 @@
     "id": "list",
     "title": "Lazy list",
     "component": "ListExample",
-    "pending": ["ios", "macos", "android", "windows", "linux"],
     "props": { "listRows": [] }
   },
   {
     "id": "sections",
-    "title": "Sections",
-    "pending": ["ios", "macos", "android", "windows", "linux"]
+    "title": "Sections"
   },
   {
     "id": "overlays",

@@ -452,7 +452,6 @@
     {
       "name": "List",
       "doc": { "en": "Displays a vertically scrolling lazy list.", "zh": "显示纵向滚动的惰性列表。" },
-      "support": { "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" },
       "groups": ["layout", "visibility", "padding", "decoration"],
       "children": "any",
       "members": [
@@ -468,7 +467,6 @@
     {
       "name": "Grid",
       "doc": { "en": "Displays a vertically scrolling lazy grid.", "zh": "显示纵向滚动的惰性网格。" },
-      "support": { "ios": "no", "macos": "no", "android": "no", "windows": "no", "linux": "no" },
       "groups": ["layout", "visibility", "padding", "decoration"],
       "children": "any",
       "members": [
