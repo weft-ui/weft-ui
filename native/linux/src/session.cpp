@@ -159,11 +159,19 @@ GtkWidget *Session::start(uint64_t layout_hash, [[maybe_unused]] bool safe_area,
     static_cast<Session *>(data)->queue_environment();
   }), session);
   session->open(weft_directory() + "/bundle.hbc", layout_hash);
+  g_signal_connect(page, "notify::root", G_CALLBACK(+[](GtkWidget *, GParamSpec *, gpointer data) {
+    static_cast<Session *>(data)->lifecycle_root();
+  }), session);
+  session->memory_monitor_ = g_memory_monitor_dup_default();
+  g_signal_connect(session->memory_monitor_, "low-memory-warning", G_CALLBACK(+[](GMemoryMonitor *, GMemoryMonitorWarningLevel, gpointer data) {
+    static_cast<Session *>(data)->signal("memory", "{}");
+  }), session);
+  session->lifecycle_root();
   return overlay;
 }
 
 Session::Session(GtkWidget *page, Factory make, bool app, std::vector<Tab> tabs)
-    : make_(make), page_(page), environment_(std::make_unique<Environment>(page)), cancellable_(g_cancellable_new()) {
+    : make_(make), page_(GTK_WIDGET(g_object_ref(page))), environment_(std::make_unique<Environment>(page)), cancellable_(g_cancellable_new()) {
   scopes_[0] = std::make_unique<RootScope>(*this, page);
   if (app) {
     navigation_overlay_ = gtk_overlay_new();
@@ -215,6 +223,19 @@ Session::Session(GtkWidget *page, Factory make, bool app, std::vector<Tab> tabs)
 }
 
 Session::~Session() {
+  g_signal_handlers_disconnect_by_data(page_, this);
+  if (lifecycle_surface_) {
+    g_signal_handlers_disconnect_by_data(lifecycle_surface_, this);
+    g_object_unref(lifecycle_surface_);
+  }
+  if (lifecycle_window_) {
+    g_signal_handlers_disconnect_by_data(lifecycle_window_, this);
+    g_object_unref(lifecycle_window_);
+  }
+  if (memory_monitor_) {
+    g_signal_handlers_disconnect_by_data(memory_monitor_, this);
+    g_object_unref(memory_monitor_);
+  }
   if (ui_) ui_->close();
   weft_runtime_free(runtime_);
   g_cancellable_cancel(cancellable_);
@@ -225,6 +246,59 @@ Session::~Session() {
   scopes_.clear();
   dead_.clear();
   if (bytecode_) g_mapped_file_unref(bytecode_);
+  g_object_unref(page_);
+}
+
+void Session::lifecycle_root() {
+  auto *root = gtk_widget_get_root(page_);
+  auto *window = root && GTK_IS_WINDOW(root) ? GTK_WIDGET(root) : nullptr;
+  if (window == lifecycle_window_) return;
+  if (lifecycle_surface_) {
+    g_signal_handlers_disconnect_by_data(lifecycle_surface_, this);
+    g_clear_object(&lifecycle_surface_);
+  }
+  if (lifecycle_window_) {
+    g_signal_handlers_disconnect_by_data(lifecycle_window_, this);
+    g_clear_object(&lifecycle_window_);
+  }
+  if (!window) return;
+  lifecycle_window_ = GTK_WIDGET(g_object_ref(window));
+  g_signal_connect(window, "realize", G_CALLBACK(+[](GtkWidget *, gpointer data) {
+    static_cast<Session *>(data)->lifecycle_surface();
+  }), this);
+  g_signal_connect(window, "unrealize", G_CALLBACK(+[](GtkWidget *, gpointer data) {
+    auto *session = static_cast<Session *>(data);
+    if (session->lifecycle_surface_) {
+      g_signal_handlers_disconnect_by_data(session->lifecycle_surface_, session);
+      g_clear_object(&session->lifecycle_surface_);
+    }
+  }), this);
+  lifecycle_surface();
+}
+
+void Session::lifecycle_surface() {
+  auto *surface = gtk_native_get_surface(GTK_NATIVE(lifecycle_window_));
+  if (!surface || !GDK_IS_TOPLEVEL(surface) || surface == lifecycle_surface_) return;
+  if (lifecycle_surface_) {
+    g_signal_handlers_disconnect_by_data(lifecycle_surface_, this);
+    g_clear_object(&lifecycle_surface_);
+  }
+  lifecycle_surface_ = GDK_SURFACE(g_object_ref(surface));
+  g_signal_connect(surface, "notify::state", G_CALLBACK(+[](GdkToplevel *toplevel, GParamSpec *, gpointer data) {
+    static_cast<Session *>(data)->lifecycle_state(gdk_toplevel_get_state(toplevel));
+  }), this);
+  lifecycle_state(gdk_toplevel_get_state(GDK_TOPLEVEL(surface)));
+}
+
+void Session::lifecycle_state(GdkToplevelState state) {
+  auto hidden = unsigned(GDK_TOPLEVEL_STATE_MINIMIZED);
+#if GTK_CHECK_VERSION(4, 12, 0)
+  hidden |= GDK_TOPLEVEL_STATE_SUSPENDED;
+#endif
+  bool background = (unsigned(state) & hidden) != 0;
+  if (background == background_) return;
+  background_ = background;
+  signal("lifecycle", background ? "{\"state\":\"background\"}" : "{\"state\":\"foreground\"}");
 }
 
 void Session::open(const std::string &bundle, uint64_t layout_hash) {

@@ -429,6 +429,17 @@ void return_to_catalog(GtkStack *stack, GtkWidget *catalog) {
         "Back did not restore the catalog");
 }
 
+void lifecycle_page(GtkWidget *root) {
+  open_page(root, "page:lifecycle");
+  check(label(root, "Foreground: 0") && label(root, "Background: 0") && label(root, "Memory warnings: 0"),
+        "Lifecycle counts missing");
+}
+
+void keyboard_page(GtkWidget *root) {
+  open_page(root, "page:keyboard");
+  check(label(root, "Keyboard avoidance") && label(root, "Send"), "Keyboard page missing");
+}
+
 void catalog_walkthrough(GtkWidget *root) {
   auto *stack = catalog_stack(root, "page:controls");
   auto *catalog = gtk_stack_get_visible_child(stack);
@@ -491,6 +502,8 @@ int main(int argc, char **argv) {
     return 77;
   }
   run(catalog_walkthrough, true);
+  run(lifecycle_page);
+  run(keyboard_page);
   run(controls);
   run(inputs);
   run(overlays);

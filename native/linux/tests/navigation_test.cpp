@@ -43,6 +43,25 @@ class NavigationTest {
     auto *page = GTK_WIDGET(g_object_ref_sink(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)));
     {
       Session session(page, make_page, true);
+      session.runtime_ = reinterpret_cast<weft_runtime *>(1);
+      signal_name.clear();
+      session.lifecycle_state(GdkToplevelState(0));
+      assert(signal_name.empty());
+      session.lifecycle_state(GDK_TOPLEVEL_STATE_MINIMIZED);
+      assert(signal_name == "lifecycle" && signal_json == "{\"state\":\"background\"}");
+      signal_name.clear();
+      session.lifecycle_state(GDK_TOPLEVEL_STATE_MINIMIZED);
+#if GTK_CHECK_VERSION(4, 12, 0)
+      session.lifecycle_state(GdkToplevelState(GDK_TOPLEVEL_STATE_MINIMIZED | GDK_TOPLEVEL_STATE_SUSPENDED));
+      session.lifecycle_state(GDK_TOPLEVEL_STATE_SUSPENDED);
+#endif
+      assert(signal_name.empty());
+      session.lifecycle_state(GdkToplevelState(0));
+      assert(signal_name == "lifecycle" && signal_json == "{\"state\":\"foreground\"}");
+      signal_name.clear();
+      session.lifecycle_state(GdkToplevelState(0));
+      assert(signal_name.empty());
+      session.runtime_ = nullptr;
       auto create = [&](uint32_t id) {
         ops::Op op{};
         op.code = protocol::Code::Create;

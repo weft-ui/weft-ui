@@ -706,6 +706,9 @@ class Session {
   bool back();
   void open(const std::string &bundle, uint64_t layout_hash);
   void queue_environment();
+  void lifecycle_root();
+  void lifecycle_surface();
+  void lifecycle_state(GdkToplevelState state);
   void queue_focus(uint32_t scope, uint32_t slot, bool focused);
   struct Environment;
   struct FocusEvent {
@@ -748,6 +751,10 @@ class Session {
   std::vector<uint32_t> nav_tabs_;
   std::vector<uint32_t> nav_stack_;
   std::unique_ptr<Environment> environment_;
+  GtkWidget *lifecycle_window_ = nullptr;
+  GdkSurface *lifecycle_surface_ = nullptr;
+  GMemoryMonitor *memory_monitor_ = nullptr;
+  bool background_ = false;
   std::shared_ptr<platform::Ui> ui_;
   std::unordered_map<uint32_t, std::unique_ptr<Scope>> scopes_;
   /// Destroyed scopes, freed once the main loop is idle: a widget's signal
