@@ -24,6 +24,8 @@ try {
         await page.goto("http://127.0.0.1:4179/");
         const entry = page.getByRole("button", { name: `page:${id}`, exact: true });
         await entry.click();
+        // Park the pointer so no control on the pushed page is shot in its hover state.
+        await page.mouse.move(0, 0);
         await page.waitForURL(`**/showcase/${id}`);
         await page.getByRole("button", { name: "Back", exact: true }).waitFor();
         await setTimeout(settleMs);

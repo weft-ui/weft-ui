@@ -83,14 +83,15 @@ try {
     const entry = pages("wechat").find((item) => item.id === id)!;
     const component = componentName(entry);
     const slug = `${component}Page`.replace(/([A-Z])/g, (letter, _match, offset: number) => `${offset ? "-" : ""}${letter.toLowerCase()}`);
+    // The page may live in a sub-package, whose root prefixes the path.
     const expectedPath = `weft/pages/${slug}/index`;
     let destination = await miniProgram.currentPage();
     const navigationDeadline = Date.now() + 5000;
-    while (destination?.path.replace(/^\//, "") !== expectedPath && Date.now() < navigationDeadline) {
+    while (!destination?.path.endsWith(expectedPath) && Date.now() < navigationDeadline) {
       await setTimeout(100);
       destination = await miniProgram.currentPage();
     }
-    if (destination?.path.replace(/^\//, "") !== expectedPath) throw new Error(`Could not navigate to ${expectedPath}`);
+    if (!destination?.path.endsWith(expectedPath)) throw new Error(`Could not navigate to ${expectedPath}`);
     await destination.waitFor("#weft");
     await setTimeout(settleMs);
     await miniProgram.screenshot({ path });
