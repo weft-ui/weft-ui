@@ -64,11 +64,12 @@ export function writeWechatAssets(assets: Assets, generated: string, warn: (mess
     const pages = root ? join(dirname(generated), root, "weft/pages") : join(generated, "pages");
     if (!existsSync(pages)) continue;
     const packageRules = rules.get(root);
+    if (root && packageRules) appendFileSync(join(dirname(pages), "view.wxss"), `\n${packageRules.join("\n")}\n`);
     for (const page of readdirSync(pages)) {
       const file = join(pages, page, "index.wxss");
       if (!existsSync(file)) continue;
       const shared = mainRules ? '@import "/weft/index.wxss";\n' : "";
-      writeFileSync(file, `${shared}${readFileSync(file, "utf8")}${root && packageRules ? `\n${packageRules.join("\n")}\n` : ""}`);
+      writeFileSync(file, `${shared}${readFileSync(file, "utf8")}`);
     }
   }
 }

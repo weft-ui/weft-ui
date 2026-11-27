@@ -492,17 +492,18 @@ async function writeSubPackageFixture() {
   await writeFile(join(root, "src/App.weft"), `
 page Home() { Image("asset:shared") }
 page Gallery() { Column { Image("asset:shared") Image("asset:gallery") Image("asset:gallery_icon") Text("Gallery", font = "Inter") } }
+page GalleryMore() { Text("More", font = "Inter") }
 page Account() { Column { Image("asset:account") Text("Account") } }
 app Notes { start = Home }
 `);
   await writeFile(join(root, "src/index.ts"), `
-import { Home, Gallery, Account, Notes } from "./App.weft";
+import { Home, Gallery, GalleryMore, Account, Notes } from "./App.weft";
 import { run } from "@weft-ui/platform";
-run(new Notes({ Home: () => new Home({}), Gallery: () => new Gallery({}), Account: () => new Account({}) }));
+run(new Notes({ Home: () => new Home({}), Gallery: () => new Gallery({}), GalleryMore: () => new GalleryMore({}), Account: () => new Account({}) }));
 `);
 }
 
-const subPackages = { gallery: ["Gallery"], account: ["Account"] };
+const subPackages = { gallery: ["Gallery", "GalleryMore"], account: ["Account"] };
 
 test("WeChat emits two sub-packages, imports main templates and places assets by reachability", async () => {
   await writeSubPackageFixture();
@@ -514,7 +515,9 @@ test("WeChat emits two sub-packages, imports main templates and places assets by
   for (const name of ["shared", "dynamic", "gallery", "account"]) await cp(image, join(root, `assets/images/${name}.png`));
   await cp(fileURLToPath(new URL("./fixtures/assets/assets/icons/star.svg", import.meta.url)), join(root, "assets/icons/gallery_icon.svg"));
   const font = fileURLToPath(new URL("./fixtures/assets/assets/fonts/Inter-Regular.ttf", import.meta.url));
-  await cp(font, join(root, "assets/fonts/Inter-Regular.ttf"));
+  // Two copies of this valid, padded font exceed the 2 MiB package limit.
+  const fontBytes = Buffer.concat([await readFile(font), Buffer.alloc(450 * 1024)]);
+  await writeFile(join(root, "assets/fonts/Inter-Regular.ttf"), fontBytes);
   await mkdir(project, { recursive: true });
   await writeFile(join(project, "app.json"), JSON.stringify({ pages: ["custom/page", "weft/index"], window: { backgroundColor: "#123456" } }));
   await build("wechat", { wechat: { subPackages } });
@@ -522,7 +525,7 @@ test("WeChat emits two sub-packages, imports main templates and places assets by
   expect(manifest.pages).toEqual(["weft/pages/home/index", "custom/page"]);
   expect(manifest.window.backgroundColor).toBe("#123456");
   expect(manifest.subPackages).toEqual(expect.arrayContaining([
-    { root: "gallery", pages: ["weft/pages/gallery/index"] },
+    { root: "gallery", pages: ["weft/pages/gallery/index", "weft/pages/gallery-more/index"] },
     { root: "account", pages: ["weft/pages/account/index"] },
   ]));
   for (const name of ["gallery", "account"]) {
@@ -539,10 +542,18 @@ test("WeChat emits two sub-packages, imports main templates and places assets by
   expect(existsSync(join(project, "gallery/weft/assets/gallery_icon.svg"))).toBe(true);
   expect(existsSync(join(project, "weft/assets/gallery_icon.svg"))).toBe(false);
   expect(existsSync(join(project, "weft/js/index.js"))).toBe(true);
-  const galleryStyle = await readFile(join(project, "gallery/weft/pages/gallery/index.wxss"), "utf8");
-  const encodedFont = (await readFile(font)).toString("base64");
-  expect(galleryStyle).toContain(encodedFont);
+  const encodedFont = fontBytes.toString("base64");
+  const sharedStyle = await readFile(join(project, "gallery/weft/view.wxss"), "utf8");
+  expect(sharedStyle.split(encodedFont)).toHaveLength(2);
+  for (const page of ["gallery", "gallery-more"]) {
+    const style = await readFile(join(project, `gallery/weft/pages/${page}/index.wxss`), "utf8");
+    expect(style).toContain('@import "../../view.wxss"');
+    expect(style).not.toContain(encodedFont);
+  }
+  expect(await readFile(join(project, "weft/view.wxss"), "utf8")).not.toContain(encodedFont);
   expect(await readFile(join(project, "weft/pages/home/index.wxss"), "utf8")).not.toContain(encodedFont);
+  // Building succeeds under the 2 MiB limit only if the size check counts the font once.
+  expect(encodedFont.length * 2).toBeGreaterThan(2048 * 1024);
 });
 
 test("WeChat removes the tab bar and sub-packages when the program stops using them", async () => {
