@@ -36,6 +36,16 @@ public sealed class UITests
                 entry.AsButton().Invoke();
                 var back = Screenshots.FindButton(window, "Back");
                 Assert.IsNotNull(back, $"Navigation to {label} did not complete");
+                if (id == "overlays")
+                {
+                    Thread.Sleep(TimeSpan.FromMilliseconds(300)); // Wait for the push animation before measuring.
+                    var title = window.FindAllDescendants(cf => cf.ByName("Overlays"))
+                        .Where(element => element.Properties.ControlType.ValueOrDefault == FlaUI.Core.Definitions.ControlType.Text)
+                        .MinBy(element => element.BoundingRectangle.Top);
+                    Assert.IsNotNull(title, "Navigation title not found");
+                    Assert.IsTrue(title.BoundingRectangle.Left >= back.BoundingRectangle.Right,
+                        $"Title overlaps back button: title {title.BoundingRectangle}, back {back.BoundingRectangle}");
+                }
                 if (id is "lifecycle" or "keyboard")
                 {
                     var text = id == "lifecycle" ? "Foreground: 0" : "Keyboard avoidance";

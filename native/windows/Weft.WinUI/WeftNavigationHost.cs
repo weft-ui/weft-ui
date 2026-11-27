@@ -288,7 +288,7 @@ internal sealed class WeftNavigationHost
             header = new Grid { MinHeight = 48 };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            back = new Button { Content = new SymbolIcon(Symbol.Back) };
+            back = new Button { Content = new SymbolIcon(Symbol.Back), Visibility = Visibility.Collapsed };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(back, "Back");
             back.Click += (_, _) => onBack();
             header.Children.Add(back);
@@ -308,9 +308,21 @@ internal sealed class WeftNavigationHost
 
         internal void SetBack(bool visible, bool modal)
         {
+            var appearing = visible && back.Visibility != Visibility.Visible;
             back.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            // NavigationView leaves breathing room between its back button and header.
+            header.ColumnSpacing = visible ? 12 : 0;
             back.Content = modal ? "×" : new SymbolIcon(Symbol.Back);
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(back, modal ? "Close" : "Back");
+            if (appearing)
+            {
+                // WinUI can transfer focus to the new back button as a page appears.
+                // Treat that automatic transfer as programmatic, not keyboard navigation.
+                back.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (back.FocusState != FocusState.Unfocused) back.Focus(FocusState.Programmatic);
+                });
+            }
         }
 
         internal void Detach() => mount.Points[0].Mount([]);
