@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { NavigationController, activate, navigation, type NavigationEntry, type NavigationPage } from "../../packages/runtime/src/navigation.ts";
+import { NavigationController, activate, navigation, setAppForeground, type NavigationEntry, type NavigationPage } from "../../packages/runtime/src/navigation.ts";
 import { matchRoute, routeURL, type RouteValue } from "../../packages/runtime/src/route.ts";
 
 class Home { static $route = { name: "Home", path: ["home"], params: [] }; readonly params = {}; }
@@ -75,6 +75,23 @@ test("stack changes notify lifecycle in order and accept only host back states",
   controller.setForeground(true);
   expect(events.at(-1)).toBe("Detail:Show");
   controller.dispose();
+});
+
+test("application visibility is retained before mounting and reaches the current page", () => {
+  const events: string[] = [];
+  const controller = new NavigationController({ Home: () => ({ params: {}, $emit: event => events.push(event) }) }, { start: Home, pages: [Home] }, {
+    create: () => 1, destroy: () => {}, update: () => {},
+  });
+  setAppForeground(false);
+  activate(controller);
+  controller.start();
+  expect(events).toEqual([]);
+  setAppForeground(true);
+  setAppForeground(true);
+  setAppForeground(false);
+  expect(events).toEqual(["Show", "Hide"]);
+  controller.dispose();
+  setAppForeground(true);
 });
 
 test("modal navigation observes lifecycle, errors, back counts, and host dismissal", () => {

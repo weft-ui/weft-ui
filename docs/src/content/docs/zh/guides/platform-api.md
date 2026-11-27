@@ -129,6 +129,19 @@ ui.toast("已保存", { icon: "success", duration: "short" });
 
 五个原生平台壳都用各自平台的对话框实现了 `ui`：SwiftUI 的 alert 与 confirmationDialog（macOS 上操作表以对话框呈现）、Android 的 Material 对话框与底部面板、Windows 的 `ContentDialog`、Linux 的 `GtkAlertDialog`（无法为危险选项单独着色）。不支持 `ui` 的宿主让 `isSupported("ui")` 返回 false，此时对话框和操作表调用以 `PlatformError` 拒绝，`toast` 则同步抛出该错误。
 
+## 监听应用生命周期
+
+`lifecycle.state` 初始为 `foreground`，应用隐藏时变为 `background`。用 `onForeground`、`onBackground` 或 `onMemoryWarning` 注册监听器；注册时不会立即调用，返回值是取消订阅函数。进入后台时当前页收到 `onHide`，回到前台时收到 `onShow`。桌面上的后台指窗口最小化或隐藏。
+
+`lifecycle.launch.url` 是冷启动链接，没有时为 `null`。Web 上是加载时的 `location.href`，小程序上由启动路径和编码后的查询参数组成。Web 不会发出内存告警；原生通知取决于平台壳。
+
+```ts
+import { lifecycle } from "@weft-ui/platform";
+const stop = lifecycle.onBackground(() => console.log("background"));
+console.log(lifecycle.state, lifecycle.launch.url);
+// 不再需要时调用 stop()。
+```
+
 ## 查看宿主和可用能力
 
 用 `platform.os` 和 `platform.version` 查看当前宿主。`os` 的取值为 `web`、`wechat`、`ios`、`macos`、`android`、`windows` 或 `linux`。`version` 是宿主报告的字符串，不是 Weft UI 的包版本，也没有跨平台的统一格式。比如，在 Web 上它是完整的用户代理字符串；在原生目标上，如果没有内核或平台壳没有提供版本，它就是空字符串。

@@ -1,0 +1,11 @@
+component Lifecycle(lifecycleCounts: String[]) {
+    Scroll(indicators = false) {
+        Column(fill = true, padding = 20, gap = 14) {
+            Text("Lifecycle", size = 28, weight = "bold")
+            Text("Switch away and return to see lifecycle events.", size = 14)
+            for (count in lifecycleCounts; key = count) {
+                Text(count, size = 16)
+            }
+        }
+    }
+}

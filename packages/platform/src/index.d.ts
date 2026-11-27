@@ -41,6 +41,15 @@ export const navigation: {
   onChange(listener: () => void): () => void;
 };
 
+/** Application visibility, launch URL, and memory pressure notifications. */
+export const lifecycle: {
+  readonly state: "foreground" | "background";
+  readonly launch: { readonly url: string | null };
+  onForeground(listener: () => void): () => void;
+  onBackground(listener: () => void): () => void;
+  onMemoryWarning(listener: () => void): () => void;
+};
+
 /** Portable HTTP request options. */
 export interface RequestInit {
   /** HTTP method; the host defaults to GET. */

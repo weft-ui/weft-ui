@@ -18,6 +18,8 @@ function createWx() {
   const values = new Map<string, string>();
   return {
     values,
+    getLaunchOptionsSync: vi.fn(() => ({ path: "pages/start", query: { q: "a b" } })),
+    onMemoryWarning: vi.fn<(_listener: () => void) => void>(),
     request: vi.fn((options: RequestOptions) => {
       options.success({ statusCode: 200, data: new ArrayBuffer(0) });
     }),
@@ -142,6 +144,30 @@ test.each(["get", "set", "remove"] as const)("storage.%s propagates non-missing 
   });
   const result = method === "set" ? storage.set("key", "value") : storage[method]("key");
   await expect(result).rejects.toThrow("storage:fail permission denied");
+});
+
+test("lifecycle uses launch options, App callbacks and memory warnings", async () => {
+  vi.resetModules();
+  // A fresh module captures this test's wx host rather than another test's host.
+  const { lifecycle, run: start } = await import("../src/wechat.ts");
+  const register = vi.fn();
+  vi.stubGlobal("App", register);
+  const background = vi.fn(); const foreground = vi.fn(); const memory = vi.fn();
+  const stop = lifecycle.onBackground(background);
+  lifecycle.onForeground(foreground);
+  lifecycle.onMemoryWarning(memory);
+  start({ mount: vi.fn(), unmount: vi.fn() });
+  expect(lifecycle.launch.url).toBe("/pages/start?q=a%20b");
+  const host = register.mock.calls[0][0];
+  host.onHide(); host.onHide();
+  expect(lifecycle.state).toBe("background");
+  expect(background).toHaveBeenCalledOnce();
+  host.onShow();
+  expect(foreground).toHaveBeenCalledOnce();
+  const warning = wx.onMemoryWarning.mock.calls[0][0] as () => void;
+  warning(); expect(memory).toHaveBeenCalledOnce();
+  stop(); host.onHide(); expect(background).toHaveBeenCalledOnce();
+  host.onShow();
 });
 
 test("run registers the runtime view factory and forwards mount/unmount", () => {

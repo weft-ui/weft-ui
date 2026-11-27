@@ -1,11 +1,31 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, test, vi } from "vitest";
-import { fetch, isSupported, platform, PlatformError, run, storage } from "../src/web.ts";
+import { fetch, isSupported, lifecycle, platform, PlatformError, run, storage } from "../src/web.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
   document.body.innerHTML = "";
+});
+
+test("lifecycle tracks visibility and preserves the initial URL", () => {
+  const background = vi.fn(); const foreground = vi.fn(); const memory = vi.fn();
+  const stop = lifecycle.onBackground(background);
+  const stopForeground = lifecycle.onForeground(foreground);
+  const stopMemory = lifecycle.onMemoryWarning(memory);
+  const initial = lifecycle.launch.url;
+  history.pushState({}, "", "/another");
+  expect(lifecycle.launch.url).toBe(initial);
+  vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+  document.dispatchEvent(new Event("visibilitychange"));
+  document.dispatchEvent(new Event("visibilitychange"));
+  expect(lifecycle.state).toBe("background");
+  expect(background).toHaveBeenCalledOnce();
+  vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  document.dispatchEvent(new Event("visibilitychange"));
+  expect(foreground).toHaveBeenCalledOnce();
+  expect(memory).not.toHaveBeenCalled();
+  stop(); stopForeground(); stopMemory(); vi.restoreAllMocks();
 });
 
 test("fetch delegates the URL, headers and binary body to the browser", async () => {

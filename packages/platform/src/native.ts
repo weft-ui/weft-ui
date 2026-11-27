@@ -5,7 +5,20 @@
  * protocol/SPEC.md ("Platform calls").
  */
 
-import { NativeSink, kernel } from "@weft-ui/runtime/native";
+import { NativeSink, kernel, onSignal } from "@weft-ui/runtime/native";
+import { createLifecycle } from "./lifecycle.ts";
+
+const appLifecycle = createLifecycle(() => {
+  const launch = JSON.parse(kernel().launch) as { url?: string | null };
+  return launch.url ?? null;
+}, (change, memory) => {
+  onSignal("lifecycle", json => {
+    const { state } = JSON.parse(json) as { state: string };
+    if (state === "foreground" || state === "background") change(state);
+  });
+  onSignal("memory", memory);
+});
+export const lifecycle = appLifecycle.api;
 import type { PlatformModule } from "@weft-ui/runtime/protocol";
 import { Environment, type EnvironmentData } from "./environment.ts";
 import { PlatformError } from "./error.ts";
@@ -22,6 +35,7 @@ const decoder = new TextDecoder();
 
 /** Mounts the app into the native views of the kernel that runs the bundle. */
 export function run(app: App): void {
+  appLifecycle.init();
   app.mount(new NativeSink() as never);
 }
 

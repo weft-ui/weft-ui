@@ -20,7 +20,7 @@ test("cold page launch decodes route parameters and shows its dynamic title", as
     const registered: { app?: { weft: { page(name: string): Record<string, (this: object, ...args: never[]) => void> } } } = {};
     let title = "";
     globals.App = (options: NonNullable<typeof registered.app>) => { registered.app = options; };
-    globals.wx = { setNavigationBarTitle: (options: { title: string }) => { title = options.title; } };
+    globals.wx = { getLaunchOptionsSync: () => ({}), onMemoryWarning: () => {}, setNavigationBarTitle: (options: { title: string }) => { title = options.title; } };
     const pages: object[] = [];
     globals.getCurrentPages = () => pages;
     run(app);

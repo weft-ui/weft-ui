@@ -1,4 +1,12 @@
 import type { PlatformModule } from "@weft-ui/runtime/protocol";
+import { createLifecycle } from "./lifecycle.ts";
+
+const initialURL = typeof location === "undefined" ? null : location.href;
+const appLifecycle = createLifecycle(() => initialURL, (change) => {
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => change(document.hidden ? "background" : "foreground"));
+});
+export const lifecycle = appLifecycle.api;
+appLifecycle.init();
 import { Environment, type EnvironmentData } from "./environment.ts";
 import { PlatformError } from "./error.ts";
 import { createUI } from "./ui.ts";

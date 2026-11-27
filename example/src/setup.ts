@@ -1,9 +1,28 @@
 // Event handlers of the showcase pages, keyed by pages.json id. The generated
 // src/catalog.ts calls the matching function from each page's factory.
-import { platform, ui } from "@weft-ui/platform";
-import type { OverlaysPage, SafeareaPage } from "./App.weft";
+import { lifecycle, platform, ui } from "@weft-ui/platform";
+import type { LifecyclePage, OverlaysPage, SafeareaPage } from "./App.weft";
+
+// Lifecycle events are counted for the whole run and shown on the open Lifecycle page.
+const lifecycleCounts = [0, 0, 0];
+let lifecyclePage: LifecyclePage | undefined;
+const showLifecycleCounts = () => {
+  if (!lifecyclePage) return;
+  lifecyclePage.model.lifecycleCounts = ["Foreground", "Background", "Memory warnings"].map((label, i) => `${label}: ${lifecycleCounts[i]}`);
+};
+const countLifecycle = (index: number) => () => {
+  lifecycleCounts[index]!++;
+  showLifecycleCounts();
+};
+lifecycle.onForeground(countLifecycle(0));
+lifecycle.onBackground(countLifecycle(1));
+lifecycle.onMemoryWarning(countLifecycle(2));
 
 export const setup = {
+  lifecycle(page: LifecyclePage) {
+    lifecyclePage = page;
+    showLifecycleCounts();
+  },
   safearea(page: SafeareaPage) {
     let unsubscribe = () => {};
     page.onShow(() => {

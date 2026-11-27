@@ -129,6 +129,19 @@ Only one dialog or action sheet is shown at a time; later calls queue in FIFO or
 
 All five native shells implement `ui` with their platform's dialogs: SwiftUI alerts and confirmation dialogs (an action sheet appears as a dialog on macOS), Material dialogs and a bottom sheet on Android, `ContentDialog` on Windows, and `GtkAlertDialog` on Linux, which cannot color a destructive option. A host without `ui` reports `isSupported("ui")` as false; there, dialog and action sheet calls reject with `PlatformError`, while `toast` throws it synchronously.
 
+## Observe application lifecycle
+
+`lifecycle.state` is `foreground` initially and changes to `background` when the app is hidden. Subscribe with `onForeground`, `onBackground`, or `onMemoryWarning`; each returns an unsubscribe function and does not immediately call the listener. The current page receives `onHide` on background and `onShow` on foreground. Desktop background means the window is minimized or hidden.
+
+`lifecycle.launch.url` is the cold-start link, or `null` when absent. On Web it is the initial `location.href`; on WeChat it is the launch path and encoded query. Web never emits memory warnings. Native notifications depend on the host shell.
+
+```ts
+import { lifecycle } from "@weft-ui/platform";
+const stop = lifecycle.onBackground(() => console.log("background"));
+console.log(lifecycle.state, lifecycle.launch.url);
+// Call stop() when no longer needed.
+```
+
 ## Check the host and its capabilities
 
 Use `platform.os` and `platform.version` to identify the current host. `os` is one of `web`, `wechat`, `ios`, `macos`, `android`, `windows`, or `linux`. `version` is a host-specific string, not the Weft UI package version. Don't assume a common format across platforms. For example, on Web it is the full user agent string; on native targets it is empty if the kernel isn't present or the shell supplies no version.

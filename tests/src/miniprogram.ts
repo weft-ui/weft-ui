@@ -157,7 +157,7 @@ export interface MiniProgram {
  * `onLoad` and `onReady`. `wx` is the API object the scripts see.
  */
 export function launch(project: string, options: { wx?: object; route?: string } = {}): MiniProgram {
-  const wx = { ...options.wx } as Record<string, unknown>;
+  const wx = { getLaunchOptionsSync: () => ({}), onMemoryWarning: () => {}, ...options.wx } as Record<string, unknown>;
   let title = "";
   const { registered, globals } = framework(wx);
   const stack: { options: PageOptions; instance: PageInstance; view: TestView }[] = [];

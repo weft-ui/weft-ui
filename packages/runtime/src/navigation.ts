@@ -21,7 +21,9 @@ export type PageFactories = Record<string, (params: Record<string, RouteValue>) 
 let active: NavigationController | null = null;
 let noApp = false;
 export function componentMounted(): void { noApp = true; }
-export function activate(controller: NavigationController): void { active = controller; noApp = false; }
+let foreground = true;
+export function setAppForeground(value: boolean): void { foreground = value; active?.setForeground(value); }
+export function activate(controller: NavigationController): void { active = controller; controller.setForeground(foreground); noApp = false; }
 export function deactivate(controller: NavigationController): void { if (active === controller) active = null; }
 function current(): NavigationController {
   if (!active) throw new Error(noApp ? "weft: this program has no app declaration" : "weft: navigation is available after the app is mounted");

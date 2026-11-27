@@ -59,6 +59,30 @@ afterEach(() => {
   delete globalThis.__weft;
 });
 
+test("lifecycle receives native launch and signals", async () => {
+  vi.resetModules();
+  const { kernel } = installKernel([], () => "");
+  Object.defineProperty(kernel, "launch", { value: JSON.stringify({ url: "weft://note/1" }) });
+  const callbacks = new Map<string, (json: string) => void>();
+  vi.mocked(kernel.on).mockImplementation((name, callback) => { callbacks.set(name, callback); });
+  // A fresh module captures this test's kernel and its signal subscriptions.
+  const { lifecycle } = await import("../src/native.ts");
+  const background = vi.fn(); const foreground = vi.fn(); const memory = vi.fn();
+  const stop = lifecycle.onBackground(background);
+  lifecycle.onForeground(foreground); lifecycle.onMemoryWarning(memory);
+  expect(lifecycle.launch.url).toBe("weft://note/1");
+  callbacks.get("lifecycle")!(JSON.stringify({ state: "background" }));
+  callbacks.get("lifecycle")!(JSON.stringify({ state: "background" }));
+  expect(lifecycle.state).toBe("background");
+  expect(background).toHaveBeenCalledOnce();
+  callbacks.get("memory")!("{}"); expect(memory).toHaveBeenCalledOnce();
+  callbacks.get("lifecycle")!(JSON.stringify({ state: "foreground" }));
+  expect(foreground).toHaveBeenCalledOnce();
+  stop(); callbacks.get("lifecycle")!(JSON.stringify({ state: "background" }));
+  expect(background).toHaveBeenCalledOnce();
+  callbacks.get("lifecycle")!(JSON.stringify({ state: "foreground" }));
+});
+
 test("native signal subscriptions share kernel callbacks and unsubscribe independently", () => {
   const { kernel } = installKernel([], () => "");
   const first = vi.fn();

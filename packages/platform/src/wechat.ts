@@ -1,4 +1,14 @@
 import type { PlatformModule } from "@weft-ui/runtime/protocol";
+import { createLifecycle } from "./lifecycle.ts";
+
+let visibility: (state: "foreground" | "background") => void = () => {};
+const appLifecycle = createLifecycle(() => {
+  const options = wx.getLaunchOptionsSync();
+  if (!options.path) return null;
+  const query = Object.entries(options.query ?? {}).map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
+  return `/${options.path.replace(/^\//, "")}${query ? `?${query}` : ""}`;
+}, (change, memory) => { visibility = change; wx.onMemoryWarning(memory); });
+export const lifecycle = appLifecycle.api;
 import { view, type View, type WechatSink } from "@weft-ui/runtime/wechat";
 import type { PageClass } from "@weft-ui/runtime/navigation";
 import { Environment, type EnvironmentData } from "./environment.ts";
@@ -15,6 +25,8 @@ interface Failure {
 }
 
 interface Wx {
+  getLaunchOptionsSync(): { path?: string; query?: Record<string, string> };
+  onMemoryWarning(listener: () => void): void;
   showModal(options: { title?: string; content?: string; showCancel: boolean; confirmText: string; cancelText?: string; confirmColor?: string; success(result: { confirm: boolean }): void; fail(error: Failure): void }): void;
   showActionSheet(options: { alertText?: string; itemList: string[]; success(result: { tapIndex: number }): void; fail(error: Failure): void }): void;
   showToast(options: { title: string; icon: "none" | "success" | "error"; duration: number }): void;
@@ -57,6 +69,8 @@ interface Wx {
 
 declare const wx: Wx;
 declare function App(options: {
+  onShow(): void;
+  onHide(): void;
   weft: {
     view: typeof view;
     mount(target: never): void;
@@ -124,6 +138,7 @@ function response(status: number, data: ArrayBuffer): Response {
 
 /** Registers the app lifecycle and generated-view factory with the WeChat host. */
 export function run(app: WeftApp): void {
+  appLifecycle.init();
   let sink: WechatSink | undefined;
   const application = app as WeftApp & {
     $config?: { pages: readonly PageClass[]; tabs?: readonly { page: PageClass }[] };
@@ -137,6 +152,8 @@ export function run(app: WeftApp): void {
     $weftView?: View;
   };
   App({
+    onShow: () => visibility("foreground"),
+    onHide: () => visibility("background"),
     weft: {
       view,
       mount: (target) => app.mount(target),
