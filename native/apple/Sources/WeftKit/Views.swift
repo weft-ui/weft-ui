@@ -2,6 +2,8 @@ import SwiftUI
 import Observation
 #if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
 #endif
 
 struct WeftOverlayOptions: Decodable {
@@ -151,6 +153,51 @@ private struct WeftInlineTitle: ViewModifier {
 }
 
 #if os(macOS)
+private struct WeftBackShortcut: NSViewRepresentable {
+    let session: WeftSession
+
+    func makeNSView(context: Context) -> BackShortcutView {
+        BackShortcutView()
+    }
+
+    func updateNSView(_ view: BackShortcutView, context: Context) {
+        view.session = session
+    }
+
+    static func dismantleNSView(_ view: BackShortcutView, coordinator: ()) {
+        view.stopMonitoring()
+    }
+}
+
+private final class BackShortcutView: NSView {
+    weak var session: WeftSession?
+    private var monitor: Any?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        stopMonitoring()
+        guard window != nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  event.charactersIgnoringModifiers == "[" else { return event }
+            let eventWindow = event.window
+            let handled = MainActor.assumeIsolated {
+                guard let self, eventWindow === self.window,
+                      let session = self.session, session.navigationModal == nil,
+                      !session.navigationPath.isEmpty else { return false }
+                session.userNavigationPath(Array(session.navigationPath.dropLast()))
+                return true
+            }
+            return handled ? nil : event
+        }
+    }
+
+    func stopMonitoring() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+    }
+}
+
 func macOSTabTitle(_ title: String, badge: String?) -> String {
     guard let badge else { return title }
     return "\(title) \(badge.isEmpty ? "•" : badge)"
@@ -279,15 +326,7 @@ public struct WeftRoot: View {
                 .frame(width: modal.style == 1 ? size.width : min(size.width, 480),
                        height: modal.style == 1 ? max(0, size.height - 32) : min(size.height, 360))
         }
-        .background {
-            Button("Back") {
-                session.userNavigationPath(Array(session.navigationPath.dropLast()))
-            }
-            .keyboardShortcut("[", modifiers: .command)
-            .disabled(session.navigationPath.isEmpty)
-            .opacity(0)
-            .accessibilityHidden(true)
-        }
+        .background { WeftBackShortcut(session: session).accessibilityHidden(true) }
         #endif
     }
 

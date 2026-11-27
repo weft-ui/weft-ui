@@ -3,6 +3,25 @@ import XCTest
 /// UI tests of the app; run with `xcodebuild test -scheme App -destination platform=macOS`.
 final class UITests: XCTestCase {
     @MainActor
+    func testBackShortcutWithFocusedInput() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        let entry = window.buttons["page:keyboard"]
+        let catalog = window.scrollViews.firstMatch
+        for _ in 0..<10 where !entry.isHittable { catalog.scroll(byDeltaX: 0, deltaY: -250) }
+        XCTAssertTrue(entry.isHittable)
+        entry.click()
+        let field = window.textFields["Field 1"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.click()
+        app.typeKey("[", modifierFlags: .command)
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testLaunches() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
