@@ -862,7 +862,7 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 | R4.d | ☑ | 6418daa | Android `overlays` 基线由编排者确认（维护者授权） |
 | R4.n | ☑ | 4638a69 | |
 | R4.g | ☑ | a6bd73a | 含本波次的启用改动（`overlays` 不再 `pending`、platform-api 指南） |
-| R5.w | ☑ | a7678db | Playwright 10 000 项滚到底部 DOM 少于 200 项；小程序 `list` 页滚动见 WechatChecks 备注 |
+| R5.w | ☑ | a7678db | Playwright 10 000 项滚到底部 DOM 少于 200 项；开发者工具里滚动弹回顶部，由 3240703 修正（见执行中发现） |
 | R5.a | ☐ | | |
 | R5.d | ☐ | | |
 | R5.n | ☐ | | |
@@ -942,3 +942,11 @@ R9 只有 `.w`、`.a`、`.d`：macOS、Windows、Linux 没有软键盘（§7）�
 - [R7.w] 在 Playwright 里打开第二个标签页并切换过去，Chromium（无头与有头）都不把原页面的 `visibilityState` 改为 `hidden`，计划的自动化验收无法完成；单测以伪造的 `visibilitychange` 覆盖。结论：⏸，记录
 - [R8.w] 代理误用 `/tmp/weft-m2/check-apps.sh`（固定指向主工作区）并立即中止，主工作区的 example 产物被重建一次，之后由 T1 重新构建。结论：环境问题，私有 worktree 的代理改为在自己的 worktree 里构建并比对
 - [R7.n] 非打包的 WinUI 应用订阅 `MemoryManager.AppMemoryUsageIncreased` 抛 `0xD0000225`，platform-api 指南注明 Windows 从不触发 `onMemoryWarning`。结论：接受（平台限制）
+- [R5.w] 开发者工具里 `list` 页跳到 1000 px 以下会弹回顶部：页面更新每次重发整个根数据，其中未变的 `scroll-top` 绑定被重新应用；追加行时又丢弃了已测量的段高度，占位估计塌缩。修正：页面与模态页按路径增量 `setData`，保留未受影响段的测量（3240703）。私有 worktree 的 automator 不可用，这一项在 R5.w 合并后才在主工作区验证到。结论：已修正
+- [R6.w] 一次跳到底部会连续触发三次加载更多（1000 → 1030）：请求窗口含一屏预取，每次追加 10 行后窗口仍在 `count − endThreshold` 之内。这是 §5.3「同一 `count` 只触发一次」的预期结果，所有平台一致；应用以每次加载的条数控制（T2 的 `Feed` 每次 50 条）。结论：按规范，不改
+- [R7.a] 本机 `osascript` 没有辅助功能权限（System Events `-1719`），macOS 最小化再恢复的人工检查没有完成；UI 测试截图里前台、后台计数各为 1。结论：⏸，需要维护者在 macOS 上手动确认一次
+- [R7.w、R8.w] 开发者工具的 automator 没有切后台与「返回首页」的公开接口（`native().goHome()` 不改变页面栈），切后台计数与冷启动分包页后的回到首页只能人工确认；冷启动 `/showcase/weft/pages/list-example-page/index` 正常渲染、单页栈并显示首页按钮。结论：⏸，需要维护者
+- [R5.a] macOS UI 测试用大幅滚动到底部时追加了数千行：SwiftUI 的 `LazyVStack` 对视口外布局出来的项也调用 `onAppear`，请求窗口因此总是到达 `count − endThreshold`。改为只按与滚动视口相交的项帧计算窗口，并加了「追加后停在底部」的范围单测；macOS 测试同时断言停稳后行数有界。另：macOS 上 `StaticText` 的文字在无障碍的 `value` 而不是 `label`。结论：已修正（53eb16c）
+- [R5.a] iOS 列表行与分组头只占文字宽度：惰性项的横轴提议没有传入列表宽度。截图发现，已修正（53eb16c）
+- [R5.n] Windows 推入页面的标题与返回按钮重叠，导航后返回按钮显示键盘焦点框（R1.n 起就有，截图里一直存在）。修正：标题栏留出返回按钮的宽度，程序设置的焦点不显示焦点框，FlaUI 断言标题左沿不小于按钮右沿（435f4dd）。结论：已修正
+- [R5、R6 原生波次] 五个代理共用 `apps`、`example` 锁，排队常超过 15 分钟；有代理先持有 `example` 再等 `apps`，与截图脚本（`example` → `apps`）方向相反，存在死锁风险。约定加锁顺序 `example` → `apps` → 设备，等待中不持有其他锁。macOS UI 与 iOS UI 测试同时运行时，macOS 的 ⌘[ 与 UI 自动化模式启动失败，二者必须错开。Android 的 `InputsTest` 只在 ATD 镜像（Weft_Shots）上失败，C-ui 用 Pixel_10_API_37.2。结论：环境约定，已写入代理规则
