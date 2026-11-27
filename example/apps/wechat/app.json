@@ -1,6 +1,16 @@
 {
   "pages": [
-    "weft/pages/catalog/index"
+    "weft/pages/feed/index",
+    "weft/pages/catalog/index",
+    "weft/pages/bench/index",
+    "weft/pages/detail/index",
+    "weft/pages/discover/index",
+    "weft/pages/inbox/index",
+    "weft/pages/me/index",
+    "weft/pages/social-settings/index",
+    "weft/pages/about/index",
+    "weft/pages/login/index",
+    "weft/pages/publish/index"
   ],
   "darkmode": true,
   "window": {
@@ -33,5 +43,36 @@
         "weft/pages/overlays-page/index"
       ]
     }
-  ]
+  ],
+  "tabBar": {
+    "color": "#808080",
+    "selectedColor": "#007aff",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "weft/pages/feed/index",
+        "text": "首页",
+        "iconPath": "weft/assets/tab/tab_feed.png",
+        "selectedIconPath": "weft/assets/tab/tab_feed_on.png"
+      },
+      {
+        "pagePath": "weft/pages/discover/index",
+        "text": "发现",
+        "iconPath": "weft/assets/tab/tab_discover.png",
+        "selectedIconPath": "weft/assets/tab/tab_discover_on.png"
+      },
+      {
+        "pagePath": "weft/pages/inbox/index",
+        "text": "消息",
+        "iconPath": "weft/assets/tab/tab_inbox.png",
+        "selectedIconPath": "weft/assets/tab/tab_inbox_on.png"
+      },
+      {
+        "pagePath": "weft/pages/me/index",
+        "text": "我的",
+        "iconPath": "weft/assets/tab/tab_me.png",
+        "selectedIconPath": "weft/assets/tab/tab_me_on.png"
+      }
+    ]
+  }
 }

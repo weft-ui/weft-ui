@@ -1,0 +1,260 @@
+import "./Fieldnotes.weft"
+
+model DiscoverCategory {
+    id: String,
+    title: String,
+    image: String,
+}
+
+model InboxItem {
+    id: String,
+    message: String,
+    avatar: String,
+}
+
+model InboxSection {
+    date: String,
+    items: InboxItem[],
+}
+
+model DiscoverModel { categories: DiscoverCategory[] }
+model InboxModel { sections: InboxSection[] }
+model PublishModel { regions: String[] }
+
+page Discover(model: DiscoverModel) path "/discover" {
+    NavBar(title = "Discover")
+    DiscoverContent(model.categories)
+}
+
+page Inbox(model: InboxModel) path "/inbox" {
+    NavBar(title = "Inbox")
+    InboxContent(model.sections)
+}
+
+page Me() path "/me" {
+    NavBar(title = "Me")
+    MeContent()
+}
+
+page SocialSettings() path "/settings" {
+    NavBar(title = "Settings")
+    SocialSettingsContent()
+}
+
+page About() path "/about" {
+    NavBar(title = "About")
+    AboutContent()
+}
+
+page Login() path "/login" {
+    NavBar(title = "Log in")
+    LoginContent()
+}
+
+page Publish(model: PublishModel) path "/publish" {
+    NavBar(title = "Publish")
+    PublishContent(model.regions)
+}
+
+event OpenGallery()
+event OpenSocialSettings()
+event OpenLogin()
+event SelectLanguage()
+event ClearCache()
+event OpenAbout()
+event SubmitLogin(email: String, password: String)
+event SubmitPublish(title: String, body: String, region: Int)
+event DismissSocial()
+
+component DiscoverContent(categories: DiscoverCategory[]) {
+    Screen {
+        header: {
+            Column(fill = true, padding = 20, gap = 12) {
+                PageHeading("FIELDNOTES  /  EXPLORE", "Discover", "Find inspiration for your next walk.")
+                Button(fill = true, minHeight = 44, onClick = { OpenGallery() }) {
+                    Text("组件画廊")
+                }
+            }
+        }
+        Grid(columns = 2, gap = 12, padding = 20, indicators = false) {
+            for (category in categories; key = category.id) {
+                Column(fill = true, clip = true, style = FieldCard) {
+                    Image(category.image, fill = true, aspectRatio = 1.2, fit = "cover", placeholder = "#d6e2d3")
+                    Text(category.title, fill = true, padding = 12, style = FieldLabel)
+                }
+            }
+        }
+    }
+}
+
+component InboxContent(sections: InboxSection[]) {
+    Screen {
+        header: {
+            Column(fill = true, padding = 20) {
+                PageHeading("FIELDNOTES  /  ACTIVITY", "Inbox", "Updates from your trail community.")
+            }
+        }
+        List(stickyHeaders = true, gap = 8, padding = 20, indicators = false) {
+            for (section in sections; key = section.date) {
+                Text(section.date, fill = true, padding = 10, background = "#e6ebdc", style = FieldLabel, size = 14)
+                for (item in section.items; key = item.id) {
+                    Row(fill = true, padding = 14, gap = 12, align = "center", style = FieldCard) {
+                        Image(item.avatar, width = 40, height = 40, radius = 20)
+                        Text(item.message, grow = 1, style = FieldMuted, lineHeight = 20)
+                    }
+                }
+            }
+        }
+    }
+}
+
+component SocialProfileStat(value: String, label: String) {
+    Column(gap = 3, align = "center") {
+        Text(value, style = FieldLabel, size = 23, weight = "bold")
+        Text(label, style = FieldMuted, size = 13)
+    }
+}
+
+component MeContent() {
+    state publicProfile = true
+    state showActivity = false
+    Screen {
+        header: {
+            Column(fill = true, paddingX = 20, paddingY = 16) {
+                Text("FIELDNOTES  /  MEMBER PROFILE", style = FieldKicker)
+            }
+        }
+        Scroll(indicators = false) {
+            Column(fill = true, paddingX = 20, paddingBottom = 20, gap = 20) {
+                Column(fill = true, align = "center", padding = 18, gap = 12, background = "#e6ebdc", radius = 16) {
+                    Image("asset:field_mara", width = 80, height = 80, radius = 40)
+                    Column(fill = true, gap = 3, align = "center") {
+                        Text("Mara Chen", style = FieldTitle, size = 28)
+                        Text("Hiking notes from the North Coast", style = FieldMuted, align = "center")
+                    }
+                    Divider(color = "#cbd7c8")
+                    Row(fill = true, align = "center", justify = "spaceEvenly") {
+                        SocialProfileStat("24", "Notes")
+                        SocialProfileStat("8", "Routes")
+                        SocialProfileStat("316", "Followers")
+                    }
+                }
+                Column(fill = true, gap = 8) {
+                    Text("Privacy", style = FieldLabel, size = 18)
+                    Column(fill = true, style = FieldCard) {
+                        SettingRow("Public profile") {
+                            Switch(publicProfile, onChange = { value -> publicProfile = value })
+                        }
+                        Divider(color = "#deded2")
+                        SettingRow("Show recent activity") {
+                            Switch(showActivity, onChange = { value -> showActivity = value })
+                        }
+                    }
+                }
+                Button(fill = true, minHeight = 44, onClick = { OpenSocialSettings() }) { Text("Settings") }
+                Button(fill = true, minHeight = 44, onClick = { OpenLogin() }) { Text("Log in") }
+            }
+        }
+    }
+}
+
+component SocialSettingsContent() {
+    Screen {
+        header: {
+            Column(fill = true, padding = 20) {
+                PageHeading("FIELDNOTES  /  PREFERENCES", "Settings", "Make your journal your own.")
+            }
+        }
+        Scroll(indicators = false) {
+            Column(fill = true, paddingX = 20, paddingBottom = 20, gap = 12) {
+                Button(fill = true, minHeight = 44, onClick = { SelectLanguage() }) { Text("Language") }
+                Button(fill = true, minHeight = 44, onClick = { ClearCache() }) { Text("Clear cache") }
+                Button(fill = true, minHeight = 44, onClick = { OpenAbout() }) { Text("About") }
+            }
+        }
+    }
+}
+
+component AboutContent() {
+    Screen {
+        header: {
+            Column(fill = true, padding = 20) {
+                PageHeading("FIELDNOTES", "About", "A journal for the places you walk.")
+            }
+        }
+        Column(fill = true, paddingX = 20, gap = 16) {
+            Text("Collect trail notes and share discoveries with your outdoor community.", style = FieldMuted, lineHeight = 22)
+            Button(fill = true, minHeight = 44, onClick = { DismissSocial() }) { Text("Close") }
+        }
+    }
+}
+
+component SocialField(label: String, field: Children) {
+    Column(fill = true, gap = 3) {
+        Text(label, style = FieldLabel, size = 13)
+        field
+    }
+}
+
+component LoginContent() {
+    state email = ""
+    state password = ""
+    Screen {
+        header: {
+            Column(fill = true, padding = 20) {
+                PageHeading("FIELDNOTES  /  MEMBERSHIP", "Log in", "Welcome back to your journal.")
+            }
+        }
+        Scroll(indicators = false) {
+            Column(fill = true, paddingX = 20, paddingBottom = 20, gap = 12) {
+                Column(fill = true, padding = 14, gap = 12, style = FieldCard) {
+                    SocialField("Email address") {
+                        Input(email, type = "email", fill = true, height = 36, placeholder = "name@example.com",
+                            onChange = { value -> email = value })
+                    }
+                    SocialField("Password") {
+                        Input(password, type = "password", fill = true, height = 36, placeholder = "Password",
+                            onChange = { value -> password = value })
+                    }
+                    Button(fill = true, minHeight = 44, disabled = email == "" || password == "",
+                        onClick = { SubmitLogin(email, password) }) { Text("Log in") }
+                }
+                Button(fill = true, minHeight = 44, onClick = { DismissSocial() }) { Text("Cancel") }
+            }
+        }
+    }
+}
+
+component PublishContent(regions: String[]) {
+    state title = ""
+    state body = ""
+    state region = -1
+    Screen {
+        header: {
+            Column(fill = true, padding = 20) {
+                PageHeading("FIELDNOTES  /  NEW NOTE", "Publish a note", "Share a place you walked.")
+            }
+        }
+        Scroll(indicators = false) {
+            Column(fill = true, paddingX = 20, paddingBottom = 20, gap = 12) {
+                Column(fill = true, padding = 14, gap = 12, style = FieldCard) {
+                    SocialField("Title") {
+                        Input(title, type = "text", fill = true, height = 36, placeholder = "Give your note a title",
+                            onChange = { value -> title = value })
+                    }
+                    SocialField("Region") {
+                        Picker(region, options = regions, placeholder = "Choose a region", fill = true,
+                            onChange = { value -> region = value })
+                    }
+                    SocialField("Your note") {
+                        TextArea(body, fill = true, height = 120, placeholder = "Tell us about your walk",
+                            onChange = { value -> body = value })
+                    }
+                    Button(fill = true, minHeight = 44, disabled = title == "" || body == "",
+                        onClick = { SubmitPublish(title, body, region) }) { Text("Publish") }
+                }
+                Button(fill = true, minHeight = 44, onClick = { DismissSocial() }) { Text("Cancel") }
+            }
+        }
+    }
+}

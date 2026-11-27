@@ -34,7 +34,7 @@ component FeedTabItem(label: FeedTab, active: Bool, onSelect: Event<FeedTab>) {
     }
 }
 
-component Feed() {
+component ShowcaseFeed() {
     state category: TrailCategory = "All notes"
     state tab: FeedTab = "Explore"
     let saved = tab == "Saved"

@@ -15,7 +15,7 @@ component TrailComment(name: String, date: String, message: String, avatar: Stri
     }
 }
 
-component Detail() {
+component ShowcaseDetail() {
     Screen {
         header: {
             Row(fill = true, paddingX = 20, paddingY = 14, align = "center", justify = "spaceBetween") {

@@ -1,0 +1,139 @@
+import "./Fieldnotes.weft"
+
+model FeedNote {
+    id: Int,
+    cover: String,
+    title: String,
+    category: String,
+    author: String,
+    avatar: String,
+    likes: Int,
+}
+
+model FeedModel {
+    notes: FeedNote[],
+    refreshing: Bool,
+}
+
+model NoteComment {
+    id: Int,
+    name: String,
+    date: String,
+    message: String,
+    avatar: String,
+}
+
+model DetailModel {
+    note: FeedNote,
+    comments: NoteComment[],
+}
+
+event FeedOpen(id: Int)
+event FeedPublish
+event FeedRefresh
+event FeedEndReached
+event DetailShare
+event DetailComment(text: String)
+
+component NoteCard(note: FeedNote) {
+    Column(fill = true, clip = true, style = FieldCard, onTap = FeedOpen(note.id)) {
+        Image(note.cover, fill = true, aspectRatio = 1.6, fit = "cover", placeholder = "#d6e2d3")
+        Column(fill = true, padding = 14, gap = 6) {
+            Text("NOTE ${note.id + 1}  /  ${note.category}", style = FieldKicker)
+            Text(note.title, fill = true, maxLines = 2, lineHeight = 24, style = FieldLabel, size = 20)
+            Row(fill = true, gap = 8, align = "center", paddingTop = 3) {
+                Image(note.avatar, width = 24, height = 24, radius = 12)
+                Text(note.author, style = FieldMuted, size = 13)
+                Spacer()
+                Text("${note.likes} likes", style = FieldMuted, size = 13)
+            }
+        }
+    }
+}
+
+component NotesList(model: FeedModel, showPublish: Bool) {
+    List(gap = 14, padding = 20, indicators = false, refreshing = model.refreshing,
+        onRefresh = FeedRefresh, onEndReached = FeedEndReached) {
+        Column(fill = true, gap = 12, paddingBottom = 4) {
+            Text("THE OUTDOOR JOURNAL", style = FieldKicker)
+            Row(fill = true, align = "center", justify = "spaceBetween") {
+                Text("Latest notes", style = FieldTitle)
+                if (showPublish) {
+                    Button(onClick = FeedPublish) { Text("发布") }
+                }
+            }
+            Text("Stories from the trail", style = FieldMuted)
+        }
+        for (note in model.notes; key = note.id) {
+            NoteCard(note)
+        }
+    }
+}
+
+page Feed(model: FeedModel) {
+    NavBar(title = "Fieldnotes") {
+        BarButton(label = "发布", onTap = FeedPublish)
+    }
+    Screen {
+        NotesList(model, true)
+    }
+}
+
+page Bench(model: FeedModel, count: Int = 10000) path "/bench/feed" {
+    NavBar(title = "Feed benchmark")
+    Screen {
+        NotesList(model, false)
+    }
+}
+
+page Detail(model: DetailModel, id: Int) path "/notes/{id}" {
+    state message = ""
+    NavBar(title = "Trail note") {
+        BarButton(label = "分享", onTap = DetailShare)
+    }
+    Column(fill = true, grow = 1, background = "#f6f4ed") {
+        List(gap = 0, indicators = false) {
+            Column(fill = true, gap = 18, paddingBottom = 20) {
+                Stack(fill = true, height = 220, alignment = "bottom", clip = true) {
+                    Image(model.note.cover, fill = true, fit = "cover", placeholder = "#4c7260")
+                    Column(fill = true, paddingX = 20, paddingBottom = 16, justify = "end", gap = 5) {
+                        Spacer()
+                        Column(fill = true, padding = 12, gap = 5, radius = 10, background = "#102b24d9") {
+                            Text(model.note.category, size = 11, weight = "bold", color = "#d9e7c9")
+                            Text(model.note.title, fill = true, maxLines = 2, size = 27, weight = "bold", color = "#ffffff")
+                        }
+                    }
+                }
+                Column(fill = true, paddingX = 20, gap = 14) {
+                    Row(fill = true, gap = 9, align = "center") {
+                        Image(model.note.avatar, width = 36, height = 36, radius = 18)
+                        Column(gap = 2) {
+                            Text(model.note.author, style = FieldLabel, size = 14)
+                            Text("October 12  ·  7.2 km loop", style = FieldMuted, size = 12)
+                        }
+                    }
+                    Text("We left the trailhead at first light. At the fork, take the old fire road past the dry creek. It climbs more gently than the signed route.", fill = true, size = 16, lineHeight = 24, color = "#243c32")
+                    Text("The last stretch crosses exposed rock. Stop at the second cairn for the clearest view of the valley before the trail bends back into the trees.", fill = true, size = 16, lineHeight = 24, color = "#243c32")
+                    Text("Trail comments (${model.comments.length})", style = FieldLabel, size = 18)
+                }
+            }
+            for (comment in model.comments; key = comment.id) {
+                Row(fill = true, gap = 10, paddingX = 20, paddingY = 12) {
+                    Image(comment.avatar, width = 32, height = 32, radius = 16)
+                    Column(grow = 1, gap = 4) {
+                        Row(fill = true, gap = 8, align = "center", justify = "spaceBetween") {
+                            Text(comment.name, style = FieldLabel, size = 14)
+                            Text(comment.date, style = FieldMuted, size = 12)
+                        }
+                        Text(comment.message, fill = true, size = 14, lineHeight = 20, color = "#243c32")
+                    }
+                }
+            }
+        }
+        Row(fill = true, padding = 16, gap = 8, align = "center", background = "#ffffff") {
+            Input(message, grow = 1, placeholder = "Add a comment", returnKey = "send",
+                onChange = { value -> message = value }, onSubmit = { DetailComment(message); message = "" })
+            Button(onClick = { DetailComment(message); message = "" }) { Text("Send") }
+        }
+    }
+}
