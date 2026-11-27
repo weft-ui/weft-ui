@@ -2,6 +2,8 @@
 
 package net.mioyi.weftui.generated
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -20,7 +22,9 @@ private val appTabs = listOf(
 /** Root view of the app: starts the kernel with the bundle and renders the root component. */
 @Composable
 fun WeftApp() {
-    WeftRoot(layoutHash = 0x69aea4cbb1f5516auL, safeArea = true, tabs = appTabs, make = ::makeScope)
+    Box(Modifier.imePadding()) {
+        WeftRoot(layoutHash = 0x69aea4cbb1f5516auL, safeArea = true, tabs = appTabs, make = ::makeScope)
+    }
 }
 
 /** Scope of a `create` op. */

@@ -44,6 +44,12 @@ fn generate(layout: &ViewLayout, program: &crate::ir::Program) -> String {
     out.writer.blank();
     out.writer.line("package net.mioyi.weftui.generated");
     out.writer.blank();
+    if program.app.is_some() {
+        out.writer
+            .line("import androidx.compose.foundation.layout.Box");
+        out.writer
+            .line("import androidx.compose.foundation.layout.imePadding");
+    }
     out.writer
         .line("import androidx.compose.runtime.Composable");
     out.writer.line("import androidx.compose.runtime.getValue");
@@ -96,11 +102,17 @@ fn generate(layout: &ViewLayout, program: &crate::ir::Program) -> String {
     } else {
         ""
     };
+    if program.app.is_some() {
+        out.open("Box(Modifier.imePadding()) {");
+    }
     out.writer.line(format_args!(
         "WeftRoot(layoutHash = 0x{:016x}uL, safeArea = {}{theme_arg}{tabs_arg}, make = ::makeScope)",
         layout.hash(),
         layout.safe_area()
     ));
+    if program.app.is_some() {
+        out.close("}");
+    }
     out.close("}");
     out.writer.blank();
     out.writer.line("/** Scope of a `create` op. */");

@@ -1,9 +1,13 @@
 package net.mioyi.weftui
 
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -44,7 +48,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.platform.LocalDensity
@@ -172,6 +179,17 @@ private fun WeftEditableText(
     val requester = remember { FocusRequester() }
     val focus = remember { TextFocus() }
     val focusManager = LocalFocusManager.current
+    val bringIntoView = remember { BringIntoViewRequester() }
+    var active by remember { mutableStateOf(false) }
+    var fieldSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    LaunchedEffect(active, imeBottom, fieldSize) {
+        if (active && fieldSize != IntSize.Zero) {
+            val margin = with(density) { 16.dp.toPx() }
+            bringIntoView.bringIntoView(Rect(0f, 0f, fieldSize.width.toFloat(), fieldSize.height + margin))
+        }
+    }
     // Keep the request separate from actual focus, which the user can move independently.
     LaunchedEffect(focused) {
         if (focus.requested != focused) {
@@ -179,7 +197,10 @@ private fun WeftEditableText(
             if (focused) requester.requestFocus() else if (focus.active) focusManager.clearFocus()
         }
     }
-    val focusModifier = Modifier.focusRequester(requester).onFocusChanged {
+    val focusModifier = Modifier.bringIntoViewRequester(bringIntoView)
+        .onSizeChanged { fieldSize = it }
+        .focusRequester(requester).onFocusChanged {
+        active = it.isFocused
         if (focus.active != it.isFocused) {
             focus.active = it.isFocused
             onFocusChange?.invoke(it.isFocused)
