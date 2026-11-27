@@ -88,6 +88,33 @@ test("splices reconcile the last requested window while retaining matching rows"
   expect(bind).toHaveBeenCalledWith(5, expect.any(Object));
 });
 
+test("windows reconcile retained rows and reordered splices in index order", () => {
+  const { lazy, bind, destroy, values } = setup();
+  lazy.set(values(Array.from({ length: 30 }, (_, i) => i)));
+  lazy.window(10, 13, 2);
+  bind.mockClear();
+  destroy.mockClear();
+  lazy.window(12, 15, 10);
+  expect(bind.mock.calls.map(([id, row]) => [id, row === null])).toEqual([
+    [3, true], [12, true], [14, false], [15, false],
+  ]);
+  expect(destroy).toHaveBeenCalledTimes(2);
+  bind.mockClear();
+  lazy.set(values([14, 13, 12, 10, 11]));
+  expect(bind.mock.calls.map(([id, row]) => [id, row === null])).toEqual([
+    [15, true], [14, true], [13, true], [11, true],
+  ]);
+  bind.mockClear();
+  lazy.window(0, 2, 3);
+  expect(bind.mock.calls.map(([id, row]) => [id, row === null])).toEqual([
+    [15, false], [14, false], [11, false],
+  ]);
+  lazy.window(30, 40, 1);
+  bind.mockClear();
+  lazy.window(30, 40, -1);
+  expect(bind.mock.calls.map(([id, row]) => [id, row === null])).toEqual([[14, true]]);
+});
+
 test("remote window requests synchronously replace materialized scopes", () => {
   const renderer = render({ hash: "x", templates: [
     { label: "root", kind: "component", roots: [0], nodes: [{ element: "List", props: {}, children: [1] }, { point: 0 }], values: [], events: [], points: [{ node: 1, kind: "lazy", templates: [1] }] },

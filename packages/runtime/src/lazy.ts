@@ -65,6 +65,8 @@ interface Item<T, R> { key: unknown; id: number; value: T; row: R | null }
 
 export class Lazy<T, R> {
   private items: Item<T, R>[] = [];
+  // Sorted indices of materialized items in the current items array.
+  private active: number[] = [];
   private nextId = 0;
   private started = false;
   private start = 0;
@@ -113,6 +115,8 @@ export class Lazy<T, R> {
     while (suffix < old.length - prefix && suffix < items.length - prefix && old[old.length - 1 - suffix] === items[items.length - 1 - suffix]) suffix++;
     for (const item of old) if (!seen.has(item.key) && item.row !== null) this.hooks.destroy(item.row);
     this.items = items;
+    this.active = [];
+    for (let i = 0; i < items.length; i++) if (items[i].row !== null) this.active.push(i);
     const changed = prefix !== old.length || prefix !== items.length;
     if (changed) {
       this.hooks.splice(prefix, old.length - prefix - suffix, items.slice(prefix, items.length - suffix).map(item => ({ id: item.id, template: this.templateOf(item.value) })));
@@ -133,17 +137,38 @@ export class Lazy<T, R> {
     this.end = Math.max(this.start, Math.floor(end));
     start = Math.min(this.items.length, this.start);
     end = Math.min(this.items.length, this.end);
-    for (let i = 0; i < this.items.length; i++) {
-      const item = this.items[i];
-      if ((i >= start && i < end) || i === retained) {
+    const next: number[] = [];
+    let retain = Number.isInteger(retained) && retained >= 0 && retained < this.items.length;
+    for (let i = start; i < end; i++) {
+      if (retain && retained < i) { next.push(retained); retain = false; }
+      next.push(i);
+      if (i === retained) retain = false;
+    }
+    if (retain) next.push(retained);
+
+    // Merge the old and new materialized indices to preserve index-order hooks.
+    const previous = this.active;
+    this.active = next;
+    let oldIndex = 0, newIndex = 0;
+    while (oldIndex < previous.length || newIndex < next.length) {
+      const old = previous[oldIndex] ?? Infinity;
+      const current = next[newIndex] ?? Infinity;
+      if (old === current) { oldIndex++; newIndex++; continue; }
+      if (old < current) {
+        const item = this.items[old];
+        if (item.row !== null) {
+          this.hooks.bind(item.id, null);
+          this.hooks.destroy(item.row);
+          item.row = null;
+        }
+        oldIndex++;
+      } else {
+        const item = this.items[current];
         if (item.row === null) {
           item.row = this.hooks.create(item.value);
           this.hooks.bind(item.id, item.row);
         }
-      } else if (item.row !== null) {
-        this.hooks.bind(item.id, null);
-        this.hooks.destroy(item.row);
-        item.row = null;
+        newIndex++;
       }
     }
     this.checkEnd();
@@ -156,5 +181,6 @@ export class Lazy<T, R> {
   destroy(): void {
     for (const item of this.items) if (item.row !== null) this.hooks.destroy(item.row);
     this.items = [];
+    this.active = [];
   }
 }
