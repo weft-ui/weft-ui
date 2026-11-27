@@ -157,6 +157,16 @@ public sealed class UITests
         {
             var window = app.GetMainWindow(automation, TimeSpan.FromSeconds(10));
             Assert.IsNotNull(window);
+            var headerTitle = FindNamed(window, "Fieldnotes");
+            var headerAction = Screenshots.FindButton(window, "发布");
+            Assert.IsNotNull(headerTitle);
+            Assert.IsNotNull(headerAction);
+            Assert.IsTrue(headerTitle.BoundingRectangle.Left - window.BoundingRectangle.Left >= 16,
+                $"Root title needs a leading inset: {headerTitle.BoundingRectangle}");
+            var titleCenter = headerTitle.BoundingRectangle.Top + headerTitle.BoundingRectangle.Height / 2.0;
+            var actionCenter = headerAction.BoundingRectangle.Top + headerAction.BoundingRectangle.Height / 2.0;
+            Assert.IsTrue(Math.Abs(titleCenter - actionCenter) <= 5,
+                $"Header title and action must be vertically aligned: {headerTitle.BoundingRectangle}, {headerAction.BoundingRectangle}");
             SelectTab(window, "发现");
             Assert.IsNotNull(Screenshots.FindButton(window, "组件画廊"));
             SelectTab(window, "消息");

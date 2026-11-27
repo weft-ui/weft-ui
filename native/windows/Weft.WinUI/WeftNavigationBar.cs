@@ -11,7 +11,7 @@ public sealed class WeftNavigationBar
 {
     private readonly Grid grid = new();
     private readonly TextBlock title = new() { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal };
+    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
     public WeftNavigationBar()
     {
@@ -31,12 +31,18 @@ public sealed class WeftNavigationBar
 /// <summary>An accessible action in a page's navigation bar.</summary>
 public sealed class WeftBarButton
 {
-    private readonly AppBarButton button = new();
+    private readonly Button button = new() { VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel content = new() { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+    private readonly ImageIcon image = new() { Visibility = Visibility.Collapsed };
+    private readonly TextBlock text = new() { VerticalAlignment = VerticalAlignment.Center };
     private string icon = "";
     private XamlRoot? root;
 
     public WeftBarButton(Action? tap)
     {
+        content.Children.Add(image);
+        content.Children.Add(text);
+        button.Content = content;
         if (tap is not null) button.Click += (_, _) => tap();
         button.Loaded += (_, _) => UpdateRoot(button.XamlRoot);
         button.Unloaded += (_, _) => UpdateRoot(null);
@@ -47,7 +53,8 @@ public sealed class WeftBarButton
     {
         set
         {
-            button.Label = value;
+            text.Text = value;
+            text.Visibility = value.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
             AutomationProperties.SetName(button, value);
         }
     }
@@ -70,13 +77,13 @@ public sealed class WeftBarButton
         var asset = icon.StartsWith("asset:", StringComparison.Ordinal)
             ? WeftAssets.Current?.FindImage(icon[6..], root?.RasterizationScale ?? 1)
             : null;
-        button.IsCompact = icon.Length != 0;
+        image.Visibility = asset is null ? Visibility.Collapsed : Visibility.Visible;
         if (asset is null)
         {
-            button.Icon = null;
+            image.Source = null;
             return;
         }
         var uri = new Uri(WeftAssets.UriPrefix + asset.File);
-        button.Icon = new ImageIcon { Source = asset.IsSvg ? new SvgImageSource(uri) : new BitmapImage(uri) };
+        image.Source = asset.IsSvg ? new SvgImageSource(uri) : new BitmapImage(uri);
     }
 }
