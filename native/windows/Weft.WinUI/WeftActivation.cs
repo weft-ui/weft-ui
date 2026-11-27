@@ -52,7 +52,21 @@ public static class WeftActivation
 
     private static string? Url(AppActivationArguments args) =>
         args.Kind == ExtendedActivationKind.Protocol && args.Data is IProtocolActivatedEventArgs protocol
-            ? protocol.Uri.AbsoluteUri : null;
+            ? ProtocolUrl(protocol.Uri) : null;
+
+    // WinRT canonicalizes authority-only URLs with a slash, changing /discover into /discover/.
+    internal static string ProtocolUrl(Uri uri)
+    {
+        var url = uri.OriginalString;
+        var authority = url.IndexOf("://", StringComparison.Ordinal);
+        if (authority < 0) return url;
+        var path = url.IndexOf('/', authority + 3);
+        if (path < 0) return url;
+        var suffix = url.IndexOfAny(['?', '#'], authority + 3);
+        if (suffix >= 0 && suffix < path) return url;
+        if (path + 1 == url.Length || url[path + 1] is '?' or '#') return url.Remove(path, 1);
+        return url;
+    }
 
     internal static void Attach(WeftSession value, DispatcherQueue dispatcher)
     {

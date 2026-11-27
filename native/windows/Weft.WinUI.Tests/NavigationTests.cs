@@ -4,6 +4,15 @@ namespace Weft.WinUI.Tests;
 public sealed class NavigationTests
 {
     [TestMethod]
+    public void ProtocolUrlPreservesAuthorityOnlyPathsAndQueries()
+    {
+        foreach (var url in new[] { "weftexample://discover", "weftexample://inbox", "weftexample://me", "weftexample://notes/3", "weftexample://discover?filter=a/b" })
+            Assert.AreEqual(url, WeftActivation.ProtocolUrl(new Uri(url)));
+        Assert.AreEqual("weftexample://discover", WeftActivation.ProtocolUrl(new Uri("weftexample://discover/")));
+        Assert.AreEqual("weftexample://discover?filter=all", WeftActivation.ProtocolUrl(new Uri("weftexample://discover/?filter=all")));
+    }
+
+    [TestMethod]
     public void LifecycleOnlyReportsChanges()
     {
         var state = new LifecycleState();
