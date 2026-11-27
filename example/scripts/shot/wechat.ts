@@ -91,13 +91,13 @@ try {
     } else throw new Error(`Unsupported WeChat screenshot link ${link}`);
     const page = await miniProgram.reLaunch(target);
     if (!page) throw new Error(`Could not open ${target}`);
+    // reLaunch resolves before the new view and its appearance are ready.
+    await waitForPage(target);
+    await setTimeout(settleMs);
     if (hasDarkShots) {
       const theme = await miniProgram.evaluate("() => wx.getAppBaseInfo().theme");
       if (theme !== scheme) throw new Error(`Expected WeChat appearance ${scheme}, got ${theme}`);
     }
-    // reLaunch resolves before the new view is mounted.
-    await waitForPage(target);
-    await setTimeout(settleMs);
     await miniProgram.screenshot({ path });
   }
 } catch (error) {
