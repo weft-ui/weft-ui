@@ -38,7 +38,7 @@ export class WebNavigationHost {
   #pageCount = 0;
   #tabbar: HTMLElement | null = null;
   #tabButtons: HTMLButtonElement[] = [];
-  #pendingTab: { urls: string[]; url: string } | null = null;
+  #pending: { target: number } | null = null;
   #modal: HTMLElement | null = null;
   #modalKey: object | null = null;
   #previousFocus: HTMLElement | null = null;
@@ -51,11 +51,11 @@ export class WebNavigationHost {
     this.#window = view;
     this.#onBack = onBack;
     this.#listener = (event) => {
-      if (this.#pendingTab) {
-        const { urls, url } = this.#pendingTab;
-        this.#pendingTab = null;
-        this.#depth = 0;
-        this.#window.history.replaceState({ ...event.state, weft: { depth: 0, urls } }, "", url);
+      if (this.#pending) {
+        const target = this.#pending.target;
+        this.#pending = null;
+        this.#depth = event.state?.weft?.depth ?? target;
+        this.#apply(this.#urls, !!this.#modalKey);
         return;
       }
       const entry = event.state?.weft;
@@ -102,6 +102,25 @@ export class WebNavigationHost {
     this.#window.addEventListener("popstate", this.#listener);
     this.#window.addEventListener("keydown", this.#keyListener);
     this.#window.addEventListener("mouseup", this.#mouseListener);
+  }
+
+  #apply(urls: readonly string[], modal: boolean): void {
+    const lastDepth = urls.length - 1 + Number(modal);
+    if (this.#depth > lastDepth) {
+      this.#pending = { target: lastDepth };
+      this.#window.history.go(lastDepth - this.#depth);
+      return;
+    }
+    const history = this.#window.history;
+    const entry = history.state?.weft;
+    if (this.#depth === lastDepth && !!entry?.modal === modal && Array.isArray(entry?.urls) && entry.urls.length === urls.length && entry.urls.every((url: string, index: number) => url === urls[index])) return;
+    const prefix = urls.slice(0, this.#depth + 1);
+    history.replaceState({ ...history.state, weft: { depth: this.#depth, urls: prefix, ...(modal && this.#depth === lastDepth ? { modal: true } : {}) } }, "", prefix.at(-1));
+    while (this.#depth < lastDepth) {
+      this.#depth++;
+      const next = urls.slice(0, this.#depth + 1);
+      history.pushState({ ...history.state, weft: { depth: this.#depth, urls: next, ...(modal && this.#depth === lastDepth ? { modal: true } : {}) } }, "", next.at(-1));
+    }
   }
 
   sync(
@@ -264,10 +283,11 @@ export class WebNavigationHost {
       } else {
         this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: this.#depth, urls } }, "", url);
       }
+    } else if (this.#pending) {
+      // The pending traversal will apply the latest desired state when it lands.
     } else if (operation === "tab") {
-      if (this.#pendingTab) this.#pendingTab = { urls, url };
-      else if (this.#depth > 0) {
-        this.#pendingTab = { urls, url };
+      if (this.#depth > 0) {
+        this.#pending = { target: 0 };
         this.#window.history.go(-this.#depth);
       } else {
         this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: 0, urls } }, "", url);
@@ -279,8 +299,10 @@ export class WebNavigationHost {
       this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: this.#depth, urls } }, "", url);
     } else if (operation === "pop" || operation === "root" || operation === "dismiss") {
       const delta = Math.min(this.#depth, operation === "root" ? this.#depth : Math.max(1, previousCount - pages.length + (hadModal && !modal ? 1 : 0)));
-      if (delta) this.#window.history.go(-delta);
-      else this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: 0, urls } }, "", url);
+      if (delta) {
+        this.#pending = { target: this.#depth - delta };
+        this.#window.history.go(-delta);
+      } else this.#window.history.replaceState({ ...this.#window.history.state, weft: { depth: 0, urls } }, "", url);
     }
     return sections;
   }
