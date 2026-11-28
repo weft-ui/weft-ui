@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build, command, prepareShots } from "./cases.ts";
 import { compare } from "./compare.ts";
@@ -19,19 +19,10 @@ if (!device) throw new Error(`iOS simulator ${requested} not found; set WEFT_IOS
 // xcodebuild test below builds the app and test runner for this simulator.
 build("ios", { ...process.env, WEFT_NATIVE: "0" });
 const { udid } = device;
-// The language and region change line breaking, glyph widths and the status bar clock;
-// pin the ones the baselines use. The system UI only picks up a change after a reboot,
-// so write them before booting a shut-down simulator: a reboot takes minutes on CI.
-const preferences = join(homedir(), "Library/Developer/CoreSimulator/Devices", udid, "data/Library/Preferences");
-if (device.state === "Shutdown" && existsSync(preferences)) {
-  const plist = join(preferences, ".GlobalPreferences.plist");
-  if (!existsSync(plist)) command("plutil", ["-create", "xml1", plist]);
-  command("plutil", ["-replace", "AppleLocale", "-string", "zh_CN", plist]);
-  command("plutil", ["-replace", "AppleLanguages", "-json", '["zh-Hans-CN"]', plist]);
-}
 if (device.state === "Shutdown") command("xcrun", ["simctl", "boot", udid]);
 command("xcrun", ["simctl", "bootstatus", udid, "-b"]);
-// A simulator that was already running, or keeps its preferences elsewhere, still needs the reboot.
+// The language and region change line breaking, glyph widths and the status bar clock;
+// pin the ones the baselines use. The system UI only picks up a change after a reboot.
 const defaults = (...args: string[]) =>
   execFileSync("xcrun", ["simctl", "spawn", udid, "defaults", ...args], { encoding: "utf8" });
 const readDefault = (key: string) => {
