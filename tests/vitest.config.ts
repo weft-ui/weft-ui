@@ -6,7 +6,8 @@ import weft from "@weft-ui/vite";
 // in Node: the Web driver creates its own happy-dom window without replacing
 // the native `URL` used for `file:` paths.
 export default defineConfig({
-  plugins: [weft()],
+  // Navigation tests match absolute links against this configuration.
+  plugins: [weft({ links: { scheme: "weftexample", hosts: ["example.com"] } })],
   // A .weft transform also depends on the current compiler WASM, not just its source file.
   test: { fsModuleCache: false },
 });

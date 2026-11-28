@@ -20,8 +20,12 @@ export function routeURL(page: PageClass, params: Readonly<Record<string, RouteV
 }
 
 export function matchRoute(pages: readonly PageClass[], url: string): { page: PageClass; params: Record<string, RouteValue> } | null {
-  const [path, query = ""] = url.split("?", 2);
-  const segments = path.split("/").slice(1);
+  const hash = url.indexOf("#");
+  if (hash >= 0) url = url.slice(0, hash);
+  const mark = url.indexOf("?");
+  const path = mark < 0 ? url : url.slice(0, mark);
+  const query = mark < 0 ? "" : url.slice(mark + 1);
+  const segments = path === "/" ? [] : path.split("/").slice(1);
   // Prefer literal segments if a caller supplies routes that overlap.
   const ordered = [...pages].sort((a, b) => {
     for (let i = 0; i < Math.min(a.$route.path.length, b.$route.path.length); i++) {

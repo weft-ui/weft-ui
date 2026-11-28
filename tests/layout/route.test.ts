@@ -42,6 +42,30 @@ describe("route URL encoding", () => {
   });
 });
 
+describe("route URL edge cases", () => {
+  class Root {
+    static $route = { name: "Root", path: [], params: [{ name: "q", type: "String", optional: true }] };
+    readonly params = {};
+  }
+
+  test("matches root routes and their query parameters", () => {
+    expect(routeURL(Root, { q: null })).toBe("/");
+    expect(matchRoute([Root, Settings], "/")).toEqual({ page: Root, params: { q: null } });
+    expect(matchRoute([Root], "/?q=hi")).toEqual({ page: Root, params: { q: "hi" } });
+    expect(matchRoute([Root], "/settings")).toBeNull();
+  });
+
+  test("ignores fragments but preserves encoded hashes", () => {
+    expect(matchRoute([Note], "/notes/1#top")).toEqual(matchRoute([Note], "/notes/1"));
+    expect(matchRoute([Note], "/notes/1?text=a#b")).toEqual({ page: Note, params: { id: "1", ...defaults, text: "a" } });
+    expect(matchRoute([Note], "/notes/1?text=a%23b")).toEqual({ page: Note, params: { id: "1", ...defaults, text: "a#b" } });
+  });
+
+  test("preserves question marks in query values", () => {
+    expect(matchRoute([Note], "/notes/1?text=a?b")).toEqual({ page: Note, params: { id: "1", ...defaults, text: "a?b" } });
+  });
+});
+
 describe("route matching", () => {
   test("decodes typed values and ignores extra query keys", () => {
     expect(matchRoute([Note], "/notes/a%2Fb?from=search&count=-9007199254740991&ratio=1.5e-2&pinned=true&text=hello+world&extra=x"))

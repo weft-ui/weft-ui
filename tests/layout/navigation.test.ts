@@ -186,6 +186,32 @@ test("open intercepts matched links, switches tabs, and dismisses a modal before
   controller.dispose();
 });
 
+test("cold start and restore accept root-path pages", () => {
+  class Root { static $route = { name: "Root", path: [], params: [] }; readonly params = {}; }
+  let id = 0;
+  const make = (params: Record<string, RouteValue>): NavigationPage => ({ params, $emit: () => {} });
+  const controller = new NavigationController({ Root: make, Detail: make }, { start: Root, pages: [Root, Detail] }, {
+    create: () => ++id, destroy: () => {}, update: () => {},
+  });
+  controller.start(["/", "/notes/3"]);
+  expect(controller.entries.map(entry => entry.type)).toEqual([Root, Detail]);
+  controller.restore(["/"]);
+  expect(controller.entries.map(entry => entry.type)).toEqual([Root]);
+  controller.dispose();
+});
+
+test("matches absolute links with case-insensitive schemes and HTTPS hosts", () => {
+  let id = 0;
+  const make = (params: Record<string, RouteValue>): NavigationPage => ({ params, $emit: () => {} });
+  const controller = new NavigationController({ Home: make, Detail: make }, { start: Home, pages: [Home, Detail] }, {
+    create: () => ++id, destroy: () => {}, update: () => {},
+  });
+  expect(controller.match("HTTPS://Example.COM/notes/3")).toEqual({ page: Detail, params: { id: 3, source: null } });
+  expect(controller.match("WeftExample://notes/3")).toEqual({ page: Detail, params: { id: 3, source: null } });
+  expect(controller.match("https://other.com/notes/3")).toBeNull();
+  controller.dispose();
+});
+
 test("cold start constructs root and target with one show and hide on the root", () => {
   const events: string[] = [];
   let id = 0;

@@ -18,14 +18,17 @@ function routePath(url: string): string | null {
   const absolute = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]+)([^#]*)/i.exec(url);
   if (!absolute) return null;
   const [, scheme, host, remainder = ""] = absolute;
-  if (scheme === "https" && links().hosts?.includes(host!)) return remainder.startsWith("/") ? remainder : `/${remainder}`;
-  if (scheme === links().scheme) return `/${host}${remainder}`;
+  if (scheme!.toLowerCase() === "https" && links().hosts?.some(h => h.toLowerCase() === host!.toLowerCase())) return remainder.startsWith("/") ? remainder : `/${remainder}`;
+  if (scheme!.toLowerCase() === links().scheme?.toLowerCase()) return `/${host}${remainder}`;
   return null;
 }
 
 function matchLink(pages: readonly PageClass[], url: string): { page: PageClass; params: Record<string, RouteValue> } | null {
   if (isWechat()) {
-    const [path, query = ""] = url.replace(/^\//, "").split("?", 2);
+    const relative = url.replace(/^\//, "");
+    const mark = relative.indexOf("?");
+    const path = mark < 0 ? relative : relative.slice(0, mark);
+    const query = mark < 0 ? "" : relative.slice(mark + 1);
     const packages = typeof __WEFT_WECHAT_SUBPACKAGES__ === "undefined" ? {} : __WEFT_WECHAT_SUBPACKAGES__ ?? {};
     const page = pages.find(type => path === `${packages[type.$route.name] ? `${packages[type.$route.name]}/` : ""}weft/pages/${slug(type.$route.name)}/index`);
     if (page) {
