@@ -8,8 +8,29 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class PlatformSessionTest {
+    @Test
+    fun fetchExecutorRunsRequestsConcurrently() {
+        val executor = PlatformModules.newFetchExecutor(4)
+        val started = CountDownLatch(2)
+        val release = CountDownLatch(1)
+        try {
+            repeat(2) {
+                executor.execute {
+                    started.countDown()
+                    release.await(5, TimeUnit.SECONDS)
+                }
+            }
+            assertTrue(started.await(2, TimeUnit.SECONDS))
+        } finally {
+            release.countDown()
+            executor.shutdownNow()
+        }
+    }
+
     @Test
     fun storageValidatesStringArraysAndPropagatesCommitFailure() {
         val backing = mutableMapOf<String, String>()

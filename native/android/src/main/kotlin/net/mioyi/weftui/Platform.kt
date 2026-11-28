@@ -136,10 +136,13 @@ internal class PlatformModules(context: Context) {
         /** Name of the shared preferences of `storage`. */
         private const val STORAGE = "weft.storage"
 
-        /** Bounded fetch pool and serialized storage thread. */
-        private val fetchExecutor: ExecutorService = ThreadPoolExecutor(
-            0, 16, 60L, TimeUnit.SECONDS, LinkedBlockingQueue(),
+        /** Up to [threads] concurrent fetches; idle threads time out. */
+        internal fun newFetchExecutor(threads: Int = 16): ThreadPoolExecutor = ThreadPoolExecutor(
+            threads, threads, 60L, TimeUnit.SECONDS, LinkedBlockingQueue(),
         ).apply { allowCoreThreadTimeOut(true) }
+
+        /** Up to 16 concurrent fetches (idle threads time out) and a serialized storage thread. */
+        private val fetchExecutor: ExecutorService = newFetchExecutor()
         private val storageExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
         internal fun validatedFetchUrl(raw: String): URL {
