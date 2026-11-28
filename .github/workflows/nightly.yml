@@ -110,12 +110,16 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       - run: brew install ninja
+      # The kernel objects depend on the image's Xcode, SDK and CMake. Key the cache
+      # on them so an image update saves a fresh cache, instead of every later run
+      # rebuilding Hermes from the stale one.
+      - run: echo "APPLE_TOOLCHAIN=${ImageVersion:-none}-$(xcodebuild -version | shasum | cut -c1-8)" >> "$GITHUB_ENV"
       - uses: actions/cache@v6
         with:
           path: |
             native/core/build
             native/apple/build
-          key: apple-ios-${{ env.HERMES_TAG }}-${{ hashFiles('native/core/hermes.cmake', 'native/apple/build-core.sh') }}
+          key: apple-ios-${{ env.HERMES_TAG }}-${{ hashFiles('native/core/hermes.cmake', 'native/apple/build-core.sh') }}-${{ env.APPLE_TOOLCHAIN }}
           restore-keys: apple-ios-${{ env.HERMES_TAG }}-
       - run: native/apple/build-core.sh
         env:
@@ -157,13 +161,15 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       - run: brew install ninja
-      # A separate key from ios-ui, whose kernel is built with Xcode 26.
+      # A separate key from ios-ui, whose kernel is built with Xcode 26; see there
+      # for the toolchain suffix.
+      - run: echo "APPLE_TOOLCHAIN=${ImageVersion:-none}-$(xcodebuild -version | shasum | cut -c1-8)" >> "$GITHUB_ENV"
       - uses: actions/cache@v6
         with:
           path: |
             native/core/build
             native/apple/build
-          key: apple-ios-xcode-27-${{ env.HERMES_TAG }}-${{ hashFiles('native/core/hermes.cmake', 'native/apple/build-core.sh') }}
+          key: apple-ios-xcode-27-${{ env.HERMES_TAG }}-${{ hashFiles('native/core/hermes.cmake', 'native/apple/build-core.sh') }}-${{ env.APPLE_TOOLCHAIN }}
           restore-keys: apple-ios-xcode-27-${{ env.HERMES_TAG }}-
       - run: native/apple/build-core.sh
         env:
