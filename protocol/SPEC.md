@@ -185,7 +185,7 @@ Image `src` values stay as strings in the layout and ops. The mini program view 
 
 `setData` rules:
 
-- Each view calls `setData` only once per flush. The block's `set` compares old and new values with `===` and sends only changed leaves, using paths such as `r.b8.l7[2].n3_0`.
+- Each view calls `setData` only once per flush. The block's `set` compares old and new values with `===`, except `Strings` slots, which compare element by element, and sends only changed leaves, using paths such as `r.b8.l7[2].n3_0`.
 - For append-only list changes, send the new rows by index path (`l7[3]`). On deletion, movement, or insertion, send the full row array. Reused rows retain their handler IDs. Nothing is sent if the order is unchanged.
 - Within a flush, discard paths covered by other paths because an entire ancestor is already being sent.
 
