@@ -58,19 +58,19 @@ final class UITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Latest notes"].waitForExistence(timeout: 10))
         let started = Date()
-        let row500 = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "NOTE 500  /")).firstMatch
-        var loadedMore = false
-        for _ in 0..<600 {
-            let labels = app.staticTexts.allElementsBoundByIndex.map(\.label)
-            loadedMore = loadedMore || labels.contains { label in
-                guard label.hasPrefix("NOTE "), let number = Int(label.dropFirst(5).split(separator: " ").first ?? "") else { return false }
-                return number > 200
-            }
-            if loadedMore { break }
-            app.swipeUp(velocity: .fast)
+        // The kicker of a note after the initial 200, such as "NOTE 201  /  Ridge".
+        let appended = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@",
+            "NOTE (20[1-9]|2[1-9][0-9]|[3-9][0-9]{2}|[1-9][0-9]{3,}) .*")).firstMatch
+        // Fling: `swipeUp` scrolls about one card, so reaching note 200 took minutes.
+        let lower = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+        let upper = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+        var flings = 0
+        while !appended.exists && flings < 100 {
+            lower.press(forDuration: 0, thenDragTo: upper, withVelocity: XCUIGestureVelocity(20_000), thenHoldForDuration: 0)
+            flings += 1
         }
-        print("Feed scroll seconds: \(Date().timeIntervalSince(started)); row 500: \(row500.exists)")
-        XCTAssertTrue(loadedMore, "Feed should append rows beyond its initial 200")
+        print("Feed scroll seconds: \(Date().timeIntervalSince(started)); flings: \(flings)")
+        XCTAssertTrue(appended.exists, "Feed should append rows beyond its initial 200")
     }
 
     @MainActor
