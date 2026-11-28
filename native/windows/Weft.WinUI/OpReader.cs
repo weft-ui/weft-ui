@@ -8,6 +8,36 @@ namespace Weft.WinUI;
 
 internal readonly record struct SpliceItem(uint Item, uint Template);
 
+/// <summary>Tracks measured row heights and computes the requested realized window.</summary>
+internal sealed class LazyEstimates
+{
+    private readonly Dictionary<uint, (double Sum, int Count)> heights = [];
+
+    internal double Estimate(uint template) =>
+        heights.TryGetValue(template, out var height) && height.Count > 0 ? height.Sum / height.Count : 44;
+
+    internal void Record(uint template, double height)
+    {
+        if (height <= 0) return;
+        var previous = heights.GetValueOrDefault(template);
+        heights[template] = (previous.Sum + height, previous.Count + 1);
+    }
+
+    internal static (uint Start, uint End)? Range(int count, IEnumerable<int> realizedIndices)
+    {
+        if (count == 0) return null;
+        var first = int.MaxValue;
+        var last = -1;
+        foreach (var index in realizedIndices)
+        {
+            if (index < 0) continue;
+            first = Math.Min(first, index);
+            last = Math.Max(last, index);
+        }
+        return last < first ? null : LazyItems.Window(count, first, last);
+    }
+}
+
 /// <summary>Ordered protocol items and their materialized scope IDs.</summary>
 internal sealed class LazyItems
 {

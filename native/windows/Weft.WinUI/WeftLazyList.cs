@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,7 +20,7 @@ public sealed class WeftLazyList : WeftPaddedElement
     private readonly Dictionary<uint, WeftScope> bound = [];
     private readonly Dictionary<uint, WeftPoint> realized = [];
     private readonly Dictionary<Grid, uint> elements = [];
-    private readonly Dictionary<uint, (double Sum, int Count)> heights = [];
+    private readonly LazyEstimates heights = new();
     private readonly DispatcherQueue dispatcher;
     private WeftScope? owner;
     private WeftPoint? point;
@@ -119,7 +120,7 @@ public sealed class WeftLazyList : WeftPaddedElement
     {
         var item = source[args.Index];
         var element = (Grid)args.Element;
-        element.MinHeight = heights.TryGetValue(item.Template, out var h) && h.Count > 0 ? h.Sum / h.Count : 44;
+        element.MinHeight = heights.Estimate(item.Template);
         var region = new WeftRegion(element);
         var target = region.CreatePoint();
         elements[element] = item.Id;
@@ -137,9 +138,8 @@ public sealed class WeftLazyList : WeftPaddedElement
     {
         var element = (Grid)sender;
         if (!elements.TryGetValue(element, out var id) || !items.TryGet(id, out var item) ||
-            item is null || item.Child == 0 || args.NewSize.Height <= 0) return;
-        var previous = heights.GetValueOrDefault(item.Template);
-        heights[item.Template] = (previous.Sum + args.NewSize.Height, previous.Count + 1);
+            item is null || item.Child == 0) return;
+        heights.Record(item.Template, args.NewSize.Height);
     }
 
     private void Clearing(ItemsRepeater sender, ItemsRepeaterElementClearingEventArgs args)
@@ -159,17 +159,9 @@ public sealed class WeftLazyList : WeftPaddedElement
     {
         queued = false;
         if (owner is null || source.Count == 0 || elements.Count == 0) return;
-        var first = source.Count;
-        var last = -1;
-        foreach (var element in elements.Keys)
-        {
-            var index = repeater.GetElementIndex(element);
-            if (index < 0) continue;
-            first = Math.Min(first, index);
-            last = Math.Max(last, index);
-        }
-        if (last < first) return;
-        var (start, end) = LazyItems.Window(source.Count, first, last);
+        var range = LazyEstimates.Range(source.Count, elements.Keys.Select(repeater.GetElementIndex));
+        if (range is not { } window) return;
+        var (start, end) = window;
         owner.Session.Window(owner.Id, pointIndex, start, end);
     }
 }
