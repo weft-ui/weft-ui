@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { tick } from "@weft-ui/runtime/remote";
 import { WechatSink, type View } from "@weft-ui/runtime/wechat";
 import { compile, loadView, type TestView } from "../src/miniprogram.ts";
@@ -160,6 +160,38 @@ function segments(view: TestView, index: number): Segment[] {
   if (!found[index]) throw new Error(`missing segment array ${index}`);
   return found[index];
 }
+
+describe("setData payload", () => {
+  test("window moves send only changed segments", async () => {
+    const { view, sink } = await mount(1000);
+    const { scope, point } = identity(view);
+    const target = segments(view, 0);
+    function findPath(value: unknown, path: string): string | undefined {
+      if (value === target) return path;
+      if (!value || typeof value !== "object") return undefined;
+      for (const [key, child] of Object.entries(value)) {
+        const found = findPath(child, Array.isArray(value) ? `${path}[${key}]` : `${path}.${key}`);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    const listPath = findPath(view.data.r, "r");
+    if (!listPath) throw new Error("missing list path");
+    const before = view.calls.length;
+    sink.window(scope, point, 200, 240);
+    await tick();
+    const keys = view.calls.slice(before).flatMap((call) => Object.keys(call));
+    expect(keys).not.toContain(listPath);
+    const listKeys = keys.filter((key) => key.startsWith(listPath));
+    const indices = new Set<number>();
+    for (const key of listKeys) {
+      const match = /^\[(\d+)\](?:\.(h|s))?$/.exec(key.slice(listPath.length));
+      expect(match, key).not.toBeNull();
+      if (match && !match[2]) indices.add(Number(match[1]));
+    }
+    expect(indices).toEqual(new Set([0, 1, 10, 11]));
+  });
+});
 
 test("initial measurement materializes two segments and leaves spacers", async () => {
   const { view, window } = await mount(100);

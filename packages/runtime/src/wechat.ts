@@ -134,6 +134,10 @@ interface LazyPoint {
   columns: number;
   size: number;
   items: LazyItem[];
+  byItem: Map<number, number>;
+  structural: boolean;
+  changed: Set<number>;
+  segmentHeights: number[];
   heights: Map<number, number>;
   positions: Map<number, number>;
   scrollTop: number;
@@ -141,7 +145,6 @@ interface LazyPoint {
   measureAgain: boolean;
   requestedStart: number;
   requestedEnd: number;
-  dirty: boolean;
   observer?: IntersectionObserver;
   view?: View;
 }
@@ -339,13 +342,15 @@ export class WechatSink implements Sink {
     if (!lazy) {
       const columns = scope.keys.g?.[point] ?? 1;
       const size = Math.max(columns, Math.floor(SEGMENT_SIZE / columns) * columns);
-      lazy = { scope, point, key: scope.keys.p![point] as string, columns, size, items: [], heights: new Map(), positions: new Map(), scrollTop: 0, measuring: false, measureAgain: false, requestedStart: -1, requestedEnd: -1, dirty: false };
+      lazy = { scope, point, key: scope.keys.p![point] as string, columns, size, items: [], byItem: new Map(), structural: true, changed: new Set(), segmentHeights: [], heights: new Map(), positions: new Map(), scrollTop: 0, measuring: false, measureAgain: false, requestedStart: -1, requestedEnd: -1 };
       scope.o[`z${lazy.key.slice(1)}`] = 0;
       this.#lazy.set(token, lazy);
     }
     const kept = new Map(lazy.items.map((item) => [item.item, item]));
     const inserted = items.map(({ item, template }) => kept.get(item) ?? { item, template, child: null });
     const removed = lazy.items.splice(index, remove, ...inserted);
+    lazy.byItem.clear();
+    lazy.items.forEach((entry, position) => lazy.byItem.set(entry.item, position));
     const remaining = new Set(lazy.items);
     for (const item of removed) if (!remaining.has(item) && item.child) this.#destroy(item.child);
     // Keep measurements before the changed segment. In particular, appending
@@ -357,16 +362,17 @@ export class WechatSink implements Sink {
     lazy.requestedEnd = -1;
     lazy.observer?.disconnect();
     lazy.observer = undefined;
-    lazy.dirty = true;
+    lazy.structural = true;
   }
 
   bind(id: number, point: number, item: number, child: number): void {
     const lazy = this.#lazy.get(`${id}:${point}`);
-    const entry = lazy?.items.find((row) => row.item === item);
-    if (!lazy || !entry) throw new Error(`weft: unknown lazy item ${item}`);
+    const index = lazy?.byItem.get(item);
+    if (!lazy || index === undefined) throw new Error(`weft: unknown lazy item ${item}`);
+    const entry = lazy.items[index];
     if (entry.child && entry.child.id !== child) this.#destroy(entry.child);
     entry.child = child ? this.#scope(child) : null;
-    lazy.dirty = true;
+    lazy.changed.add(Math.floor(index / lazy.size));
   }
 
   /** Records user scrolling independently of programmatic scroll-top corrections. */
@@ -384,35 +390,73 @@ export class WechatSink implements Sink {
     this.#session?.window(scope, point, start, end);
   }
 
-  #segments(lazy: LazyPoint): void {
-    const { scope, key, items } = lazy;
-    const segments: Data[] = [];
+  #estimate(lazy: LazyPoint): number {
     let measuredHeight = 0;
     let measuredRows = 0;
     for (const [index, height] of lazy.heights) {
-      const count = Math.min(lazy.size, Math.max(0, items.length - index * lazy.size));
+      const count = Math.min(lazy.size, Math.max(0, lazy.items.length - index * lazy.size));
       measuredHeight += height;
       measuredRows += Math.ceil(count / lazy.columns);
     }
-    const estimate = measuredRows ? measuredHeight / measuredRows : ESTIMATED_HEIGHT;
-    for (let start = 0; start < items.length; start += lazy.size) {
-      const index = segments.length;
-      const slice = items.slice(start, start + lazy.size);
-      const materialized = slice.some((item) => item.child !== null);
-      const rows = materialized ? slice.map((item, offset) => {
-        if (!item.child) return { k: item.item, t: item.template };
-        item.child.up = scope;
-        item.child.seg = `${key}[${index}].r[${offset}]`;
-        item.child.o.k = item.item;
-        item.child.o.t = item.template;
-        item.child.o.w = true;
-        return item.child.o;
-      }) : null;
-      const height = lazy.heights.get(index) ?? Math.ceil(slice.length / lazy.columns) * estimate;
-      segments.push({ k: index, h: height, s: `height:${height}px`, r: rows });
+    return measuredRows ? measuredHeight / measuredRows : ESTIMATED_HEIGHT;
+  }
+
+  #segment(lazy: LazyPoint, index: number, estimate: number): Data {
+    const { scope, key, items } = lazy;
+    const slice = items.slice(index * lazy.size, (index + 1) * lazy.size);
+    const materialized = slice.some((item) => item.child !== null);
+    const rows = materialized ? slice.map((item, offset) => {
+      if (!item.child) return { k: item.item, t: item.template };
+      item.child.up = scope;
+      item.child.seg = `${key}[${index}].r[${offset}]`;
+      item.child.o.k = item.item;
+      item.child.o.t = item.template;
+      item.child.o.w = true;
+      return item.child.o;
+    }) : null;
+    const height = lazy.heights.get(index) ?? Math.ceil(slice.length / lazy.columns) * estimate;
+    return { k: index, h: height, s: `height:${height}px`, r: rows };
+  }
+
+  #segments(lazy: LazyPoint): void {
+    const estimate = this.#estimate(lazy);
+    const segments: Data[] = [];
+    lazy.segmentHeights = [];
+    for (let start = 0; start < lazy.items.length; start += lazy.size) {
+      const segment = this.#segment(lazy, segments.length, estimate);
+      segments.push(segment);
+      lazy.segmentHeights.push(segment.h as number);
     }
-    scope.o[key] = segments;
-    if (!scope.fresh) this.#pend(scope, key);
+    lazy.scope.o[lazy.key] = segments;
+    lazy.changed.clear();
+    lazy.structural = false;
+    if (!lazy.scope.fresh) this.#pend(lazy.scope, lazy.key);
+  }
+
+  #patchSegments(lazy: LazyPoint): void {
+    const { scope, key } = lazy;
+    const segments = scope.o[key] as Data[];
+    const estimate = this.#estimate(lazy);
+    for (const index of lazy.changed) {
+      const segment = segments[index] = this.#segment(lazy, index, estimate);
+      lazy.segmentHeights[index] = segment.h as number;
+      if (!scope.fresh) this.#pend(scope, `${key}[${index}]`);
+    }
+    for (let index = 0; index < segments.length; index++) {
+      const segment = segments[index];
+      if (lazy.changed.has(index) || segment.r !== null) continue;
+      const count = Math.min(lazy.size, lazy.items.length - index * lazy.size);
+      const height = lazy.heights.get(index) ?? Math.ceil(count / lazy.columns) * estimate;
+      if (height === lazy.segmentHeights[index]) continue;
+      segment.h = height;
+      segment.s = `height:${height}px`;
+      lazy.segmentHeights[index] = height;
+      if (!scope.fresh) {
+        this.#pend(scope, `${key}[${index}].h`);
+        this.#pend(scope, `${key}[${index}].s`);
+      }
+    }
+    lazy.changed.clear();
   }
 
   #observeView(view: View): void {
@@ -683,10 +727,9 @@ export class WechatSink implements Sink {
   /** Sends the batch with one `setData`. */
   commit(): void {
     for (const lazy of this.#lazy.values()) {
-      if (lazy.dirty && !lazy.scope.dead) {
-        lazy.dirty = false;
-        this.#segments(lazy);
-      }
+      if (lazy.scope.dead) continue;
+      if (lazy.structural) this.#segments(lazy);
+      else if (lazy.changed.size) this.#patchSegments(lazy);
     }
     const changes = new Map<number, Map<string, unknown>>();
     for (const [scope, key] of this.#pending) {
@@ -697,7 +740,10 @@ export class WechatSink implements Sink {
       while (root.up) root = root.up;
       let data = changes.get(root.id);
       if (!data) changes.set(root.id, data = new Map());
-      data.set(path, key === null ? scope.o : scope.o[key]);
+      // Segment paths address nested data rather than literal scope keys.
+      const segment = key?.match(/^([^.[\]]+)\[(\d+)\](?:\.(h|s))?$/);
+      const value = segment ? (scope.o[segment[1]] as Data[])[Number(segment[2])] : undefined;
+      data.set(path, segment ? (segment[3] ? value?.[segment[3]] : value) : key === null ? scope.o : scope.o[key]);
     }
     if (this.#rootFresh && this.#root) {
       changes.set(this.#root.id, new Map<string, unknown>([["t", this.#root.keys.n], ["r", this.#root.o]]));
