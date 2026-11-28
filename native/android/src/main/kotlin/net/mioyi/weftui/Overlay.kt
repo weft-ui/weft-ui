@@ -63,8 +63,8 @@ internal class OverlayQueue {
         }
     }
 
-    fun finish(result: Any?) {
-        val entry = current ?: return
+    fun finish(entry: Entry, result: Any?) {
+        if (current !== entry) return
         current = if (pending.isEmpty()) null else pending.removeFirst()
         val encoded = when (entry.request.method) {
             "confirm" -> (result == true).toString().encodeToByteArray()
@@ -84,26 +84,26 @@ internal fun OverlayHost(queue: OverlayQueue) {
     if (entry != null) {
         val request = entry.request
         if (request.method == "actionSheet") {
-            ModalBottomSheet(onDismissRequest = { queue.finish(null) }) {
+            ModalBottomSheet(onDismissRequest = { queue.finish(entry, null) }) {
                 Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
                     request.title?.let { Text(it, Modifier.padding(horizontal = 24.dp, vertical = 12.dp), style = MaterialTheme.typography.titleLarge) }
                     request.options.forEachIndexed { index, option ->
-                        TextButton(onClick = { queue.finish(index) }, modifier = Modifier.fillMaxWidth()) {
+                        TextButton(onClick = { queue.finish(entry, index) }, modifier = Modifier.fillMaxWidth()) {
                             Text(option, color = if (index == request.destructiveIndex) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                         }
                     }
-                    TextButton(onClick = { queue.finish(null) }, modifier = Modifier.fillMaxWidth()) { Text(request.cancelText) }
+                    TextButton(onClick = { queue.finish(entry, null) }, modifier = Modifier.fillMaxWidth()) { Text(request.cancelText) }
                 }
             }
         } else {
             AlertDialog(
-                onDismissRequest = { queue.finish(false) },
+                onDismissRequest = { queue.finish(entry, false) },
                 title = request.title?.let { title -> { Text(title) } },
                 text = request.message?.let { message -> { Text(message) } },
-                confirmButton = { TextButton(onClick = { queue.finish(true) }) {
+                confirmButton = { TextButton(onClick = { queue.finish(entry, true) }) {
                     Text(request.confirmText, color = if (request.isDestructive()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                 } },
-                dismissButton = if (request.method == "confirm") ({ TextButton(onClick = { queue.finish(false) }) { Text(request.cancelText) } }) else null,
+                dismissButton = if (request.method == "confirm") ({ TextButton(onClick = { queue.finish(entry, false) }) { Text(request.cancelText) } }) else null,
             )
         }
     }

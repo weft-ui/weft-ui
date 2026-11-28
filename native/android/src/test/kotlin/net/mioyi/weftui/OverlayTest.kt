@@ -17,6 +17,24 @@ class OverlayTest {
         assertThrows(PlatformFailure::class.java) { OverlayRequest.parse("alert", "invalid".encodeToByteArray()) }
     }
 
+    @Test fun staleCallbacksDoNotCompleteTheNextEntry() {
+        val queue = OverlayQueue()
+        val results = mutableListOf<String>()
+        fun call(method: String) = queue.call(method, "{}".encodeToByteArray()) { ok, data ->
+            assertTrue(ok); results.add(data.decodeToString())
+        }
+        call("confirm")
+        call("alert")
+        val a = queue.current!!
+        queue.finish(a, true)
+        queue.finish(a, false)
+        assertEquals("alert", queue.current?.request?.method)
+        assertEquals(listOf("true"), results)
+        queue.finish(queue.current!!, null)
+        assertEquals(listOf("true", ""), results)
+        assertNull(queue.current)
+    }
+
     @Test fun queuesDialogsAndEncodesResultsWhileToastReplaces() {
         val queue = OverlayQueue()
         val results = mutableListOf<String>()
@@ -32,17 +50,17 @@ class OverlayTest {
         queue.clearToast(version)
         assertEquals("second", queue.toast?.message)
         assertEquals("confirm", queue.current?.request?.method)
-        queue.finish(false)
+        queue.finish(queue.current!!, false)
         assertEquals("actionSheet", queue.current?.request?.method)
-        queue.finish(1)
-        queue.finish(null)
+        queue.finish(queue.current!!, 1)
+        queue.finish(queue.current!!, null)
         assertNull(queue.current)
         assertEquals(listOf("", "", "false", "1", ""), results)
         call("actionSheet", """{"options":["A"]}""")
-        queue.finish(null)
+        queue.finish(queue.current!!, null)
         assertEquals("null", results.last())
         call("confirm")
-        queue.finish(true)
+        queue.finish(queue.current!!, true)
         assertEquals("true", results.last())
     }
 }
