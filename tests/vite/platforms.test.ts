@@ -413,6 +413,97 @@ navigation.setBadge(Settings, "3");
   } finally { await server.close(); }
 }, 15_000);
 
+test("Web history settles after pop followed by push", async () => {
+  await writeFile(join(root, "src/App.weft"), `
+event Open
+event Swap
+page Home() { Button(onClick = Open) { Text("Open A") } }
+page A() { Button(onClick = Swap) { Text("Swap") } }
+page B() { Text("B page") }
+app Notes { start = Home }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, A, B, Notes } from "./App.weft";
+import { navigation, run } from "@weft-ui/platform";
+run(new Notes({
+  Home: () => { const page = new Home({}); page.onOpen(() => navigation.push(A)); return page; },
+  A: () => { const page = new A({}); page.onSwap(() => { navigation.pop(); navigation.push(B); }); return page; },
+  B: () => new B({}),
+}));
+`);
+  await build("web");
+  const server = await preview({ root, configFile: false, logLevel: "silent", build: { outDir: "apps/web" }, preview: { host: "127.0.0.1", port: 0 } });
+  try {
+    const address = server.httpServer.address();
+    if (!address || typeof address === "string") throw new Error("preview server has no TCP address");
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.goto(`http://127.0.0.1:${address.port}/`);
+      await page.getByText("Open A").click();
+      await page.waitForURL("**/a");
+      await page.getByText("Swap").click();
+      await page.waitForTimeout(100);
+      await page.waitForFunction(() => location.pathname.endsWith("/b"));
+      expect(await page.getByText("B page").isVisible()).toBe(true);
+      expect(await page.evaluate(() => history.state.weft.urls)).toEqual(["/home", "/b"]);
+      await page.goBack();
+      await page.waitForURL("**/home");
+      await page.getByText("Open A").waitFor();
+    } finally { await browser.close(); }
+  } finally { await server.close(); }
+}, 15_000);
+
+test("Web history settles after switching tabs then pushing", async () => {
+  await mkdir(join(root, "res/icons"), { recursive: true });
+  for (const name of ["home", "home_on", "settings", "settings_on"]) {
+    await writeFile(join(root, `res/icons/${name}.svg`), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  }
+  await writeFile(join(root, "src/App.weft"), `
+event Open
+event Go
+page Home() { Button(onClick = Open) { Text("Open detail") } }
+page Settings() { Text("Settings page") }
+page Detail() { Button(onClick = Go) { Text("Go") } }
+page Other() { Text("Other page") }
+app Notes { tabs {
+  Home(title = "Home", icon = "asset:home", activeIcon = "asset:home_on")
+  Settings(title = "Settings", icon = "asset:settings", activeIcon = "asset:settings_on")
+} }
+`);
+  await writeFile(join(root, "src/index.ts"), `
+import { Home, Settings, Detail, Other, Notes } from "./App.weft";
+import { navigation, run } from "@weft-ui/platform";
+run(new Notes({
+  Home: () => { const page = new Home({}); page.onOpen(() => navigation.push(Detail)); return page; },
+  Settings: () => new Settings({}),
+  Detail: () => { const page = new Detail({}); page.onGo(() => { navigation.switchTab(Settings); navigation.push(Other); }); return page; },
+  Other: () => new Other({}),
+}));
+`);
+  await build("web", { assets: "res" });
+  const server = await preview({ root, configFile: false, logLevel: "silent", build: { outDir: "apps/web" }, preview: { host: "127.0.0.1", port: 0 } });
+  try {
+    const address = server.httpServer.address();
+    if (!address || typeof address === "string") throw new Error("preview server has no TCP address");
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.goto(`http://127.0.0.1:${address.port}/`);
+      await page.getByText("Open detail").click();
+      await page.waitForURL("**/detail");
+      await page.getByText("Go", { exact: true }).click();
+      await page.waitForTimeout(100);
+      await page.waitForFunction(() => location.pathname.endsWith("/other"));
+      expect(await page.getByText("Other page").isVisible()).toBe(true);
+      expect(await page.evaluate(() => history.state.weft.urls)).toEqual(["/settings", "/other"]);
+      await page.goBack();
+      await page.waitForURL("**/settings");
+      await page.getByText("Settings page").waitFor();
+    } finally { await browser.close(); }
+  } finally { await server.close(); }
+}, 15_000);
+
 test("WeChat emits tab bar images and preserves user tab bar settings", async () => {
   await writeFile(join(root, "src/App.weft"), `
 page Home() { Text("home") }
