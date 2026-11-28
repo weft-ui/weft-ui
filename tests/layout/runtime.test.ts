@@ -257,6 +257,40 @@ test("remote List.set and App.mount avoid partial mutation on error", () => {
   expect(typeof DomApp).toBe("function");
 });
 
+test("remote App.mount rolls back scopes created before a failure", () => {
+  const ops: string[] = [];
+  const sink: Sink = {
+    open() { ops.push("open"); },
+    create(scope, template) { ops.push(`create:${scope}:${template}`); },
+    set(scope, slot, value) { ops.push(`set:${scope}:${slot}:${String(value)}`); },
+    branch(scope, point, child) { ops.push(`branch:${scope}:${point}:${child}`); },
+    rows(scope, point, ids) { ops.push(`rows:${scope}:${point}:${ids.join(",")}`); },
+    attach(scope, point, child) { ops.push(`attach:${scope}:${point}:${child}`); },
+    commit() { ops.push("commit"); },
+    close() { ops.push("close"); },
+  };
+  let fail = true;
+  const app = new class extends RemoteApp {
+    constructor() {
+      super((app, args, children, depth) => {
+        const root = new RemoteInstance(app, 0, 1, depth, args, children);
+        if (fail) {
+          new RemoteInstance(app, 0, 1, depth + 1, [], []);
+          throw new Error("boom after children");
+        }
+        return root;
+      }, [], "hash1");
+    }
+  }();
+  expect(() => app.mount(sink)).toThrow("boom after children");
+  expect(app.$scopes.size).toBe(0);
+  expect(ops.at(-1)).toBe("close");
+  fail = false;
+  app.mount(sink);
+  expect(ops.indexOf(`create:${app.$root!.id}:0`)).toBeGreaterThan(ops.indexOf("close"));
+  app.unmount();
+});
+
 test("flushSync ignores re-entrant calls and flush drains restores and afterFlush after errors", async () => {
   const events: string[] = [];
   const release = hold();

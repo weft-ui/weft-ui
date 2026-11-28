@@ -494,9 +494,13 @@ export class App extends AppBase {
       sink.attach(0, 0, root.id);
       schedule();
     } catch (error) {
+      // A partial root leaves registered blocks, live watches and buffered ops behind.
+      for (const block of [...this.$scopes.values()].reverse()) if (!block.dead) block.destroy();
+      this.$scopes.clear();
       mounted.delete(this);
       this.$root = null;
       this.$sink = null;
+      try { sink.close(); } catch (closeError) { console.error(closeError); }
       throw error;
     }
   }
