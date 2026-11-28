@@ -92,6 +92,9 @@ jobs:
       - run: pnpm --filter example build:android
         env:
           WEFT_NATIVE: "0"
+      # Resolve plugins and compile before the emulator starts, as in
+      # android-shots: Gradle running next to the emulator starves both.
+      - run: example/apps/android/gradlew -p example/apps/android :app:assembleDebug :app:assembleDebugAndroidTest
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
